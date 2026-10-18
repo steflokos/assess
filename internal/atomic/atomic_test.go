@@ -203,6 +203,10 @@ func TestAReaderNeverSeesAHalfWrittenFile(t *testing.T) {
 				}
 				return
 			}
+			if runtime.GOOS == "windows" {
+				// Windows cannot replace a file that is open. A reader that never lets go would keep the writer out.
+				time.Sleep(200 * time.Microsecond)
+			}
 		}
 	}()
 	for i := 0; i < 200; i++ {

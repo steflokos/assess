@@ -16,6 +16,8 @@ import (
 //
 // A path that is not a regular file, such as /dev/null or a named pipe, is written as it is: there is
 // nothing to replace. A symbolic link is followed, so the file it points to is the one replaced.
+//
+// Windows cannot replace a file that another process has open. There the rename is tried again for up to two seconds.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	if real, err := filepath.EvalSymlinks(path); err == nil {
 		path = real
@@ -51,7 +53,7 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 		os.Remove(name)
 		return err
 	}
-	if err := os.Rename(name, path); err != nil {
+	if err := rename(name, path); err != nil {
 		os.Remove(name)
 		return err
 	}

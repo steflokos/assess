@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -34,12 +35,21 @@ func Fingerprint(pub ed25519.PublicKey) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
+// readError names a file that cannot be read in plain words. The text of a missing file is the same on every system,
+// and any other failure keeps the words of the system.
+func readError(what, path string, err error) error {
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("the %s %s does not exist", what, path)
+	}
+	return err
+}
+
 // ReadPrivate reads an ed25519 private key from a PEM file in PKCS#8 form, like the one that `openssl genpkey
 // -algorithm ed25519` writes. It returns the key and keeps no copy.
 func ReadPrivate(path string) (ed25519.PrivateKey, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, readError("key file", path, err)
 	}
 	block, _ := pem.Decode(data)
 	if block == nil {
@@ -70,7 +80,7 @@ func ReadPrivate(path string) (ed25519.PrivateKey, error) {
 func ReadPublic(path string) ([]Key, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, err
+		return nil, readError("key file", path, err)
 	}
 	files := []string{path}
 	if info.IsDir() {
@@ -90,7 +100,7 @@ func ReadPublic(path string) ([]Key, error) {
 	for _, f := range files {
 		data, err := os.ReadFile(f)
 		if err != nil {
-			return nil, err
+			return nil, readError("key file", f, err)
 		}
 		block, _ := pem.Decode(data)
 		if block == nil {

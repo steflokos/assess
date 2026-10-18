@@ -276,6 +276,14 @@ func onlyUnknownFields(ds diag.List) bool {
 	return len(ds) > 0
 }
 
+// outsideProject reports whether a path from assess.yaml leads out of the project. clean is the path cleaned and written
+// with slashes. A path that starts with a slash or names a drive is outside on every system, also on Windows, where
+// /etc/passwd is not an absolute path.
+func outsideProject(rel, clean string) bool {
+	return filepath.IsAbs(rel) || filepath.VolumeName(rel) != "" || strings.HasPrefix(clean, "/") ||
+		clean == ".." || strings.HasPrefix(clean, "../")
+}
+
 // loadPolicy reads the policy: policy.yaml, or the file assess.yaml names (inside the project). No file means no
 // policy, which is valid. A file that holds only comments is an empty policy. What is present must be complete.
 func (r *Result) loadPolicy(ws *model.Workspace, root string) {
@@ -284,7 +292,7 @@ func (r *Result) loadPolicy(ws *model.Workspace, root string) {
 		rel = DefaultPolicyFile
 	}
 	clean := filepath.ToSlash(filepath.Clean(rel))
-	if filepath.IsAbs(rel) || clean == ".." || strings.HasPrefix(clean, "../") {
+	if outsideProject(rel, clean) {
 		r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "policy must name a file inside the project, got %q", rel)
 		return
 	}
@@ -321,7 +329,7 @@ func (r *Result) loadTemplate(ws *model.Workspace, root string) {
 		return
 	}
 	clean := filepath.ToSlash(filepath.Clean(rel))
-	if filepath.IsAbs(rel) || clean == ".." || strings.HasPrefix(clean, "../") {
+	if outsideProject(rel, clean) {
 		r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "template must name a file inside the project, got %q", rel)
 		return
 	}

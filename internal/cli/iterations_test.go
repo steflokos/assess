@@ -529,7 +529,7 @@ func TestSignRefusals(t *testing.T) {
 		{"the same key twice", []string{"-key", jane.priv, "-by", "Jane"}, "already signed with this key"},
 		{"no key", []string{"-by", "Jane"}, "give the private key with -key"},
 		{"a public key", []string{"-key", jane.pub, "-by", "Jane"}, "is a public key. Signing needs the private key"},
-		{"a key that is not there", []string{"-key", filepath.Join(kdir, "none.key")}, "no such file"},
+		{"a key that is not there", []string{"-key", filepath.Join(kdir, "none.key")}, "none.key does not exist"},
 		{"an iteration that is not there", []string{"-key", newKeys(t, kdir, "ops").priv, "-by", "Ops", "-iteration", "7"}, "there is no iteration 7"},
 	}
 	for _, c := range cases {
