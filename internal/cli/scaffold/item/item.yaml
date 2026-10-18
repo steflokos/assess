@@ -1,0 +1,8 @@
+# The item definition (ISO/SAE 21434 clause 9.3). A project has exactly one item.
+# The other files in this folder describe its parts.
+item {{item-id}}:
+  name: My Item
+  description: What the item is and what it does for the vehicle.
+  boundary: |
+    What is inside the item and what is outside it. Name the external interfaces.
+  environment: Where and how the item is used.

@@ -1,0 +1,3 @@
+# The architecture of the item: components, with the interfaces and the data that belong to them.
+# Write a component as  component <id>:  Indentation means "contains", so write an interface or a data
+# element inside the component it belongs to. schema.yaml lists every attribute.

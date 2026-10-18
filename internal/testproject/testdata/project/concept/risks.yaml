@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Risks: the risk of each threat scenario. Write a risk as risk <threat-id>: with the id of its threat scenario.
+#   type       Goal when the risk before any control is above the risk affinity of the policy, otherwise Claim
+#   base       the risk value with every control ignored
+#   residual   the risk value with the controls applied, except the ones the policy excludes
+#   treatment  your decision: Avoid, Reduce, Share or Accept
+# assess generate risks adds the risks that are missing and keeps type, base and residual up to date.
+# Do not edit those three by hand. You write the rest, for example the description and the treatment.
+
+risk update-package-tampering:
+  name: Risk of tampering with Update package
+  type: Goal
+  base: 5
+  residual: 4
+  description: A signed package cannot be changed on the network.
+  treatment: Reduce
+  rationale: Signing brings the risk down, but the build server stays a way in for a whole fleet.
+  reference: [TEST-101]
+
+risk firmware-image-tampering:
+  name: Risk of tampering with Firmware image
+  type: Goal
+  base: 4
+  residual: 2
+  description: The firmware can be replaced through the debug port.
+  treatment: Reduce
+  rationale: The debug port is locked in production.
+  reference: [TEST-102]
+
+risk device-key-disclosure:
+  name: Risk of disclosure of Device key
+  type: Claim
+  base: 1
+  residual: 1
+  description: The key of one gateway is read from its flash.
+  treatment: Accept
+  rationale: Reading the key of one gateway reaches one gateway, and the risk is within the affinity.
+
+risk api-interface-spoofing:
+  name: Risk of spoofing of API interface
+  type: Claim
+  base: 1
+  residual: 1
+  description: Somebody with a stolen key acts as a gateway.
+  treatment: Share
+  rationale: The operator of the interface takes the risk in the contract.
+  reference: TEST-104

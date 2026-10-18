@@ -1,0 +1,963 @@
+{
+  "$ref": "#/definitions/policy",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "band": {
+      "additionalProperties": false,
+      "description": "One band of the table that turns attack potential into a feasibility level: the highest potential it covers and its level.",
+      "properties": {
+        "level": {
+          "description": "The feasibility level for this band.",
+          "enum": [
+            "High",
+            "Medium",
+            "Low",
+            "Very Low"
+          ],
+          "type": "string"
+        },
+        "upto": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The highest attack potential this band covers. Leave it out in the last band."
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    },
+    "combination": {
+      "additionalProperties": false,
+      "description": "How the effort of the parts of a path adds up, factor by factor. There is one table for the attack steps and one for the controls.",
+      "properties": {
+        "controls": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/factorRules"
+            }
+          ],
+          "description": "For the controls the attacker has to defeat. They apply on top of the steps. For example, time: max and the others sum, so a control that is in place raises the other factors."
+        },
+        "steps": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/factorRules"
+            }
+          ],
+          "description": "For the attack steps of a path, including the steps of a bypass of a control. For example, time: sum and the others max."
+        }
+      },
+      "required": [
+        "steps",
+        "controls"
+      ],
+      "type": "object"
+    },
+    "controlPolicy": {
+      "additionalProperties": false,
+      "description": "Which controls count in the calculation.",
+      "properties": {
+        "exclude": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/control"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/control"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Controls that the calculation ignores, as if they were not deployed. One id or a list of ids. The base value ignores every control anyway, so this only changes the residual value."
+        }
+      },
+      "type": "object"
+    },
+    "factorRules": {
+      "additionalProperties": false,
+      "description": "For each of the five factors, sum adds the numbers and max takes the largest.",
+      "properties": {
+        "equipment": {
+          "description": "Equipment: sum or max.",
+          "enum": [
+            "sum",
+            "max"
+          ],
+          "type": "string"
+        },
+        "expertise": {
+          "description": "Specialist expertise: sum or max.",
+          "enum": [
+            "sum",
+            "max"
+          ],
+          "type": "string"
+        },
+        "knowledge": {
+          "description": "Knowledge of the item or component: sum or max.",
+          "enum": [
+            "sum",
+            "max"
+          ],
+          "type": "string"
+        },
+        "time": {
+          "description": "Elapsed time: sum or max.",
+          "enum": [
+            "sum",
+            "max"
+          ],
+          "type": "string"
+        },
+        "window": {
+          "description": "Window of opportunity: sum or max.",
+          "enum": [
+            "sum",
+            "max"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "time",
+        "expertise",
+        "knowledge",
+        "window",
+        "equipment"
+      ],
+      "type": "object"
+    },
+    "feasibility": {
+      "additionalProperties": false,
+      "description": "How attack potential is added up and turned into a feasibility level.",
+      "properties": {
+        "combine": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/combination"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the effort of the parts of a path adds up, factor by factor. sum adds the numbers and max takes the largest. Write one table for the attack steps and one for the controls the attacker has to defeat, each with all five factors. At an or, assess always takes the easiest path."
+        },
+        "levels": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/band"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Turns attack potential into a feasibility level. The first band that matches from the top wins. Each band except the last gives the highest attack potential it covers. The last band has none."
+        },
+        "points": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/points"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points for each rating key. The five factors of a step add up to its attack potential. Write all five tables, each with every key."
+        }
+      },
+      "type": "object"
+    },
+    "impactBand": {
+      "additionalProperties": false,
+      "description": "One band of the table that turns summed points into an impact level: the highest total it covers and its level.",
+      "properties": {
+        "level": {
+          "description": "The impact level for this band.",
+          "enum": [
+            "Severe",
+            "Major",
+            "Moderate",
+            "Negligible"
+          ],
+          "type": "string"
+        },
+        "upto": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The highest total this band covers. Leave it out in the last band."
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    },
+    "impactPolicy": {
+      "additionalProperties": false,
+      "description": "Which impact counts for the risk and how the impact of a damage scenario is worked out.",
+      "properties": {
+        "across": {
+          "anyOf": [
+            {
+              "enum": [
+                "max",
+                "sum"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the four impact categories of one stakeholder become one level. max takes the worst. sum adds their points and looks the total up in levels."
+        },
+        "between": {
+          "anyOf": [
+            {
+              "enum": [
+                "max",
+                "sum"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the stakeholders become one level. max takes the worst and is the default. sum adds their points and looks the total up in levels. Every stakeholder that counts, counts the same."
+        },
+        "levels": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/impactBand"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Turns total points back into an impact level, for a stage that is sum. The first band that matches from the top wins. Each band except the last gives the highest total it covers. The last band has none."
+        },
+        "points": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "Major": {
+                  "type": "integer"
+                },
+                "Moderate": {
+                  "type": "integer"
+                },
+                "Negligible": {
+                  "type": "integer"
+                },
+                "Severe": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points of each impact level, for a stage that is sum. Write every level."
+        },
+        "stakeholders": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "roaduser",
+                  "oem",
+                  "supplier"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whose impact counts for the risk. A stakeholder a damage scenario does not rate is skipped."
+        }
+      },
+      "type": "object"
+    },
+    "points": {
+      "additionalProperties": false,
+      "description": "Points for each rating key, one table per factor. Write all five tables, each with every key.",
+      "properties": {
+        "equipment": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "Eq0": {
+                  "type": "integer"
+                },
+                "Eq1": {
+                  "type": "integer"
+                },
+                "Eq2": {
+                  "type": "integer"
+                },
+                "Eq3": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points for Eq0 to Eq3."
+        },
+        "expertise": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "SE0": {
+                  "type": "integer"
+                },
+                "SE1": {
+                  "type": "integer"
+                },
+                "SE2": {
+                  "type": "integer"
+                },
+                "SE3": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points for SE0 to SE3."
+        },
+        "knowledge": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "KoIC0": {
+                  "type": "integer"
+                },
+                "KoIC1": {
+                  "type": "integer"
+                },
+                "KoIC2": {
+                  "type": "integer"
+                },
+                "KoIC3": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points for KoIC0 to KoIC3."
+        },
+        "time": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ET0": {
+                  "type": "integer"
+                },
+                "ET1": {
+                  "type": "integer"
+                },
+                "ET2": {
+                  "type": "integer"
+                },
+                "ET3": {
+                  "type": "integer"
+                },
+                "ET4": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points for ET0 to ET4."
+        },
+        "window": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "WoO0": {
+                  "type": "integer"
+                },
+                "WoO1": {
+                  "type": "integer"
+                },
+                "WoO2": {
+                  "type": "integer"
+                },
+                "WoO3": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Points for WoO0 to WoO3."
+        }
+      },
+      "type": "object"
+    },
+    "policy": {
+      "additionalProperties": false,
+      "description": "The values that the calculations use. Check them against the standard and change what your method does differently. Every section is optional, but a section that is present must be complete.",
+      "properties": {
+        "controls": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/controlPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Which controls count in the calculation."
+        },
+        "feasibility": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/feasibility"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How attack potential is added up and turned into a feasibility level."
+        },
+        "impact": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/impactPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Which impact counts for the risk and how the impact of a damage scenario is worked out."
+        },
+        "risk": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/riskPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How impact and feasibility give a risk value."
+        },
+        "scalability": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/scalabilityPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How scalability (Single Vehicle, Limited Batch, Fleet-Wide) changes the risk. If you leave this section out, scalability is ignored and the risk comes straight from the matrix."
+        }
+      },
+      "type": "object"
+    },
+    "riskPolicy": {
+      "additionalProperties": false,
+      "description": "How impact and feasibility give a risk value. It holds the matrix and the highest risk the project accepts without a goal.",
+      "properties": {
+        "affinity": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The highest risk value the project accepts without a goal, on the same scale as the matrix. A risk whose base value (before any control) is at most this is a Claim. A higher one is a Goal. This is the type of the risk record. If you leave it out, no type is set."
+        },
+        "matrix": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "Major": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "High": {
+                      "type": "integer"
+                    },
+                    "Low": {
+                      "type": "integer"
+                    },
+                    "Medium": {
+                      "type": "integer"
+                    },
+                    "Very Low": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "Moderate": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "High": {
+                      "type": "integer"
+                    },
+                    "Low": {
+                      "type": "integer"
+                    },
+                    "Medium": {
+                      "type": "integer"
+                    },
+                    "Very Low": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "Negligible": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "High": {
+                      "type": "integer"
+                    },
+                    "Low": {
+                      "type": "integer"
+                    },
+                    "Medium": {
+                      "type": "integer"
+                    },
+                    "Very Low": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "Severe": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "High": {
+                      "type": "integer"
+                    },
+                    "Low": {
+                      "type": "integer"
+                    },
+                    "Medium": {
+                      "type": "integer"
+                    },
+                    "Very Low": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Risk value for each impact level and feasibility level. Write every combination."
+        }
+      },
+      "type": "object"
+    },
+    "scalabilityPolicy": {
+      "additionalProperties": false,
+      "description": "How scalability changes the risk. If you leave this section out, scalability is ignored.",
+      "properties": {
+        "cap": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Escalator: the risk value does not go above this. If you leave it out, it is the highest value in risk.matrix. The escalator never lowers a value."
+        },
+        "matrix": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "Fleet-Wide": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "Major": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Moderate": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Negligible": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Severe": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "Limited Batch": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "Major": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Moderate": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Negligible": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Severe": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "Single Vehicle": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "Major": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Moderate": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Negligible": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "Severe": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "High": {
+                          "type": "integer"
+                        },
+                        "Low": {
+                          "type": "integer"
+                        },
+                        "Medium": {
+                          "type": "integer"
+                        },
+                        "Very Low": {
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix. Write every combination."
+        },
+        "mode": {
+          "description": "ignored: scalability does not change the risk. escalator: the risk value from the matrix goes up for each scalability (see raise). matrix: there is a separate risk matrix for each scalability (see matrix).",
+          "enum": [
+            "ignored",
+            "escalator",
+            "matrix"
+          ],
+          "type": "string"
+        },
+        "of": {
+          "anyOf": [
+            {
+              "enum": [
+                "bottleneck",
+                "initial",
+                "broadest"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Which step of the path sets its scalability. bottleneck is the narrowest step and is the default. initial is the narrowest step that needs nothing before it. broadest is the widest step, which is the worst case."
+        },
+        "raise": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "Fleet-Wide": {
+                  "type": "integer"
+                },
+                "Limited Batch": {
+                  "type": "integer"
+                },
+                "Single Vehicle": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Escalator: how much the risk value is raised for each scalability. Write every scalability."
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "The file policy.yaml of an assess project. assess schema writes this file. Do not edit it.",
+  "title": "policy.yaml",
+  "x-assess-api-version": "assess/v1beta1"
+}

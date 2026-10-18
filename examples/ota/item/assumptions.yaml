@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Statements the analysis relies on, written  assumption <id>:  with the statement as its name.
+# A threat scenario, attack step, control or risk that holds only while one is true cites it with
+# assumes. schema.yaml lists every attribute.
+
+assumption hsm-certified-as-claimed:
+  name: The HSMs resist physical and logical attacks at the level of their certification
+  description: The HSMs are certified to FIPS 140-3 level 3 and the evaluation covers tamper response, key storage and signing. A flaw that the certification does not cover is treated as an attack step, not as an assumption.
+  notes: {owner: PKI team, evidence: certificate of the HSM vendor, review: yearly}
+
+assumption secure-element-evaluated:
+  name: The secure element of the telematics unit resists side-channel and fault attacks at the level of its evaluation
+  description: The secure element is evaluated to common criteria EAL5+ with the attack methods of the vendor's evaluation. It does not cover a flaw that is found after the evaluation.
+  notes: {owner: Connectivity team, evidence: certification report of the supplier, review: at each hardware change}
+
+assumption custodians-independent:
+  name: The custodians of the root HSM do not work for the same line manager and are in three locations
+  description: Without it, three of five custodians could be put under pressure through one person.
+  notes: {owner: PKI team, evidence: custodian register, review: yearly}
+
+assumption cloud-tenant-segregated:
+  name: The cloud tenant of the OTA backend is separate from the corporate IT tenant
+  description: Accounts, networks and logging are separate, and no corporate identity has a standing role in the OTA tenant.
+  notes: {owner: OTA platform team, evidence: landing zone review, review: yearly}
+
+assumption suppliers-sign-delivery-hashes:
+  name: Every supplier delivery carries a hash that the supplier confirms through a second channel
+  description: Release management compares the hash with the confirmation, so a delivery that is changed in transit is detected. It does not protect against a supplier that delivers bad code on purpose.
+  notes: {owner: Release engineering, evidence: supplier agreements}
+
+assumption workshops-use-managed-testers:
+  name: Workshops use testers that the OEM provides and manages
+  description: The tester software and its certificate are installed by the OEM tool, and the certificate is bound to the tester hardware. A workshop with its own tool is out of scope.
+  notes: {owner: After-sales, evidence: tester programme}

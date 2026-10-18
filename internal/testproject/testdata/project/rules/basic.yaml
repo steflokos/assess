@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# The basic rules of the project. assess lint checks them. They follow from what the records mean, not
+# from a company's process. For example, an accepted risk is within the affinity, and a control that
+# mitigates nothing changes no result. Rules about your own process, such as "every risk has a
+# treatment" or "a rating says why", are for you to add. assess eval and assess report already list
+# what is still missing as open.
+#
+# A rule names the kind of record it checks (on) and a CEL expression (check) that is true
+# when the record passes. The record is a variable named after its kind: risk, damage,
+# threat, step, control, asset, assumption or item. policy is the policy (policy.affinity), and the
+# lists assumptions, assets, damages, threats, steps, controls and risks hold every record of a kind.
+# schema.yaml lists the fields you can read.
+#
+# A value that is still open (not calculated, or not set in the policy) has no value.
+# A rule that needs one is reported as "could not be checked", not as passed. has(risk.residual)
+# asks whether the value is there. severity is Error (makes assess lint fail) or Warning (makes it
+# fail only with -strict). A message can name a field of the record in braces, such as {unjustified},
+# and assess puts the value there. You can change, remove or add rules.
+
+rule accept-within-affinity:
+  name: An accepted risk is within the risk affinity
+  description: Accepting a risk means living with what is left after the controls. That must not be above the risk affinity, the highest value the project accepts without a goal.
+  on: risk
+  severity: Error
+  check: risk.treatment != 'Accept' || risk.residual <= policy.affinity
+  message: accepted, but the risk after the controls is above the risk affinity
+
+rule reduce-reduces:
+  name: A risk treated by reducing is reduced
+  description: If the residual risk equals the base risk, no control lowers this risk, so the treatment has no effect yet.
+  on: risk
+  check: risk.treatment != 'Reduce' || risk.residual < risk.base
+  message: treated by reducing, but the controls leave the risk where it was
+
+rule asset-property-is-justified:
+  name: An asset property is part of a damage scenario
+  description: A property belongs to an asset because losing it leads to a damage scenario. One that no damage scenario compromises would give threat scenarios with no impact and no risk.
+  on: asset
+  check: asset.properties.all(p, p in asset.compromised)
+  message: "no damage scenario compromises: {unjustified}. Write the damage scenario, or remove the property"
+
+rule control-is-used:
+  name: A control mitigates an attack step
+  description: A control that no attack step names as mitigatedby changes no result.
+  on: control
+  check: size(control.mitigates) > 0
+  message: it mitigates no attack step
+
+rule assumption-is-relied-on:
+  name: An assumption is relied on
+  description: An assumption that no threat scenario, attack step, control or risk cites with assumes changes no result.
+  on: assumption
+  check: size(assumption.threats) + size(assumption.steps) + size(assumption.controls) + size(assumption.risks) > 0
+  message: nothing relies on it. Cite it with assumes, or remove it

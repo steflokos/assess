@@ -1,0 +1,17 @@
+{
+  "yaml.schemas": {
+    ".assess/schema.json": [
+      "item/**/*.yaml",
+      "tara/**/*.yaml",
+      "concept/**/*.yaml",
+      "rules/**/*.yaml"
+    ],
+    ".assess/schema-assess.json": ["assess.yaml"],
+    ".assess/schema-project.json": ["project.yaml"],
+    ".assess/schema-policy.json": ["policy.yaml"],
+    ".assess/schema-iterations.json": ["iterations.yaml"]
+  },
+  "[yaml]": {
+    "editor.quickSuggestions": { "other": true, "comments": false, "strings": true }
+  }
+}

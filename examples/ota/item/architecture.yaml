@@ -1,0 +1,715 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# The architecture of the item: components, with the interfaces and the data that belong to them.
+# A record is written  component <id>:  and indentation means "contains": an interface or a data
+# element is written inside the component it belongs to. schema.yaml lists every attribute.
+#
+# Four groups make up the item, one for each place where the OEM runs something:
+#   the OTA backend, the OEM PKI, the production plant and the vehicle.
+# Parties the OEM does not run come last. They are drawn, but they are context.
+#
+# Keys and certificates are written where they rest: a private key inside the HSM that holds it, a
+# certificate inside the component that keeps it. The copy of a certificate that a vehicle holds is a
+# separate element from the master copy of the PKI, because losing or changing it does something else.
+
+# =====================================================================================================
+# The OTA backend
+# =====================================================================================================
+
+component ota-backend:
+  name: OTA backend
+  description: The OEM's own services that prepare, sign, authorise and distribute software updates. They run in the OEM's cloud tenant in two availability zones and are operated by the OTA platform team.
+  notes: {owner: OTA platform team, hosting: OEM cloud tenant, environment: production}
+
+  component backoffice-portal:
+    name: Back-office portal
+    description: The web console of the staff. Release managers approve releases, campaign managers plan and approve campaigns, and the PKI team files certificate requests. Staff sign in with single sign-on and a hardware token. Sensitive actions need a second approver.
+    notes: {owner: OTA platform team, authentication: single sign-on with hardware token}
+
+    interface portal-interface:
+      name: Portal interface
+      description: The HTTPS endpoint of the portal on the corporate network.
+      exposure: External
+      entrypoint: true
+
+    data approval-record:
+      name: Approval record
+      description: Who approved which release and which campaign, when, and on what evidence. It is kept for the audit that UN R156 asks for.
+
+  component release-management:
+    name: Release management
+    description: Takes software from suppliers and from the OEM's own teams, integrates it, tests it and prepares it for signing. A release is traceable from the supplier delivery to the signed package.
+    notes: {owner: Release engineering}
+
+    interface supplier-intake-interface:
+      name: Supplier intake interface
+      description: Where suppliers hand over software. It accepts a delivery only from a registered supplier account and checks it before it is stored.
+      exposure: External
+      entrypoint: true
+
+    component build-pipeline:
+      name: Build and integration pipeline
+      description: Builds and integrates the images, runs the tests and the vulnerability scans, and assembles the update package. It asks the signing service to sign and never holds a signing key itself.
+      notes: {owner: Release engineering, runners: isolated build network}
+
+    component artifact-store:
+      name: Release artifact store
+      description: Keeps the supplier deliveries, the release candidates and their build records, so that a release can be rebuilt and traced.
+      notes: {owner: Release engineering, retention: lifetime of the vehicle line plus ten years}
+
+      data supplier-delivery:
+        name: Supplier delivery
+        description: What a supplier hands over for one release. It has the software, the release notes, the test evidence and the list of components with their known vulnerabilities.
+
+      data release-candidate:
+        name: Release candidate
+        description: An integrated and tested set of images for one or more ECUs that is ready to be approved and signed.
+
+      data software-bill-of-materials:
+        name: Software bill of materials
+        description: The components and versions inside a release, and the vulnerabilities known for them when the release was made.
+
+  component signing-service:
+    name: Software signing service
+    description: Signs the software that leaves release management. It checks every request against an approved release and then has the HSM sign. Only the build pipeline can reach it.
+    notes: {owner: Release engineering}
+
+    component signing-hsm:
+      name: Release signing HSM
+      description: A network HSM at two sites that holds the software signing key. Using the key needs an approved release and a second approver's token. The key cannot be exported.
+      notes: {certification: FIPS 140-3 level 3, owner: Release engineering}
+
+      data software-signing-private-key:
+        name: Software signing private key
+        description: Signs the images and the manifest of a package. Its certificate is issued by the software signing CA, and the key is renewed every two years.
+
+    data software-signing-certificate:
+      name: Software signing certificate
+      description: The certificate of the software signing key, issued by the software signing CA. Vehicles check every package signature against it.
+
+    component boot-key-hsm:
+      name: Boot key HSM (offline)
+      description: An offline HSM in a safe. It is used in a ceremony with two people, a few times a year, to sign bootloaders and to introduce a new secure boot key.
+      notes: {certification: FIPS 140-3 level 3, owner: Release engineering}
+
+      data secure-boot-private-key:
+        name: Secure boot private key
+        description: Signs bootloaders. The matching public key is fixed in the hardware of every ECU when it is made, so this key cannot be replaced for ECUs that are already built.
+
+    data secure-boot-public-key:
+      name: Secure boot public key
+      description: The public key, or its hash, that ECU manufacturers fix into the hardware as the root of trust for the bootloader.
+
+  component campaign-management:
+    name: Campaign management
+    description: Decides which vehicles get which software and when. It plans campaigns, keeps track of every vehicle, and creates the signed authorisations that the vehicles obey.
+    notes: {owner: OTA platform team}
+
+    component campaign-planner:
+      name: Campaign planner
+      description: Defines a campaign with the package, the vehicle groups, the waves of the roll-out, the conditions (hardware variant, market, state of charge) and the criteria that stop it.
+
+      data campaign-definition:
+        name: Campaign definition
+        description: What a campaign installs, on which vehicles, in which waves and under which conditions. It becomes active only after the second approval.
+
+    component vehicle-registry:
+      name: Vehicle registry
+      description: The record of every vehicle with its ECUs, the software versions they run, the certificate of the vehicle, the owner's consent and the state of its campaigns.
+      notes: {owner: OTA platform team, retention: lifetime of the vehicle}
+
+      data vehicle-configuration:
+        name: Vehicle configuration
+        description: The hardware variants and software versions of the ECUs of one vehicle, as the backend knows them. The director decides from it what a vehicle may install.
+
+      data vehicle-identity-record:
+        name: Vehicle identity record
+        description: The VIN of a vehicle with the serial number and the status of its certificate. A vehicle that is revoked or reported stolen is marked here.
+
+    component update-director:
+      name: Update director
+      description: Answers the check-in of a vehicle. It works out from the registry and the active campaigns what this vehicle may install now, and signs an authorisation. It decides who may install what. It does not sign software.
+      notes: {owner: OTA platform team}
+
+      component director-hsm:
+        name: Director HSM
+        description: An online HSM that holds the key which signs authorisations. It signs thousands of authorisations an hour, so it is reachable only from the director.
+        notes: {certification: FIPS 140-3 level 3}
+
+        data authorisation-signing-private-key:
+          name: Authorisation signing private key
+          description: Signs the install authorisations. It has a much shorter life than the software signing key, and its certificate is issued by the software signing CA.
+
+      data authorisation-signing-certificate:
+        name: Authorisation signing certificate
+        description: The certificate of the authorisation signing key. Vehicles check every install authorisation against it.
+
+      data install-authorisation:
+        name: Install authorisation
+        description: A short-lived signed instruction to one vehicle. It names the package and the version to install on which ECUs, the time window, and where to download from.
+
+  component package-repository:
+    name: Package repository
+    description: The origin store of the signed update packages. A package cannot be changed once it is published. The content delivery network pulls from here, and vehicles never talk to it directly.
+    notes: {owner: OTA platform team, storage: object store with versioning}
+
+    interface origin-interface:
+      name: Origin interface
+      description: The endpoint that the content delivery network pulls packages from. It accepts only requests that carry a signed, time-limited address.
+      exposure: External
+      entrypoint: true
+
+    data update-package:
+      name: Update package
+      description: What a vehicle downloads to be updated. It holds a manifest, the software images, the signatures with their certificates, and the plan for installing them.
+
+      data package-manifest:
+        name: Package manifest
+        description: Lists for each ECU the hardware variant, the software version, the hash and size of the image, the versions of other ECUs it depends on, the validity period and the anti-rollback counter value.
+
+      data software-image:
+        name: Software image
+        description: The software that is installed, with the routines that install it.
+
+        data firmware-image:
+          name: Firmware image
+          description: The application software of a controller that is flashed through its bootloader.
+
+        data flash-driver-image:
+          name: Flash driver image
+          description: The routine that a bootloader loads into RAM to erase and write the flash memory. It is part of the package so that the vehicle does not need to keep it.
+
+        data system-image:
+          name: System image
+          description: A complete operating system image, written to the inactive slot of a controller that updates with two slots.
+
+      data signature-bundle:
+        name: Signature bundle
+        description: The signatures over the manifest and the images, with the software signing certificate and the software CA certificate that a verifier needs besides its own installed root.
+
+      data installation-plan:
+        name: Installation plan
+        description: The order in which the ECUs are installed, what must be true before each one (parked, battery level, no fault) and the checks after it, with the conditions that trigger a rollback.
+
+  component vehicle-api-gateway:
+    name: Vehicle API gateway
+    description: The only door that vehicles use. It ends the mutual TLS session, checks the vehicle certificate against the vehicle CA and the revocation list, limits the rate of requests, and hands them to the director, the registry and telemetry.
+    notes: {owner: OTA platform team, scale: millions of vehicles}
+
+    interface vehicle-interface:
+      name: Vehicle interface
+      description: The public HTTPS endpoint with mutual TLS that the telematics units connect to.
+      exposure: External
+      entrypoint: true
+
+    data backend-tls-certificate:
+      name: Backend TLS certificate
+      description: The server certificate of the gateway, issued by the backend TLS CA. Vehicles check it against their installed root and intermediate certificates.
+
+    component gateway-key-store:
+      name: Gateway key store
+      description: The HSM-backed key management service of the cloud tenant. It holds the TLS key of the gateway and signs the handshakes.
+      notes: {owner: OTA platform team}
+
+      data backend-tls-private-key:
+        name: Backend TLS private key
+        description: The key of the server certificate of the gateway. It is renewed every year.
+
+  component service-portal:
+    name: Owner and workshop services
+    description: The APIs that the owner's app and the workshops use. The owner sees and consents to updates and picks a time. A workshop can fetch an authorised package for a vehicle that cannot update over the air.
+    notes: {owner: OTA platform team}
+
+    interface owner-interface:
+      name: Owner interface
+      description: The API for the owner's mobile app, with the owner signed in and the vehicle paired to the account.
+      exposure: External
+      entrypoint: true
+
+    interface workshop-interface:
+      name: Workshop interface
+      description: The API for workshop testers, with the workshop and the tester authenticated and the vehicle named by its VIN.
+      exposure: External
+      entrypoint: true
+
+    data consent-record:
+      name: Consent record
+      description: What the owner decided about an update, when, from which app or screen, and the time they chose. It is kept as evidence.
+
+  component telemetry-service:
+    name: Update telemetry and audit
+    description: Collects the result of every update and keeps the audit log of releases, signatures and campaigns. It passes security-relevant events on to the security operations centre.
+    notes: {owner: OTA platform team}
+
+    interface telemetry-export-interface:
+      name: Telemetry export interface
+      description: The feed of security-relevant events that the security operations centre reads.
+      exposure: External
+      entrypoint: false
+
+    data update-report:
+      name: Update report
+      description: The outcome of an update in one vehicle. It has the campaign, the versions before and after, the result for each ECU and the error codes, signed by the vehicle.
+
+    data audit-log:
+      name: Audit log
+      description: A tamper-evident record of every approval, signature, campaign and certificate action, with the person or service that did it.
+
+# =====================================================================================================
+# The OEM PKI
+# =====================================================================================================
+
+component oem-pki:
+  name: OEM PKI
+  description: The certificate authorities behind every signature and every TLS session of the OTA system. One offline root certifies three issuing CAs, each for one purpose, so that a compromise or a revocation stays small. It is run under the certificate policy PKI-CPS-001.
+  notes: {owner: PKI team, policy: PKI-CPS-001}
+
+  component root-ca:
+    name: Root CA (offline)
+    description: The trust anchor of the whole system. It lives in a safe room and is switched on only for a ceremony, to certify or revoke an issuing CA. Several custodians must be present for it to be used.
+    notes: {owner: PKI team, location: safe room at the headquarters}
+
+    component root-ca-hsm:
+      name: Root CA HSM
+      description: An air-gapped HSM in the safe. It is activated with cards of at least three out of five custodians.
+      notes: {certification: FIPS 140-3 level 3}
+
+      data root-ca-private-key:
+        name: Root CA private key
+        description: The key of the root. It never leaves the HSM, and it is used a few times in the lifetime of a vehicle line.
+
+    data root-ca-certificate:
+      name: Root CA certificate
+      description: The self-signed certificate of the root, valid for twenty years. This is the master copy. Every vehicle gets a copy at production.
+
+    data ceremony-activation-cards:
+      name: Ceremony activation cards
+      description: The smart cards, each with its own PIN, of the custodians who activate the root HSM. Three of five are needed.
+      notes: {custody: five named custodians in three locations}
+
+  component issuing-hsm:
+    name: Issuing CA HSM
+    description: A network HSM with one partition for each issuing CA. The CA services ask it to sign, and the keys do not leave it. It is in the PKI network and can be reached only from the CA services.
+    notes: {certification: FIPS 140-3 level 3, owner: PKI team}
+
+    data software-ca-private-key:
+      name: Software CA private key
+      description: The key of the software signing CA. It signs the certificates of the software signing key and of the authorisation signing key.
+
+    data vehicle-ca-private-key:
+      name: Vehicle CA private key
+      description: The key of the vehicle CA. It signs the certificates of vehicles, so it is used all the time.
+
+    data backend-ca-private-key:
+      name: Backend CA private key
+      description: The key of the backend TLS CA. It signs the TLS certificates of the backend services that vehicles connect to.
+
+  component software-ca:
+    name: Software signing CA (intermediate)
+    description: Issues the certificates for signing software and for signing authorisations. It has very few holders, and a request needs two approvers.
+    notes: {owner: PKI team}
+
+    data software-ca-certificate:
+      name: Software CA certificate
+      description: The certificate of the software signing CA, signed by the root. It is part of every signature bundle.
+
+  component vehicle-ca:
+    name: Vehicle CA (intermediate)
+    description: Issues the certificates that identify vehicles. It does so automatically at production and at renewal, for millions of vehicles.
+    notes: {owner: PKI team}
+
+    data vehicle-ca-certificate:
+      name: Vehicle CA certificate
+      description: The certificate of the vehicle CA, signed by the root. Backend services use it to check vehicle certificates.
+
+  component backend-ca:
+    name: Backend TLS CA (intermediate)
+    description: Issues the TLS certificates of the backend endpoints that vehicles talk to.
+    notes: {owner: PKI team}
+
+    data backend-ca-certificate:
+      name: Backend CA certificate
+      description: The certificate of the backend TLS CA, signed by the root. Vehicles use it to check the gateway certificate.
+
+  component registration-authority:
+    name: Registration authority
+    description: Checks every certificate request before an issuing CA signs it. It knows who may ask for which kind of certificate, and it makes sure a vehicle certificate is issued only for a vehicle that was built.
+    notes: {owner: PKI team}
+
+    data certificate-request:
+      name: Certificate request
+      description: A request for a certificate. It has the public key, the proof that the requester holds the private key, and the identity the certificate is for.
+
+  component revocation-service:
+    name: Revocation service
+    description: Publishes the lists of revoked certificates. The gateway and the director use them to refuse revoked vehicles, and vehicles use them to refuse revoked signing certificates.
+    notes: {owner: PKI team}
+
+    data certificate-revocation-list:
+      name: Certificate revocation list
+      description: The signed list of revoked certificates. It is short-lived and republished every few hours.
+
+# =====================================================================================================
+# The production plant
+# =====================================================================================================
+
+component production-plant:
+  name: Production plant systems
+  description: The OEM's systems in the assembly plant that give each vehicle its identity and its first software at the end of the line, and that supply the ECU manufacturers with the bootloaders and the root of trust.
+  notes: {owner: Plant IT with the OTA platform team, network: segmented production network}
+
+  component provisioning-server:
+    name: Plant provisioning server
+    description: Runs in the secured zone of the plant. For each vehicle it takes the certificate request made by the vehicle, sends it to the registration authority with the plant's credential, and returns the certificate. It also records what was built.
+    notes: {owner: Plant IT, redundancy: two servers per plant}
+
+    interface ecu-supply-interface:
+      name: ECU supply interface
+      description: The connection to the ECU manufacturers. The plant sends bootloaders and the secure boot public key, and receives the records of the ECUs that were made.
+      exposure: External
+      entrypoint: true
+
+    component plant-hsm:
+      name: Plant HSM
+      description: An HSM in the secured zone that holds the credential of the plant towards the registration authority.
+      notes: {certification: FIPS 140-3 level 3}
+
+      data plant-client-private-key:
+        name: Plant client private key
+        description: Authenticates the plant to the registration authority. Whoever holds it can ask for vehicle certificates in the name of the plant.
+
+    data plant-client-certificate:
+      name: Plant client certificate
+      description: The certificate for the plant client key, issued by the vehicle CA. The registration authority checks requests against it.
+
+    data ecu-manufacturing-record:
+      name: ECU manufacturing record
+      description: The serial numbers and hardware identities of the ECUs that a manufacturer made, with the confirmation that the secure boot key was fixed in them.
+
+    data vehicle-build-record:
+      name: Vehicle build record
+      description: The VIN of a vehicle with the ECUs and software versions fitted, the vehicle certificate that was issued and the time. It becomes the first entry of the vehicle registry.
+
+  component production-image-store:
+    name: Production software store
+    description: Holds the approved software for the line. Only the package repository and the boot key ceremony can write to it, and the end-of-line stations can only read.
+    notes: {owner: Plant IT}
+
+    data production-software-baseline:
+      name: Production software baseline
+      description: The signed software for each ECU as it is flashed at the end of the line. It is an update package that the plant has taken over from the package repository.
+
+    data bootloader-package:
+      name: Bootloader package
+      description: A bootloader build signed with the secure boot key, with its release notes. It goes to the ECU manufacturers and into the production flashing.
+
+    data trust-anchor-bundle:
+      name: Trust anchor bundle
+      description: The root certificate and the three issuing CA certificates, as they are written into every vehicle at the end of the line. The PKI team approves each version.
+
+  component eol-station:
+    name: End-of-line programming station
+    description: One station for each lane at the end of the assembly line. It connects to the diagnostic connector of the vehicle in production mode, flashes the baseline, has the vehicle generate its key, and writes the certificate and the trust anchors.
+    notes: {owner: Plant IT, count: several stations in each plant}
+
+# =====================================================================================================
+# The vehicle
+# =====================================================================================================
+
+component vehicle:
+  name: Vehicle
+  description: The update stack in the vehicle. The telematics unit talks to the backend and verifies. The central gateway guards the networks. The controllers install through their own bootloaders.
+  notes: {owner: Vehicle software, platform: zonal architecture with a central gateway}
+
+  component telematics-unit:
+    name: Telematics unit (TCU)
+    description: Connects the vehicle to the backend and to the content delivery network, and hosts the OTA client and the update orchestrator. It updates itself too, with two system slots.
+    notes: {supplier: tier-1, owner: Connectivity team}
+
+    interface cellular-interface:
+      name: Cellular interface
+      description: The mobile network connection to the backend and to the content delivery network.
+      exposure: External
+      entrypoint: true
+
+    interface tcu-backbone-interface:
+      name: TCU backbone interface
+      description: The Ethernet connection to the central gateway and the infotainment unit.
+      exposure: Internal
+      entrypoint: false
+
+    interface tcu-debug-port:
+      name: TCU debug port
+      description: The JTAG and serial console on the board. They are closed by the lifecycle state at the end of the line, but the connector stays on the board.
+      exposure: External
+      entrypoint: true
+
+    component tcu-hsm:
+      name: TCU secure element
+      description: The hardware security module of the telematics unit. It generates the vehicle key pair, signs with it, and keeps the certificates and the counters in write-protected storage.
+      notes: {supplier: tier-1, certification: common criteria EAL5+}
+
+      data vehicle-private-key:
+        name: Vehicle private key
+        description: The identity key of the vehicle. It is generated inside the secure element at the end of the line and cannot be read out. It signs TLS handshakes, certificate requests and update reports.
+
+      data vehicle-certificate:
+        name: Vehicle certificate
+        description: The certificate for the vehicle key, issued by the vehicle CA. It is valid for a few years and is renewed over the air.
+
+      data installed-root-certificate:
+        name: Installed root certificate
+        description: The copy of the root CA certificate in the vehicle. Everything the vehicle verifies leads back to it. It is written at the end of the line and changes only through a controlled update.
+
+      data installed-intermediate-certificates:
+        name: Installed intermediate certificates
+        description: The copies of the software CA, vehicle CA and backend CA certificates in the vehicle, so that chains can be checked without a network.
+
+      data rollback-counters:
+        name: Rollback counters
+        description: Monotonic counters of the highest software version that was installed in each ECU. A package with a lower version is refused.
+
+      data secure-time:
+        name: Secure time
+        description: A clock that the secure element keeps. It is set from a signed time stamp of the backend and from satellite time, and it checks the validity period of certificates and packages.
+
+    component tcu-bootloader:
+      name: TCU bootloader
+      description: The secure bootloader of the telematics unit. It checks the system image of the active slot before it starts it, and it chooses the slot.
+
+      data tcu-trust-anchor:
+        name: TCU trust anchor
+        description: What the bootloader trusts. It is the hash of the secure boot public key that is fixed in the processor, and the public key it checks system images against.
+
+    component tcu-platform:
+      name: TCU platform software
+      description: The operating system and middleware of the telematics unit. It has two slots. An update is written to the inactive slot and becomes active after a successful restart.
+
+      data tcu-active-slot:
+        name: TCU active slot
+        description: The system image that the telematics unit runs now.
+
+      data tcu-inactive-slot:
+        name: TCU inactive slot
+        description: The slot that a new system image is written to, and that the previous image stays in until the new one is confirmed.
+
+    component ota-client:
+      name: OTA client
+      description: The part of the telematics unit that talks to the outside. It checks in with the backend, receives the authorisation, downloads the package and keeps the log. It parses what the network sends, so it runs with few rights.
+      notes: {owner: Connectivity team, language: memory-safe where possible}
+
+      data update-log:
+        name: Update log
+        description: A local record of what the client did, with the reasons it refused a package. It is sent with the update report.
+
+      component package-verifier:
+        name: Package verifier
+        description: Checks an authorisation and a package before anything is installed. It checks the signature chains against the installed root, the validity period against the secure time, the vehicle and the version against the rollback counters, and the hash of every image against the manifest.
+
+      component package-store:
+        name: Package store
+        description: The partition where a downloaded package waits. It is large enough for the biggest package and is erased after a successful installation.
+
+        data staged-package:
+          name: Staged package
+          description: The copy of the update package in the vehicle, as it was downloaded. It stays untrusted until the verifier has accepted it.
+
+    component update-orchestrator:
+      name: Update orchestrator
+      description: The vehicle's update master. It checks the conditions with the vehicle (parked, battery, no fault), asks the driver, installs the ECUs in the order of the plan, and rolls back when a check fails. It is the only client that the gateway lets flash.
+      notes: {owner: Connectivity team}
+
+      data vehicle-inventory:
+        name: Vehicle inventory
+        description: The hardware variants and the software versions that the orchestrator read from the ECUs. It goes to the backend with every check-in.
+
+      data update-state:
+        name: Update state
+        description: Where the current update stands. It has the authorisation, the step, the result for each ECU and the reason for a failure, and it survives a restart.
+
+  component central-gateway:
+    name: Central gateway
+    description: Routes the traffic between the vehicle networks and decides who may reach which ECU. It holds the diagnostic connector, so it is where workshops, the plant and the orchestrator meet.
+    notes: {supplier: tier-1, owner: Network team}
+
+    interface cgw-backbone-interface:
+      name: Gateway backbone interface
+      description: The Ethernet connection to the telematics unit and the infotainment unit.
+      exposure: Internal
+      entrypoint: false
+
+    interface cgw-powertrain-interface:
+      name: Gateway powertrain interface
+      description: The CAN connection to the vehicle control unit and the battery management system.
+      exposure: Internal
+      entrypoint: false
+
+    interface obd-port:
+      name: Diagnostic connector
+      description: The OBD connector in the cabin, wired to the central gateway for diagnostics and programming.
+      notes: {connector: OBD-II, protocols: DoIP and CAN}
+      exposure: External
+      entrypoint: true
+
+    interface eol-diagnostic-interface:
+      name: End-of-line diagnostic interface
+      description: The same connector in production mode, as the plant uses it. It is closed when the vehicle leaves the line, and then only the workshop sessions of the diagnostic connector are left.
+      exposure: Internal
+      entrypoint: false
+
+    component diagnostic-access-control:
+      name: Diagnostic access control
+      description: Decides for every session who is asking and what they may do. A workshop needs an authenticated tester. A programming request is routed only from the update orchestrator, and the production functions work only in the production state.
+
+      data diagnostic-access-policy:
+        name: Diagnostic access policy
+        description: The rules for which source may open which session towards which ECU, in which vehicle state. It is part of the gateway software and changes with it.
+
+      data lifecycle-state:
+        name: Lifecycle state
+        description: Whether the vehicle is still in production or has been delivered. It decides which functions of the diagnostic connector are open, and it moves only one way.
+
+  component vehicle-control-unit:
+    name: Vehicle control unit (VCU)
+    description: Controls the drive and the energy flow. It updates through UDS, and its bootloader checks what is written.
+    notes: {supplier: tier-1, asil: C, owner: Powertrain software}
+
+    interface vcu-can-interface:
+      name: VCU CAN interface
+      description: The CAN connection to the central gateway.
+      exposure: Internal
+      entrypoint: false
+
+    interface vcu-debug-port:
+      name: VCU debug port
+      description: The JTAG connector of the controller. It is locked by the lifecycle at the end of the line.
+      exposure: External
+      entrypoint: true
+
+    component vcu-bootloader:
+      name: VCU bootloader
+      description: The secure bootloader of the controller. It takes a flash driver and an image over UDS, checks the signature before it writes, refuses older versions, and starts only a valid application.
+
+      data vcu-trust-anchor:
+        name: VCU trust anchor
+        description: What the bootloader trusts. It is the hash of the secure boot public key in the processor and the root certificate that images are checked against.
+
+      data vcu-rollback-counter:
+        name: VCU rollback counter
+        description: The highest software version that the controller accepted. It can only go up.
+
+    component vcu-application:
+      name: VCU application
+      description: The drive control software that the bootloader starts.
+
+      data vcu-application-image:
+        name: VCU application image
+        description: The installed application software and its calibration.
+
+  component bms:
+    name: Battery management system (BMS)
+    description: Monitors and protects the traction battery. It is safety-relevant, so it is updated only when the vehicle is parked and not charging, or in a workshop.
+    notes: {supplier: tier-1, asil: D, owner: Battery team}
+
+    interface bms-can-interface:
+      name: BMS CAN interface
+      description: The CAN connection to the central gateway.
+      exposure: Internal
+      entrypoint: false
+
+    component bms-bootloader:
+      name: BMS bootloader
+      description: The secure bootloader of the BMS. It works like the one of the VCU and refuses any image that does not fit the safety variant of the hardware.
+
+      data bms-trust-anchor:
+        name: BMS trust anchor
+        description: What the bootloader trusts. It is the hash of the secure boot public key in the processor and the root certificate that images are checked against.
+
+    component bms-application:
+      name: BMS application
+      description: The battery monitoring software that the bootloader starts.
+
+      data bms-application-image:
+        name: BMS application image
+        description: The installed application software.
+
+  component infotainment-unit:
+    name: Infotainment unit
+    description: The head unit with the display. It shows the update to the driver and takes the decision. It also updates its own operating system with two slots.
+    notes: {supplier: tier-1, owner: Cockpit team}
+
+    interface ivi-ethernet-interface:
+      name: Infotainment Ethernet interface
+      description: The Ethernet connection to the central gateway and the telematics unit.
+      exposure: Internal
+      entrypoint: false
+
+    component ivi-bootloader:
+      name: Infotainment bootloader
+      description: The secure bootloader of the infotainment unit. It verifies the inactive slot after an update, switches to it, and falls back if the new system does not confirm.
+
+      data ivi-trust-anchor:
+        name: Infotainment trust anchor
+        description: What the bootloader trusts. It is the hash of the secure boot public key in the processor and the public key that system images are checked against.
+
+    component ivi-system:
+      name: Infotainment system software
+      description: The operating system and the applications of the head unit, in two slots.
+
+      data ivi-active-slot:
+        name: Infotainment active slot
+        description: The system image that the head unit runs now.
+
+      data ivi-inactive-slot:
+        name: Infotainment inactive slot
+        description: The slot that a new system image is written to.
+
+    component ivi-updater:
+      name: Infotainment updater
+      description: Writes a new system image into the inactive slot, checks its hash and signature, asks the bootloader to switch, and reports the result.
+
+    component consent-ui:
+      name: Update consent screen
+      description: Shows the driver what an update changes, how long it takes and what the car cannot do meanwhile. The driver chooses to install now, to install later, or to decline.
+
+      data consent-decision:
+        name: Consent decision
+        description: What the driver chose, with the time. The orchestrator obeys it, and it goes to the backend as consent record.
+
+# =====================================================================================================
+# Outside the item: context, not assessed
+# =====================================================================================================
+
+component supplier-delivery-system:
+  name: Supplier delivery system
+  description: The systems with which tier-1 and tier-2 suppliers deliver software to the OEM. Outside the item, and not assessed.
+  notes: {context: not assessed}
+
+component content-delivery-network:
+  name: Content delivery network
+  description: A third party that stores copies of the packages near the vehicles and serves the downloads. The system does not trust it for the integrity of what it serves, because every package is verified in the vehicle. Outside the item, and not assessed.
+  notes: {context: not assessed, operator: CDN provider}
+
+component operator-workstation:
+  name: Staff workstation
+  description: The managed laptop of a release manager, campaign manager or PKI officer, on the corporate network. Outside the item, and not assessed.
+  notes: {context: not assessed}
+
+component owner-mobile-app:
+  name: Owner's mobile app (iOS and Android)
+  description: The app of the vehicle owner, which shows updates and takes the owner's consent and schedule. Outside the item, and not assessed.
+  notes: {context: not assessed}
+
+component workshop-tester:
+  name: Workshop tester
+  description: The diagnostic tester in a workshop, a laptop with a vehicle interface and the OEM's diagnostic application. Outside the item, and not assessed.
+  notes: {context: not assessed}
+
+component ecu-manufacturer:
+  name: ECU manufacturer
+  description: The factory of a tier-1 supplier that builds ECUs. It programs the bootloader and fixes the secure boot key into the hardware. Outside the item, and not assessed.
+  notes: {context: not assessed}
+
+component security-operations-centre:
+  name: Security operations centre
+  description: The team and tools that watch security events of the fleet and the backend, and decide on incidents. Outside the item, and not assessed.
+  notes: {context: not assessed}

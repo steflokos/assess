@@ -1,0 +1,259 @@
+{
+  "$ref": "#/definitions/project",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "block": {
+      "additionalProperties": false,
+      "description": "A piece of information for the report: a title and either a text or a table.",
+      "properties": {
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The headings of the columns of a table. A table needs columns and rows."
+        },
+        "rows": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The rows of a table, each a list with one cell per column."
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Plain text, on as many lines as you like. A block has a text or a table, not both."
+        },
+        "title": {
+          "description": "The heading of the block.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "type": "object"
+    },
+    "project": {
+      "additionalProperties": false,
+      "description": "Project information: who carried out the assessment, when, against which standards and based on what.",
+      "properties": {
+        "assessors": {
+          "anyOf": [
+            {
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "People who carried out the assessment."
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Date of the assessment, as YYYY-MM-DD."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this project assesses and why."
+        },
+        "extra": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/block"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Further information for the report, in the order you write it. Each block has a title and either a text or a table."
+        },
+        "name": {
+          "description": "Name of the assessment project.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner or ticket. assess does not read them."
+        },
+        "sources": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/source"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The documents and other sources the assessment is based on, each with where to find it and the version used."
+        },
+        "standards": {
+          "anyOf": [
+            {
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Standards and regulations the assessment refers to."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "description": "A document or other source the assessment is based on, with where to find it and the version used.",
+      "properties": {
+        "location": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where to find it: a URL, a path or a document number."
+        },
+        "name": {
+          "description": "Title of the document or other source.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The version or revision that was used."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "The file project.yaml of an assess project. assess schema writes this file. Do not edit it.",
+  "title": "project.yaml",
+  "x-assess-api-version": "assess/v1beta1"
+}

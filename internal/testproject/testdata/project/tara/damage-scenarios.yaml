@@ -1,0 +1,35 @@
+damage unsafe-software-runs:
+  name: Software chosen by an attacker runs on the gateway
+  description: The gateway runs software that nobody approved.
+  compromises:
+    update-package: [Integrity]
+    firmware-image: [Integrity]
+  impact:
+    roaduser:
+      safety: {level: Severe, rationale: The gateway is part of the path to the drive}
+      financial: {level: Negligible, rationale: Not affected}
+      operational: {level: Negligible, rationale: Not affected}
+      privacy: {level: Negligible, rationale: Not affected}
+    oem:
+      safety: {level: Negligible, rationale: Not affected}
+      financial: {level: Major, rationale: A recall of the vehicles that run it}
+      operational: {level: Negligible, rationale: Not affected}
+      privacy: {level: Negligible, rationale: Not affected}
+
+damage fleet-credentials-leak:
+  name: Credentials of the gateways become known
+  description: An attacker can act as a gateway or as the backend.
+  compromises:
+    device-key: [Confidentiality]
+    api-interface: [Authenticity]
+  impact:
+    roaduser:
+      safety: {level: Negligible, rationale: Not affected}
+      financial: {level: Negligible, rationale: Not affected}
+      operational: {level: Negligible, rationale: Not affected}
+      privacy: {level: Moderate, rationale: Vehicle data can be read}
+    oem:
+      safety: {level: Negligible, rationale: Not affected}
+      financial: {level: Major, rationale: Keys have to be replaced in the field}
+      operational: {level: Negligible, rationale: Not affected}
+      privacy: {level: Negligible, rationale: Not affected}

@@ -1,0 +1,21 @@
+control signed-packages:
+  name: Packages are signed and the gateway checks the signature
+  target: update-package
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: A changed package is refused, so the attacker needs the signing key.
+  threatenedby:
+    or:
+      - steal-signing-key
+
+control debug-port-lock:
+  name: The debug port is locked in production
+  target: debug-port
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Unlocking needs a secret that only the plant has.
+
+control key-in-secure-element:
+  name: The device key stays in a secure element
+  target: device-key
+  reduction: {time: ET3, expertise: SE3, knowledge: KoIC3, window: WoO3, equipment: Eq3}
+  rationale: The key cannot be read out, only used.
+  assumes: secure-element-holds-key

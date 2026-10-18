@@ -1,0 +1,229 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Assets: the parts of the architecture that matter for cybersecurity, and for which properties.
+# Written asset <element-id>:, with the id of the element in item/. An element with no record is not an asset.
+#
+# What is an asset here, and what is not: the keys, the certificates and the package are assets because the
+# trust of the whole system rests on them. The services and the controllers are assets where an attacker who
+# changes or stops them reaches the keys, the software or the vehicle. Interfaces and links are assets where
+# they are the way in. Everything else in item/ stays as context. A property is listed only when losing it
+# leads to a damage scenario. assess lint checks that.
+
+# ---- release and signing -------------------------------------------------------------------------------
+
+asset supplier-delivery:
+  name: Supplier delivery
+  description: The software that a supplier hands over for a release. Whatever is in it ends up, signed, in vehicles, so its integrity is the first thing the OEM has to protect.
+  properties: [Integrity]
+
+asset release-candidate:
+  name: Release candidate
+  description: The integrated and tested images that are approved and then signed. After approval it must not change by a single bit.
+  properties: [Integrity]
+
+asset approval-record:
+  name: Approval record
+  description: The approvals of releases and campaigns. The signing service and the campaign planner act on them, so a forged approval opens the way to signing and to roll-out.
+  properties: [Integrity]
+
+asset backoffice-portal:
+  name: Back-office portal
+  description: The console where staff approve releases and campaigns. Whoever acts as a staff member in it can start the steps that lead to signing and to a roll-out.
+  properties: [Authenticity]
+
+asset signing-service:
+  name: Software signing service
+  description: Decides what the release signing HSM signs. It is the gate between an approved release and a signature that every vehicle trusts.
+  properties: [Integrity]
+
+asset software-signing-private-key:
+  name: Software signing private key
+  description: The key whose signature all vehicles accept for software. Losing its secrecy breaks the whole system, and losing the key itself stops every release, security fixes included.
+  properties: [Confidentiality, Availability]
+
+asset software-signing-certificate:
+  name: Software signing certificate
+  description: Ties the signing key to the OEM. A certificate that is issued to an attacker's key makes the attacker's signatures as good as the OEM's.
+  properties: [Authenticity]
+
+asset secure-boot-private-key:
+  name: Secure boot private key
+  description: Signs the bootloaders. Its public half is fixed in the hardware of every ECU, so it cannot be replaced after the ECUs are built.
+  properties: [Confidentiality]
+
+asset secure-boot-public-key:
+  name: Secure boot public key
+  description: The root of trust for the bootloader of an ECU. If a different key is fixed into the hardware at the manufacturer, the ECU trusts the attacker from its first boot.
+  properties: [Integrity]
+
+# ---- campaigns and distribution ----------------------------------------------------------------------------
+
+asset campaign-definition:
+  name: Campaign definition
+  description: Which package goes to which vehicles, in which waves and under which conditions. A bad campaign installs valid software where it does not belong.
+  properties: [Integrity]
+
+asset update-director:
+  name: Update director
+  description: Decides what a vehicle may install and signs the authorisation for it. It cannot sign software, but it can send the whole fleet the wrong valid software.
+  properties: [Integrity]
+
+asset authorisation-signing-private-key:
+  name: Authorisation signing private key
+  description: Signs the install authorisations. Online and used all the time, so it is easier to reach than the software signing key.
+  properties: [Confidentiality]
+
+asset vehicle-configuration:
+  name: Vehicle configuration
+  description: The hardware variants and software versions of every vehicle. The director decides from it, and it tells an attacker which vehicles run a vulnerable version.
+  properties: [Integrity, Confidentiality]
+
+asset update-package:
+  name: Update package
+  description: What the vehicle downloads and installs. Its signatures protect the integrity. The images are not encrypted, so what a package holds can be read by anyone who gets one.
+  properties: [Integrity, Confidentiality]
+
+asset vehicle-api-gateway:
+  name: Vehicle API gateway
+  description: The only door that vehicles use. If it is down no vehicle can be updated, and if a vehicle talks to a false one the vehicle gives away its identity and inventory.
+  properties: [Availability, Authenticity]
+
+asset backend-tls-private-key:
+  name: Backend TLS private key
+  description: The key of the gateway's certificate. Whoever holds it can pretend to be the backend to any vehicle that the attacker can reach on the network.
+  properties: [Confidentiality]
+
+asset download-link:
+  name: Download link
+  description: The route of the package from the content delivery network to the vehicle over the mobile network. It is not trusted for content, but it decides whether the package arrives.
+  properties: [Availability]
+
+asset workshop-interface:
+  name: Workshop interface
+  description: The API through which a workshop gets an authorised package for a vehicle. Whoever passes as a workshop gets packages and authorisations without owning the vehicle.
+  properties: [Authenticity]
+
+asset audit-log:
+  name: Audit log
+  description: The record of approvals, signatures, campaigns and certificate actions. UN R156 and the incident response depend on it, and so does the proof of who did what.
+  properties: [Integrity, Non Repudiation]
+
+# ---- the PKI -----------------------------------------------------------------------------------------------------
+
+asset root-ca-private-key:
+  name: Root CA private key
+  description: The key at the top of every chain of trust. Its loss of secrecy lets an attacker certify anything. Its loss of availability makes it impossible to revoke or replace an issuing CA.
+  properties: [Confidentiality, Availability]
+
+asset registration-authority:
+  name: Registration authority
+  description: Decides which certificate requests the CAs sign. Whoever controls it gets certificates for keys of their choice.
+  properties: [Integrity]
+
+asset vehicle-ca:
+  name: Vehicle CA (intermediate)
+  description: Issues the vehicle certificates. Whoever operates it can create vehicle identities that the backend accepts.
+  properties: [Integrity]
+
+asset certificate-revocation-list:
+  name: Certificate revocation list
+  description: How a compromised certificate stops being trusted. If it does not reach the verifiers, a revoked certificate stays good.
+  properties: [Availability]
+
+# ---- the production plant ------------------------------------------------------------------------------------
+
+asset provisioning-server:
+  name: Plant provisioning server
+  description: Asks for the certificates of new vehicles. Its integrity decides whether a vehicle gets the right identity, and its availability decides whether the line can run.
+  properties: [Integrity, Availability]
+
+asset trust-anchor-bundle:
+  name: Trust anchor bundle
+  description: The root and intermediate certificates that are written into every new vehicle. Whatever the bundle says becomes what the vehicle trusts for its whole life.
+  properties: [Integrity]
+
+asset lifecycle-state:
+  name: Lifecycle state
+  description: Tells the central gateway whether the vehicle is in production or delivered. In the production state keys, certificates and software can be written that are locked later.
+  properties: [Integrity]
+
+# ---- the vehicle -------------------------------------------------------------------------------------------------
+
+asset cellular-interface:
+  name: Cellular interface
+  description: The connection to the backend and the content delivery network. It is the one interface of the telematics unit that the world can reach from a distance.
+  properties: [Authenticity]
+
+asset ota-client:
+  name: OTA client
+  description: The component that parses what the network sends. A flaw in it gives a remote attacker code in the telematics unit.
+  properties: [Integrity]
+
+asset package-verifier:
+  name: Package verifier
+  description: Decides whether a package is genuine. A flaw in it, or in how it parses, lets an attacker's package through.
+  properties: [Integrity]
+
+asset telematics-unit:
+  name: Telematics unit (TCU)
+  description: Hosts the OTA client, the verifier and the orchestrator, and holds the vehicle's identity. If the attacker controls it the vehicle's connection to the backend belongs to the attacker.
+  properties: [Integrity]
+
+asset tcu-debug-port:
+  name: TCU debug port
+  description: The JTAG and the console on the board. If it is open, the firmware can be read and changed with a clip and a laptop.
+  properties: [Authenticity]
+
+asset tcu-hsm:
+  name: TCU secure element
+  description: Keeps the vehicle key, the trust anchors and the counters. It is the one part of the vehicle that is meant to stay trustworthy when the rest is not.
+  properties: [Integrity]
+
+asset vehicle-private-key:
+  name: Vehicle private key
+  description: The identity of the vehicle in front of the backend. A copy of it makes a second vehicle that the backend cannot tell from the first.
+  properties: [Confidentiality]
+
+asset installed-root-certificate:
+  name: Installed root certificate
+  description: The trust anchor in the vehicle. If it is changed, the vehicle verifies everything against the attacker's root.
+  properties: [Integrity]
+
+asset secure-time:
+  name: Secure time
+  description: The clock that decides whether certificates and authorisations are still valid. Turned back, it makes old things valid again.
+  properties: [Integrity]
+
+asset update-orchestrator:
+  name: Update orchestrator
+  description: Decides when an update starts, checks that the vehicle is parked and drives the installation. If it is wrong, an ECU can be reset while the vehicle drives.
+  properties: [Integrity]
+
+asset consent-ui:
+  name: Update consent screen
+  description: Shows the update to the driver and returns the decision. A forged decision installs an update that nobody agreed to.
+  properties: [Integrity]
+
+asset central-gateway:
+  name: Central gateway
+  description: Decides who may reach the ECUs, in which state, with which services. The programming sessions of the controllers pass through it.
+  properties: [Integrity]
+
+asset powertrain-can:
+  name: Powertrain CAN
+  description: Carries the signals that tell the orchestrator that the vehicle is parked, and the UDS frames that flash the controllers.
+  properties: [Integrity]
+
+asset vcu-bootloader:
+  name: VCU bootloader
+  description: Checks the flash driver and the image before the vehicle control unit runs them. If it accepts an image it should not, the attacker controls the drive.
+  properties: [Integrity]
+
+asset bms-bootloader:
+  name: BMS bootloader
+  description: The same for the battery management system, an older design. A wrong image can drive the battery outside its limits.
+  properties: [Integrity]
+
+asset vcu-rollback-counter:
+  name: VCU rollback counter
+  description: Keeps the vehicle control unit from going back to a version with a known flaw. It is stored outside the secure element.
+  properties: [Integrity]

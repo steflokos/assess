@@ -1,0 +1,63 @@
+secure-boot-public-key-tampering  Tampering with Secure boot public key
+
+rules in force (feasibility.combine in the policy)
+            ET   SE   KoIC  WoO  Eq
+  steps     sum  max  max   max  max
+  controls  max  sum  sum   sum  sum
+levels: High up to 13, Medium up to 19, Low up to 24, Very Low above
+
+BASE (controls ignored): Very Low, total 33
+2 paths. The easiest has the lowest total and a tie goes to the path written first
+
+easiest path (#1)
+  how the path is built
+    step intercept-and-substitute-key-on-supply-link
+
+                                                        ET     SE     KoIC     WoO      Eq
+  step     intercept-and-substitute-key-on-supply-link  ET2=4  SE3=8  KoIC2=7  WoO3=10  Eq1=4
+  stage 1  steps combined by                            sum    max    max      max      max
+           result                                       4      8      7        10       4
+  total 33 = 4 + 8 + 7 + 10 + 4  ->  Very Low
+  scalability of this path: Limited Batch  (taken from the bottleneck. Initial Limited Batch, bottleneck Limited Batch, broadest Limited Batch)
+
+next easiest paths and the ones that decide a risk (explain -all shows each as a table)
+  #2  total 45  Very Low  Limited Batch  bribe-ecu-manufacturer-insider
+
+RESIDUAL (controls applied): Very Low, total 54
+2 paths. The easiest has the lowest total and a tie goes to the path written first
+
+easiest path (#1)
+  how the path is built
+    step intercept-and-substitute-key-on-supply-link
+      mitigated by control ecu-manufacturer-attestation: defeated at its reduction
+
+                                                         ET     SE     KoIC     WoO      Eq
+  step     intercept-and-substitute-key-on-supply-link   ET2=4  SE3=8  KoIC2=7  WoO3=10  Eq1=4
+  stage 1  steps combined by                             sum    max    max      max      max
+           result                                        4      8      7        10       4
+  defeat   ecu-manufacturer-attestation (its reduction)  ET2=4  SE2=6  KoIC2=7  WoO2=4   Eq1=4
+  stage 2  controls combined by                          max    sum    sum      sum      sum
+           result                                        4      14     14       14       8
+  total 54 = 4 + 14 + 14 + 14 + 8  ->  Very Low
+  scalability of this path: Limited Batch  (taken from the bottleneck. Initial Limited Batch, bottleneck Limited Batch, broadest Limited Batch)
+
+next easiest paths and the ones that decide a risk (explain -all shows each as a table)
+  #2  total 66  Very Low  Limited Batch  bribe-ecu-manufacturer-insider + defeat ecu-manufacturer-attestation
+
+risk per damage scenario
+the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path
+  vehicles-built-untrusted  impact Severe
+    roaduser  safety Major, financial Moderate, operational Major, privacy Moderate  ->  max Major
+    oem       safety Moderate, financial Severe, operational Major, privacy Moderate  ->  max Severe
+    between   Major, Severe  ->  max Severe
+    base      Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
+    residual  Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
+  malicious-software-installed  impact Severe
+    roaduser  safety Severe, financial Major, operational Severe, privacy Major  ->  max Severe
+    oem       safety Major, financial Severe, operational Severe, privacy Major  ->  max Severe
+    between   Severe, Severe  ->  max Severe
+    base      Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
+    residual  Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
+
+risk of this threat scenario (the highest of its damage scenarios): 3 -> 3
+type: Goal (the base risk 3 is above the risk affinity 2)

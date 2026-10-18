@@ -1,0 +1,3 @@
+# Tool configuration: which format this project is written for.
+apiVersion: assess/v1beta1
+version: {{version}}

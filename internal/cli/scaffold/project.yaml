@@ -1,0 +1,21 @@
+# Project information: who carried out the assessment, when and against which standards.
+# Every file in this project is described in schema.yaml.
+name: {{project-name}}
+description: What this assessment covers and why.
+standards: [ISO/SAE 21434:2021]
+assessors: [Your name]
+date: {{date}}
+# The documents the assessment is based on and where to find them. The report lists them.
+# sources:
+#   - name: Item definition document
+#     location: https://example.com/docs/item-definition
+#     version: "1.0"
+# Further information for the report, in the order you write it. Each block has a title and either a text or a table.
+# extra:
+#   - title: Scope
+#     text: |
+#       What is in scope and what is not.
+#   - title: Contacts
+#     columns: [Role, Name]
+#     rows:
+#       - [Owner, Your name]

@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=.assess/schema-assess.json
+# Tool configuration: which format this project is written for.
+apiVersion: assess/v1beta1
+version: v0.1.0

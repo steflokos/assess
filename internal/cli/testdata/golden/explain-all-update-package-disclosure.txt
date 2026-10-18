@@ -1,0 +1,119 @@
+update-package-disclosure  Information disclosure of Update package
+
+rules in force (feasibility.combine in the policy)
+            ET   SE   KoIC  WoO  Eq
+  steps     sum  max  max   max  max
+  controls  max  sum  sum   sum  sum
+levels: High up to 13, Medium up to 19, Low up to 24, Very Low above
+
+BASE (controls ignored): High, total 9
+2 paths. The easiest has the lowest total and a tie goes to the path written first
+
+easiest path (#1)
+  how the path is built
+    step abuse-workshop-account-to-download-packages
+      needs step credential-stuffing-workshop-account
+
+                                                        ET     SE     KoIC     WoO     Eq
+  step     abuse-workshop-account-to-download-packages  ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq0=0
+  step     credential-stuffing-workshop-account         ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq0=0
+  stage 1  steps combined by                            sum    max    max      max     max
+           result                                       2      3      3        1       0
+  total 9 = 2 + 3 + 3 + 1 + 0  ->  High
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+path #2
+  how the path is built
+    step capture-own-download-and-extract-firmware
+
+                                                      ET     SE     KoIC     WoO     Eq
+  step     capture-own-download-and-extract-firmware  ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq1=4
+  stage 1  steps combined by                          sum    max    max      max     max
+           result                                     1      3      3        1       4
+  total 12 = 1 + 3 + 3 + 1 + 4  ->  High
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+RESIDUAL (controls applied): Low, total 24
+4 paths. The easiest has the lowest total and a tie goes to the path written first
+
+easiest path (#1)
+  how the path is built
+    step capture-own-download-and-extract-firmware
+      mitigated by control package-encryption: bypassed by the steps below
+        step dump-decrypted-firmware-from-own-vehicle
+
+                                                      ET     SE     KoIC     WoO     Eq
+  step     capture-own-download-and-extract-firmware  ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq1=4
+  step     dump-decrypted-firmware-from-own-vehicle   ET2=4  SE3=8  KoIC1=3  WoO1=1  Eq2=7
+  stage 1  steps combined by                          sum    max    max      max     max
+           result                                     5      8      3        1       7
+  bypass   package-encryption (bypassed by its threatenedby steps, which are among the steps above)
+  total 24 = 5 + 8 + 3 + 1 + 7  ->  Low
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+path #2
+  how the path is built
+    step capture-own-download-and-extract-firmware
+      mitigated by control package-encryption: defeated at its reduction
+
+                                                      ET     SE     KoIC     WoO     Eq
+  step     capture-own-download-and-extract-firmware  ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq1=4
+  stage 1  steps combined by                          sum    max    max      max     max
+           result                                     1      3      3        1       4
+  defeat   package-encryption (its reduction)         ET2=4  SE3=8  KoIC2=7  WoO2=4  Eq1=4
+  stage 2  controls combined by                       max    sum    sum      sum     sum
+           result                                     4      11     10       5       8
+  total 38 = 4 + 11 + 10 + 5 + 8  ->  Very Low
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+path #3
+  how the path is built
+    step abuse-workshop-account-to-download-packages
+      needs step credential-stuffing-workshop-account
+        mitigated by control workshop-mfa-and-device-binding: defeated at its reduction
+      mitigated by control package-encryption: bypassed by the steps below
+        step dump-decrypted-firmware-from-own-vehicle
+
+                                                            ET     SE     KoIC     WoO     Eq
+  step     dump-decrypted-firmware-from-own-vehicle         ET2=4  SE3=8  KoIC1=3  WoO1=1  Eq2=7
+  step     abuse-workshop-account-to-download-packages      ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq0=0
+  step     credential-stuffing-workshop-account             ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq0=0
+  stage 1  steps combined by                                sum    max    max      max     max
+           result                                           6      8      3        1       7
+  defeat   workshop-mfa-and-device-binding (its reduction)  ET2=4  SE2=6  KoIC2=7  WoO2=4  Eq1=4
+  bypass   package-encryption (bypassed by its threatenedby steps, which are among the steps above)
+  stage 2  controls combined by  max  sum  sum  sum  sum
+           result                6    14   10   5    11
+  total 46 = 6 + 14 + 10 + 5 + 11  ->  Very Low
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+path #4
+  how the path is built
+    step abuse-workshop-account-to-download-packages
+      needs step credential-stuffing-workshop-account
+        mitigated by control workshop-mfa-and-device-binding: defeated at its reduction
+      mitigated by control package-encryption: defeated at its reduction
+
+                                                            ET     SE     KoIC     WoO     Eq
+  step     abuse-workshop-account-to-download-packages      ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq0=0
+  step     credential-stuffing-workshop-account             ET1=1  SE1=3  KoIC1=3  WoO1=1  Eq0=0
+  stage 1  steps combined by                                sum    max    max      max     max
+           result                                           2      3      3        1       0
+  defeat   package-encryption (its reduction)               ET2=4  SE3=8  KoIC2=7  WoO2=4  Eq1=4
+  defeat   workshop-mfa-and-device-binding (its reduction)  ET2=4  SE2=6  KoIC2=7  WoO2=4  Eq1=4
+  stage 2  controls combined by                             max    sum    sum      sum     sum
+           result                                           4      17     17       9       8
+  total 55 = 4 + 17 + 17 + 9 + 8  ->  Very Low
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+risk per damage scenario
+the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path
+  software-ip-lost  impact Moderate
+    roaduser  safety Moderate, financial Negligible, operational Negligible, privacy Negligible  ->  max Moderate
+    oem       safety Negligible, financial Moderate, operational Moderate, privacy Negligible  ->  max Moderate
+    between   Moderate, Moderate  ->  max Moderate
+    base      High, matrix cell 3, Fleet-Wide +2 (cap 5), risk 5
+    residual  Low, matrix cell 2, Fleet-Wide +2 (cap 5), risk 4
+
+risk of this threat scenario (the highest of its damage scenarios): 5 -> 4
+type: Goal (the base risk 5 is above the risk affinity 2)

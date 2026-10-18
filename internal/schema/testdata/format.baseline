@@ -1,0 +1,382 @@
+attribute Asset.description string req= min=0 ref=
+attribute Asset.name string req=always min=0 ref=
+attribute Asset.notes map[string]string req= min=0 ref=
+attribute Asset.properties []iso21434.Property req=always min=1 ref=
+attribute Assumption.description string req= min=0 ref=
+attribute Assumption.name string req=always min=0 ref=
+attribute Assumption.notes map[string]string req= min=0 ref=
+attribute AttackPotential.equipment iso21434.Equipment req=always min=0 ref=
+attribute AttackPotential.expertise iso21434.SpecialistExpertise req=always min=0 ref=
+attribute AttackPotential.knowledge iso21434.KnowledgeOfItem req=always min=0 ref=
+attribute AttackPotential.time iso21434.ElapsedTime req=always min=0 ref=
+attribute AttackPotential.window iso21434.WindowOfOpportunity req=always min=0 ref=
+attribute AttackStep.actors []iso21434.ThreatActor req= min=0 ref=
+attribute AttackStep.assumes model.Refs req= min=0 ref=assumption
+attribute AttackStep.description string req= min=0 ref=
+attribute AttackStep.mitigatedby model.Refs req= min=0 ref=control
+attribute AttackStep.name string req=always min=0 ref=
+attribute AttackStep.notes map[string]string req= min=0 ref=
+attribute AttackStep.potential model.AttackPotential req= min=0 ref=
+attribute AttackStep.preparedby model.Tree req= min=0 ref=step,threat
+attribute AttackStep.rationale string req= min=0 ref=
+attribute AttackStep.scalability iso21434.Scalability req= min=0 ref=
+attribute AttackStep.target string req= min=0 ref=component,interface,channel,data
+attribute Band.level iso21434.FeasibilityLevel req=always min=0 ref=
+attribute Band.upto *int req= min=0 ref=
+attribute Block.columns []string req= min=0 ref=
+attribute Block.rows [][]string req= min=0 ref=
+attribute Block.text string req= min=0 ref=
+attribute Block.title string req=always min=0 ref=
+attribute Channel.between model.Refs req=always min=2 ref=component,interface
+attribute Channel.description string req= min=0 ref=
+attribute Channel.entrypoint bool req= min=0 ref=
+attribute Channel.name string req=always min=0 ref=
+attribute Channel.notes map[string]string req= min=0 ref=
+attribute Combination.controls model.FactorRules req=always min=0 ref=
+attribute Combination.steps model.FactorRules req=always min=0 ref=
+attribute Component.description string req= min=0 ref=
+attribute Component.functions model.Refs req= min=0 ref=function
+attribute Component.name string req=always min=0 ref=
+attribute Component.notes map[string]string req= min=0 ref=
+attribute Config.apiVersion string req=always min=0 ref=
+attribute Config.keys string req= min=0 ref=
+attribute Config.policy string req= min=0 ref=
+attribute Config.template string req= min=0 ref=
+attribute Config.version string req= min=0 ref=
+attribute Control.assumes model.Refs req= min=0 ref=assumption
+attribute Control.description string req= min=0 ref=
+attribute Control.name string req=always min=0 ref=
+attribute Control.notes map[string]string req= min=0 ref=
+attribute Control.rationale string req= min=0 ref=
+attribute Control.reduction model.AttackPotential req= min=0 ref=
+attribute Control.target model.Refs req= min=0 ref=component,interface,channel,data
+attribute Control.threatenedby model.Tree req= min=0 ref=step,threat
+attribute ControlPolicy.exclude model.Refs req= min=0 ref=control
+attribute DamageScenario.compromises model.Compromises req=always min=0 ref=component,interface,channel,data
+attribute DamageScenario.description string req= min=0 ref=
+attribute DamageScenario.impact model.ImpactSet req=always min=0 ref=
+attribute DamageScenario.name string req=always min=0 ref=
+attribute DamageScenario.notes map[string]string req= min=0 ref=
+attribute Data.description string req= min=0 ref=
+attribute Data.name string req=always min=0 ref=
+attribute Data.notes map[string]string req= min=0 ref=
+attribute Data.over model.Refs req= min=0 ref=channel
+attribute FactorRules.equipment iso21434.Combine req=always min=0 ref=
+attribute FactorRules.expertise iso21434.Combine req=always min=0 ref=
+attribute FactorRules.knowledge iso21434.Combine req=always min=0 ref=
+attribute FactorRules.time iso21434.Combine req=always min=0 ref=
+attribute FactorRules.window iso21434.Combine req=always min=0 ref=
+attribute Feasibility.combine model.Combination req= min=0 ref=
+attribute Feasibility.levels []model.Band req= min=0 ref=
+attribute Feasibility.points model.Points req= min=0 ref=
+attribute FlowStep.at model.Refs req= min=0 ref=component,interface
+attribute FlowStep.data model.Refs req= min=0 ref=data
+attribute FlowStep.over model.Refs req= min=0 ref=channel
+attribute FlowStep.step string req= min=0 ref=
+attribute Function.description string req= min=0 ref=
+attribute Function.flow []model.FlowStep req= min=0 ref=
+attribute Function.name string req=always min=0 ref=
+attribute Function.notes map[string]string req= min=0 ref=
+attribute ImpactBand.level iso21434.ImpactLevel req=always min=0 ref=
+attribute ImpactBand.upto *int req= min=0 ref=
+attribute ImpactPolicy.across iso21434.Aggregate req= min=0 ref=
+attribute ImpactPolicy.between iso21434.Aggregate req= min=0 ref=
+attribute ImpactPolicy.levels []model.ImpactBand req= min=0 ref=
+attribute ImpactPolicy.points map[iso21434.ImpactLevel]*int req= min=0 ref=
+attribute ImpactPolicy.stakeholders []iso21434.Stakeholder req= min=0 ref=
+attribute ImpactSet.oem *model.StakeholderImpact req= min=0 ref=
+attribute ImpactSet.roaduser *model.StakeholderImpact req=always min=0 ref=
+attribute ImpactSet.supplier *model.StakeholderImpact req= min=0 ref=
+attribute Interface.description string req= min=0 ref=
+attribute Interface.entrypoint bool req= min=0 ref=
+attribute Interface.exposure iso21434.Exposure req= min=0 ref=
+attribute Interface.name string req=always min=0 ref=
+attribute Interface.notes map[string]string req= min=0 ref=
+attribute Item.boundary string req=always min=0 ref=
+attribute Item.description string req= min=0 ref=
+attribute Item.environment string req= min=0 ref=
+attribute Item.name string req=always min=0 ref=
+attribute Item.notes map[string]string req= min=0 ref=
+attribute Points.equipment map[iso21434.Equipment]*int req= min=0 ref=
+attribute Points.expertise map[iso21434.SpecialistExpertise]*int req= min=0 ref=
+attribute Points.knowledge map[iso21434.KnowledgeOfItem]*int req= min=0 ref=
+attribute Points.time map[iso21434.ElapsedTime]*int req= min=0 ref=
+attribute Points.window map[iso21434.WindowOfOpportunity]*int req= min=0 ref=
+attribute Policy.controls model.ControlPolicy req= min=0 ref=
+attribute Policy.feasibility model.Feasibility req= min=0 ref=
+attribute Policy.impact model.ImpactPolicy req= min=0 ref=
+attribute Policy.risk model.RiskPolicy req= min=0 ref=
+attribute Policy.scalability model.ScalabilityPolicy req= min=0 ref=
+attribute Project.assessors []string req= min=0 ref=
+attribute Project.date string req= min=0 ref=
+attribute Project.description string req= min=0 ref=
+attribute Project.extra []model.Block req= min=0 ref=
+attribute Project.name string req=always min=0 ref=
+attribute Project.notes map[string]string req= min=0 ref=
+attribute Project.sources []model.Source req= min=0 ref=
+attribute Project.standards []string req= min=0 ref=
+attribute Rating.level iso21434.ImpactLevel req=always min=0 ref=
+attribute Rating.rationale string req= min=0 ref=
+attribute Risk.assumes model.Refs req= min=0 ref=assumption
+attribute Risk.base *int req= min=0 ref=
+attribute Risk.description string req= min=0 ref=
+attribute Risk.name string req=always min=0 ref=
+attribute Risk.notes map[string]string req= min=0 ref=
+attribute Risk.rationale string req= min=0 ref=
+attribute Risk.reference model.Texts req= min=0 ref=
+attribute Risk.residual *int req= min=0 ref=
+attribute Risk.treatment iso21434.Treatment req= min=0 ref=
+attribute Risk.type iso21434.RiskType req= min=0 ref=
+attribute RiskPolicy.affinity *int req= min=0 ref=
+attribute RiskPolicy.matrix map[iso21434.ImpactLevel]map[iso21434.FeasibilityLevel]*int req= min=0 ref=
+attribute Rule.check string req=always min=0 ref=
+attribute Rule.description string req= min=0 ref=
+attribute Rule.message string req= min=0 ref=
+attribute Rule.name string req=always min=0 ref=
+attribute Rule.notes map[string]string req= min=0 ref=
+attribute Rule.on iso21434.RuleTarget req=always min=0 ref=
+attribute Rule.severity iso21434.Severity req= min=0 ref=
+attribute ScalabilityPolicy.cap *int req= min=0 ref=
+attribute ScalabilityPolicy.matrix map[iso21434.Scalability]map[iso21434.ImpactLevel]map[iso21434.FeasibilityLevel]*int req= min=0 ref=
+attribute ScalabilityPolicy.mode iso21434.ScalabilityMode req=always min=0 ref=
+attribute ScalabilityPolicy.of iso21434.ScalabilityOf req= min=0 ref=
+attribute ScalabilityPolicy.raise map[iso21434.Scalability]*int req= min=0 ref=
+attribute Source.location string req= min=0 ref=
+attribute Source.name string req=always min=0 ref=
+attribute Source.version string req= min=0 ref=
+attribute StakeholderImpact.financial *model.Rating req=always min=0 ref=
+attribute StakeholderImpact.operational *model.Rating req=always min=0 ref=
+attribute StakeholderImpact.privacy *model.Rating req=always min=0 ref=
+attribute StakeholderImpact.safety *model.Rating req=always min=0 ref=
+attribute Threat.assumes model.Refs req= min=0 ref=assumption
+attribute Threat.damages model.Refs req= min=0 ref=damage
+attribute Threat.description string req= min=0 ref=
+attribute Threat.name string req=always min=0 ref=
+attribute Threat.notes map[string]string req= min=0 ref=
+attribute Threat.steps model.Tree req= min=0 ref=step,threat
+enum Aggregate max
+enum Aggregate sum
+enum Combine max
+enum Combine sum
+enum ElapsedTime ET0
+enum ElapsedTime ET1
+enum ElapsedTime ET2
+enum ElapsedTime ET3
+enum ElapsedTime ET4
+enum Equipment Eq0
+enum Equipment Eq1
+enum Equipment Eq2
+enum Equipment Eq3
+enum Exposure External
+enum Exposure Internal
+enum FeasibilityLevel High
+enum FeasibilityLevel Low
+enum FeasibilityLevel Medium
+enum FeasibilityLevel Very Low
+enum ImpactLevel Major
+enum ImpactLevel Moderate
+enum ImpactLevel Negligible
+enum ImpactLevel Severe
+enum KnowledgeOfItem KoIC0
+enum KnowledgeOfItem KoIC1
+enum KnowledgeOfItem KoIC2
+enum KnowledgeOfItem KoIC3
+enum Property Authenticity
+enum Property Availability
+enum Property Confidentiality
+enum Property Integrity
+enum Property Non Repudiation
+enum RiskType Claim
+enum RiskType Goal
+enum RuleTarget asset
+enum RuleTarget assumption
+enum RuleTarget channel
+enum RuleTarget component
+enum RuleTarget control
+enum RuleTarget damage
+enum RuleTarget data
+enum RuleTarget function
+enum RuleTarget interface
+enum RuleTarget item
+enum RuleTarget risk
+enum RuleTarget step
+enum RuleTarget threat
+enum Scalability Fleet-Wide
+enum Scalability Limited Batch
+enum Scalability Single Vehicle
+enum ScalabilityMode escalator
+enum ScalabilityMode ignored
+enum ScalabilityMode matrix
+enum ScalabilityOf bottleneck
+enum ScalabilityOf broadest
+enum ScalabilityOf initial
+enum Severity Error
+enum Severity Warning
+enum SpecialistExpertise SE0
+enum SpecialistExpertise SE1
+enum SpecialistExpertise SE2
+enum SpecialistExpertise SE3
+enum Stakeholder oem
+enum Stakeholder roaduser
+enum Stakeholder supplier
+enum ThreatActor Hacktivist
+enum ThreatActor Insider (Employee / Dealer / Supplier)
+enum ThreatActor Nation-State / State-Sponsored
+enum ThreatActor Organized Cybercrime
+enum ThreatActor Vehicle Owner / Authorized User
+enum Treatment Accept
+enum Treatment Avoid
+enum Treatment Reduce
+enum Treatment Share
+enum WindowOfOpportunity WoO0
+enum WindowOfOpportunity WoO1
+enum WindowOfOpportunity WoO2
+enum WindowOfOpportunity WoO3
+kind asset folder=tara top=true element=false children= suffixes= of=component,interface,channel,data
+kind assumption folder=item top=true element=false children= suffixes= of=
+kind channel folder=item top=true element=true children= suffixes= of=
+kind component folder=item top=true element=true children=component,interface,data suffixes= of=
+kind control folder=tara top=true element=false children= suffixes= of=
+kind damage folder=tara top=true element=false children= suffixes= of=
+kind data folder=item top=true element=true children=data suffixes= of=
+kind function folder=item top=true element=false children=function suffixes= of=
+kind interface folder=item top=false element=true children= suffixes= of=
+kind item folder=item top=true element=false children= suffixes= of=
+kind risk folder=concept top=true element=false children= suffixes= of=threat
+kind rule folder=rules top=true element=false children= suffixes= of=
+kind step folder=tara top=true element=false children= suffixes= of=
+kind threat folder=tara top=true element=false children= suffixes=spoofing,tampering,repudiation,disclosure,denial of=
+rule-target asset var=asset list=assets
+rule-target assumption var=assumption list=assumptions
+rule-target channel var=channel list=channels
+rule-target component var=component list=components
+rule-target control var=control list=controls
+rule-target damage var=damage list=damages
+rule-target data var=data list=dataelements
+rule-target function var=function list=functions
+rule-target interface var=interface list=interfaces
+rule-target item var=item list=
+rule-target risk var=risk list=risks
+rule-target step var=step list=steps
+rule-target threat var=threat list=threats
+rules Asset.compromised list(string) open=false
+rules Asset.damages list(string) open=false
+rules Asset.id string open=false
+rules Asset.kind string open=false
+rules Asset.name string open=false
+rules Asset.notes map(string, string) open=false
+rules Asset.properties list(string) open=false
+rules Asset.threats list(string) open=false
+rules Asset.unjustified list(string) open=false
+rules Assumption.controls list(string) open=false
+rules Assumption.description string open=false
+rules Assumption.id string open=false
+rules Assumption.name string open=false
+rules Assumption.notes map(string, string) open=false
+rules Assumption.risks list(string) open=false
+rules Assumption.steps list(string) open=false
+rules Assumption.threats list(string) open=false
+rules Channel.asset bool open=false
+rules Channel.between list(string) open=false
+rules Channel.description string open=false
+rules Channel.entrypoint bool open=false
+rules Channel.id string open=false
+rules Channel.name string open=false
+rules Channel.notes map(string, string) open=false
+rules Component.asset bool open=false
+rules Component.description string open=false
+rules Component.id string open=false
+rules Component.name string open=false
+rules Component.notes map(string, string) open=false
+rules Component.parent string open=false
+rules Control.assumes list(string) open=false
+rules Control.excluded bool open=false
+rules Control.id string open=false
+rules Control.mitigates list(string) open=false
+rules Control.name string open=false
+rules Control.notes map(string, string) open=false
+rules Control.rated bool open=false
+rules Control.rationale string open=false
+rules Control.target list(string) open=false
+rules Damage.decides list(string) open=false
+rules Damage.id string open=false
+rules Damage.impact string open=true
+rules Damage.name string open=false
+rules Damage.notes map(string, string) open=false
+rules Damage.ratings list(Rating) open=false
+rules Damage.threats list(string) open=false
+rules DataElement.asset bool open=false
+rules DataElement.description string open=false
+rules DataElement.id string open=false
+rules DataElement.name string open=false
+rules DataElement.notes map(string, string) open=false
+rules DataElement.over list(string) open=false
+rules DataElement.parent string open=false
+rules Feasibility.level string open=false
+rules Feasibility.total int open=false
+rules Function.description string open=false
+rules Function.id string open=false
+rules Function.name string open=false
+rules Function.notes map(string, string) open=false
+rules Function.parent string open=false
+rules Interface.asset bool open=false
+rules Interface.description string open=false
+rules Interface.entrypoint bool open=false
+rules Interface.exposure string open=false
+rules Interface.id string open=false
+rules Interface.name string open=false
+rules Interface.notes map(string, string) open=false
+rules Interface.parent string open=false
+rules Item.base int open=true
+rules Item.id string open=false
+rules Item.name string open=false
+rules Item.notes map(string, string) open=false
+rules Item.residual int open=true
+rules Policy.affinity int open=true
+rules Policy.excluded list(string) open=false
+rules Rating.category string open=false
+rules Rating.level string open=false
+rules Rating.rationale string open=false
+rules Rating.who string open=false
+rules Risk.assumes list(string) open=false
+rules Risk.base int open=true
+rules Risk.description string open=false
+rules Risk.id string open=false
+rules Risk.name string open=false
+rules Risk.notes map(string, string) open=false
+rules Risk.rationale string open=false
+rules Risk.reference list(string) open=false
+rules Risk.residual int open=true
+rules Risk.threat Threat open=true
+rules Risk.treatment string open=false
+rules Risk.type string open=true
+rules RiskValues.base int open=true
+rules RiskValues.residual int open=true
+rules RiskValues.type string open=true
+rules Step.actors list(string) open=false
+rules Step.assumes list(string) open=false
+rules Step.id string open=false
+rules Step.mitigatedby list(string) open=false
+rules Step.name string open=false
+rules Step.notes map(string, string) open=false
+rules Step.rated bool open=false
+rules Step.rationale string open=false
+rules Step.scalability string open=false
+rules Step.target string open=false
+rules Threat.asset string open=false
+rules Threat.assumes list(string) open=false
+rules Threat.base Feasibility open=true
+rules Threat.calculated bool open=false
+rules Threat.damages list(string) open=false
+rules Threat.id string open=false
+rules Threat.name string open=false
+rules Threat.notes map(string, string) open=false
+rules Threat.property string open=false
+rules Threat.residual Feasibility open=true
+rules Threat.risk RiskValues open=true
+rules Threat.steps list(string) open=false
+stride denial Availability
+stride disclosure Confidentiality
+stride repudiation Non Repudiation
+stride spoofing Authenticity
+stride tampering Integrity

@@ -1,0 +1,1145 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Actions an attacker takes, written  step <id>:  once and used by any number of threat scenarios.
+# schema.yaml lists every attribute.
+#
+# How to read a step
+#   potential     the effort of one execution, in the five factors of ISO/SAE 21434 (the policy turns the keys into points)
+#   scalability   how far one successful execution reaches: Single Vehicle, Limited Batch (a region, a plant, a batch)
+#                 or Fleet-Wide. The policy raises the risk value with the narrowest step of a path.
+#   preparedby    what must be done before: a step, or another threat scenario whose attack path is used as a step
+#   mitigatedby   the controls that make this step harder. The attacker has to get past every one of them
+#
+# The steps are grouped by where the attacker works. A step on the vehicle itself reaches one vehicle, and a step
+# in the backend or the PKI reaches all of them, whatever the effort.
+
+# =======================================================================================================
+# People and processes: staff accounts, approvals, suppliers and the build
+# =======================================================================================================
+
+step aitm-phish-staff:
+  name: Phish a staff member with an adversary-in-the-middle proxy
+  description: The attacker sends a link to a proxy that shows the real sign-in page and keeps the session after the user has passed single sign-on and a one-time code.
+  target: backoffice-portal
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: Phishing kits of this kind are sold ready to use, and the names and roles of release managers are public. A week is enough to run the campaign.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  mitigatedby: phishing-resistant-mfa
+
+step social-engineer-helpdesk-mfa-reset:
+  name: Have the helpdesk reset the hardware token of a staff member
+  description: The attacker calls as the staff member, with details from public sources and a story of a lost token, and receives a new enrolment link.
+  target: backoffice-portal
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: No tools are needed, only a convincing call. The helpdesk checks details that can be found online, and it works only on some days and with some agents.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  mitigatedby: helpdesk-reset-verification
+
+step steal-session-token-with-infostealer:
+  name: Steal the session of a signed-in staff member with malware on the workstation
+  target: backoffice-portal
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: Commodity malware takes the session cookie after the sign-in, so the second factor does not matter. It needs a foothold on a managed workstation, which takes weeks.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  mitigatedby: device-bound-sessions
+
+step exploit-portal-self-approval-flaw:
+  name: Approve one's own request by changing the approver in the request
+  description: The portal checks in its user interface that the requester and the second approver are different people. The server does not check it.
+  target: backoffice-portal
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: A web application test finds a flaw of this kind in days. The attacker needs a signed-in session and a few weeks to try it without being noticed.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Insider (Employee / Dealer / Supplier)]
+
+step approve-release-with-stolen-identity:
+  name: Approve a release as the staff member whose session was taken
+  target: approval-record
+  potential: {time: ET0, expertise: SE0, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: With the session the approval is two clicks. The attacker only has to know which release is waiting.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: backoffice-portal-spoofing
+  mitigatedby: four-eyes-approval
+
+step collude-second-approver:
+  name: Win over a second approver
+  description: Two employees with approval rights work together, one of them paid or pressed by the attacker.
+  target: approval-record
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO3, equipment: Eq0}
+  rationale: It takes a month to find and win over a second person with the right role, and few people have it. Both must act without being noticed in the audit log.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+
+step steal-supplier-account:
+  name: Take over the account of a supplier on the intake
+  target: supplier-intake-interface
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Suppliers are many and differ in how well they protect accounts. A phished or reused credential is the usual way in.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  mitigatedby: supplier-account-hardening
+
+step compromise-supplier-build-system:
+  name: Break into the build system of a supplier
+  description: The attacker is inside the supplier's network for months and changes the software in its build, as in the known attacks on build systems.
+  target: supplier-delivery-system
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Months of work by a skilled team, with knowledge of the supplier's tools that is not public. Only a few actors do it.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+
+step hide-malicious-code-in-delivery:
+  name: Hide malicious code in a supplier delivery
+  description: The attacker adds code to the software that the OEM's review and tests do not find, such as a trigger that only a particular input starts.
+  target: supplier-delivery
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: It needs a developer of the attacker's level and knowledge of what the review looks at. The delivery can be changed only when the supplier delivers.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Insider (Employee / Dealer / Supplier)]
+  preparedby:
+    or:
+      - steal-supplier-account
+      - compromise-supplier-build-system
+  mitigatedby: supplier-delivery-review
+
+step alter-supplier-delivery-in-transit:
+  name: Change a supplier delivery on its way to the intake
+  target: supplier-link
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: The attacker needs a position on the path between the supplier and the OEM and has to produce a delivery that passes the hash check.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  mitigatedby: supplier-account-hardening
+  assumes: suppliers-sign-delivery-hashes
+
+step compromise-build-dependency:
+  name: Get a poisoned open-source library into the build
+  description: The attacker takes over a maintainer account of a library that the software uses, or publishes a look-alike package, and waits for a build to pick it up.
+  target: build-pipeline
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: Such attacks on package registries happen and need no access to the OEM. The attacker must wait for a build that updates the dependency.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  mitigatedby: build-isolation-and-pinning
+
+step steal-ci-token:
+  name: Steal a token of the build system
+  description: A developer is phished, or a token is left in a repository or a log.
+  target: build-pipeline
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Tokens in repositories and logs are found with public scanners. The attacker needs only the right project.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  mitigatedby: build-isolation-and-pinning
+
+step breach-build-runner:
+  name: Run code on a build runner
+  target: build-pipeline
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: With a token the attacker starts a job that runs their commands. The runners are short-lived, so the window is short.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: steal-ci-token
+  mitigatedby: build-isolation-and-pinning
+
+step modify-candidate-after-approval:
+  name: Change the release candidate after it was approved
+  description: The attacker replaces an image in the store between the approval and the request to sign it.
+  target: release-candidate
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: The window is the time between approval and signing, hours to a few days. The attacker must know the layout of the store and the time of the signing.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: breach-build-runner
+  mitigatedby: signing-request-validation
+
+# =======================================================================================================
+# Signing: the signing service, its HSM and the keys
+# =======================================================================================================
+
+step pivot-to-signing-network:
+  name: Move from the build network into the signing network
+  target: signing-network
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The network is separate and allows only the pipeline to connect. The attacker has to find a way through the rules and the host that the rules trust.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: breach-build-runner
+  mitigatedby: signing-network-isolation
+
+step forge-signing-request:
+  name: Send a signing request that names an approved release but carries other content
+  target: signing-service
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: The attacker knows the protocol from the runner and must find a request that the service accepts. The service logs it, so there are few tries.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: pivot-to-signing-network
+  mitigatedby: [signing-request-validation, signing-activity-monitoring]
+
+step insider-sign-with-two-tokens:
+  name: Have an unapproved package signed by two key custodians
+  description: Two custodians who each hold a token for the HSM sign what the attacker gives them, together.
+  target: signing-hsm
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq0}
+  rationale: Two people with a token must agree and both stay unnoticed. The knowledge needed to prepare the package is strictly internal.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+  mitigatedby: signing-activity-monitoring
+
+step steal-hsm-backup-tokens:
+  name: Take the backup tokens of the signing key and their PINs
+  description: The attacker gets at the sealed backup of the key at the second site and learns the PINs of the custodians.
+  target: software-signing-private-key
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq1}
+  rationale: Physical access to a secured room, plus the PINs of several people. Only an insider or someone with an insider's help can do it.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier), Nation-State / State-Sponsored]
+  mitigatedby: key-backup-split-custody
+
+step probe-hsm-with-invasive-attack:
+  name: Open the HSM and read the key from the chip
+  description: The attacker steals an HSM and attacks the chip in a laboratory, with probing, side-channel and fault methods.
+  target: signing-hsm
+  potential: {time: ET4, expertise: SE3, knowledge: KoIC3, window: WoO3, equipment: Eq3}
+  rationale: Months in a laboratory with a team and several devices, and an HSM that has to be stolen first. Only states do it.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  mitigatedby: hsm-key-protection
+  assumes: hsm-certified-as-claimed
+
+step exploit-hsm-firmware-vulnerability:
+  name: Exploit a flaw in the firmware of the HSM
+  description: A flaw in the management interface or the signing service of the HSM lets the attacker read the key or sign without the tokens.
+  target: signing-hsm
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: HSM vendors publish such flaws now and then. Finding one needs a lab and months, and the HSM is reachable only from inside the signing network.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  preparedby: pivot-to-signing-network
+
+step wipe-hsm-keys-by-insider:
+  name: Erase the keys in the HSM as an administrator
+  target: signing-hsm
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: One command from an administrator account. It needs the account and nothing else.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+
+step destroy-key-backups:
+  name: Destroy the backups of the signing key
+  target: software-signing-private-key
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq0}
+  rationale: The backups are at two sites in sealed storage. The attacker must reach both without being stopped.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+  mitigatedby: key-backup-split-custody
+
+# =======================================================================================================
+# The PKI: the registration authority, the issuing CAs, the root and the revocation list
+# =======================================================================================================
+
+step compromise-ra-service:
+  name: Take over the registration authority through a flaw in its API
+  description: The renewal endpoint of the vehicles ends at the registration authority. A flaw in how it parses a request gives the attacker its rights.
+  target: registration-authority
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The service is reachable through the gateway with any valid vehicle identity, and the attacker needs a flaw in the parser and knowledge of the internal protocol.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  mitigatedby: pki-network-segmentation
+
+step submit-fraudulent-signing-certificate-request:
+  name: Ask for a software signing certificate for the attacker's key
+  target: registration-authority
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: Once the attacker acts as the registration authority or as a requester, a request for a certificate is one more request. It must carry the approvals that the profile asks for.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby:
+    or:
+      - compromise-ra-service
+      - backoffice-portal-spoofing
+  mitigatedby: ra-dual-control-and-attestation
+
+step breach-pki-network:
+  name: Get into the segmented PKI network
+  target: pki-network
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The network allows only the registration authority and the CA hosts to talk, and it has no connection to the internet. The attacker comes through a managed host.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  mitigatedby: pki-network-segmentation
+
+step steal-issuing-hsm-credentials:
+  name: Take the credentials with which a CA service uses its partition in the issuing HSM
+  target: issuing-hsm
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: The CA service must present a credential to the HSM, so it is on the host. The attacker needs access to the host.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: breach-pki-network
+
+step issue-rogue-vehicle-certificates:
+  name: Issue vehicle certificates through the vehicle CA with the stolen credentials
+  target: vehicle-ca
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: With the credential the CA software issues what it is asked. The attacker can issue as many as they want until a monitor notices.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: steal-issuing-hsm-credentials
+
+step issue-signing-certificate-with-stolen-credentials:
+  name: Issue a software signing certificate through the software CA with the stolen credentials
+  target: software-ca
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: The same credentials open the partition of the software CA. The attacker has to build a certificate that passes the profile checks in the vehicles.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  preparedby: steal-issuing-hsm-credentials
+
+step collude-custodians:
+  name: Win over three of the five custodians of the root HSM
+  target: root-ca
+  potential: {time: ET3, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq0}
+  rationale: Months to approach three people in three places without being noticed, and all three must be at a ceremony.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier), Nation-State / State-Sponsored]
+  mitigatedby: key-ceremony-controls
+  assumes: custodians-independent
+
+step breach-safe-room:
+  name: Break into the safe room of the root HSM
+  target: root-ca
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC3, window: WoO3, equipment: Eq2}
+  rationale: A physical break-in at a secured site with alarms and guards. It needs knowledge of the building and the alarm that is strictly internal.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  mitigatedby: key-ceremony-controls
+
+step probe-root-hsm:
+  name: Open the root HSM and read the key from the chip
+  target: root-ca-hsm
+  potential: {time: ET4, expertise: SE3, knowledge: KoIC3, window: WoO3, equipment: Eq3}
+  rationale: As for the signing HSM, and the device is air-gapped. A tamper response erases the key if the housing is opened wrongly.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  preparedby: breach-safe-room
+  mitigatedby: hsm-key-protection
+  assumes: hsm-certified-as-claimed
+
+step destroy-root-hsm-and-backups:
+  name: Destroy the root HSM, its backup and the custodian cards
+  target: root-ca
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq1}
+  rationale: Fire or force at the safe room and at the second site, or insiders who destroy the cards. It does not need to be quiet, only to reach both.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier), Nation-State / State-Sponsored]
+  mitigatedby: key-ceremony-controls
+
+step block-crl-delivery:
+  name: Keep the revocation list from reaching a vehicle
+  description: The attacker keeps the vehicle from receiving a new list, so a certificate that was revoked stays valid for that vehicle.
+  target: cellular-interface
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: A rogue base station that drops the connection is enough. The vehicle has to be in range during every attempt.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: deploy-rogue-base-station
+  mitigatedby: crl-freshness-fail-closed
+
+# =======================================================================================================
+# The backend: the vehicle API, the director, the registry, the cloud and the logs
+# =======================================================================================================
+
+step use-own-vehicle-identity:
+  name: Use a vehicle identity that the attacker owns
+  description: Anyone who owns a vehicle, or a bench telematics unit, holds a valid vehicle certificate and may talk to the vehicle API.
+  target: vehicle-interface
+  potential: {time: ET0, expertise: SE0, knowledge: KoIC0, window: WoO1, equipment: Eq1}
+  rationale: A used vehicle or a telematics unit from the market costs little, and nothing needs to be broken.
+  scalability: Fleet-Wide
+  actors: [Vehicle Owner / Authorized User, Organized Cybercrime, Hacktivist]
+
+step exploit-director-api:
+  name: Send a crafted check-in that a flaw in the director processes
+  description: The director parses the inventory that the vehicle sends. A crafted one reaches code that the director runs with its own rights.
+  target: update-director
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Any vehicle may send it, so the window is open, but the attacker needs a flaw and a few weeks to find it by testing.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: use-own-vehicle-identity
+  mitigatedby: vehicle-api-rate-limits-and-anomaly-detection
+
+step compromise-cloud-admin-account:
+  name: Take over an administrator account of the cloud tenant
+  target: ota-backend
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: Administrators are few and well protected, but they are phished or their laptops are infected. The attacker needs weeks and knowledge of the tenant.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  mitigatedby: cloud-admin-hardening
+  assumes: cloud-tenant-segregated
+
+step take-over-director-service-account:
+  name: Take over the service account of the director
+  target: update-director
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: With the cloud account the attacker may start the director's workload or change its role. It is logged.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: compromise-cloud-admin-account
+  mitigatedby: cloud-admin-hardening
+
+step use-director-hsm-as-oracle:
+  name: Have the director HSM sign authorisations that the campaigns did not ask for
+  target: director-hsm
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: The director is allowed to use the key, so the attacker only needs the same access. The key stays in the HSM, but any authorisation can be signed.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: take-over-director-service-account
+  mitigatedby: director-authorisation-policy
+
+step steal-director-hsm-backup:
+  name: Take the backup of the authorisation signing key
+  target: authorisation-signing-private-key
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Online keys have a backup that is easier to reach than the one of the software key. It still needs physical access and the PINs.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+  mitigatedby: key-backup-split-custody
+
+step create-malicious-campaign:
+  name: Create a campaign that sends valid software to the wrong vehicles
+  description: With a staff session the attacker plans a campaign with a package for another hardware variant, no waves and no stop criteria.
+  target: campaign-definition
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Planning a campaign is what the portal is for. The second approval and the staged roll-out are the only things that stand in the way.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Hacktivist, Insider (Employee / Dealer / Supplier)]
+  preparedby: backoffice-portal-spoofing
+  mitigatedby: [four-eyes-approval, staged-rollout-and-stop-criteria]
+
+step exploit-registry-api-idor:
+  name: Change the record of another vehicle through the vehicle API
+  description: The API checks that a vehicle is authenticated but not that the VIN in the request is its own.
+  target: vehicle-configuration
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Flaws of this kind are common in APIs and found by trying other identifiers. The attacker holds a valid identity.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Hacktivist]
+  preparedby: use-own-vehicle-identity
+  mitigatedby: vehicle-api-rate-limits-and-anomaly-detection
+
+step enumerate-vins-via-api:
+  name: Read the inventory of other vehicles by going through VINs
+  target: vehicle-configuration
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: VINs have a known structure, so they can be tried one after another. The attacker needs a script and a valid identity.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: use-own-vehicle-identity
+  mitigatedby: vehicle-api-rate-limits-and-anomaly-detection
+
+step breach-registry-database:
+  name: Read the registry database with the rights of a cloud administrator
+  target: vehicle-configuration
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: With the administrator account the data can be copied in one go, but it is logged and the volume stands out.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  preparedby: compromise-cloud-admin-account
+  mitigatedby: cloud-admin-hardening
+
+step submit-false-inventory-from-compromised-tcu:
+  name: Report a false inventory from a telematics unit that the attacker controls
+  target: vehicle-configuration
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: The attacker controls the client, so what it reports is up to them. It changes the record of this vehicle only.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: ota-client-tampering
+
+step volumetric-ddos-on-gateway:
+  name: Flood the vehicle interface of the gateway
+  target: vehicle-api-gateway
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC0, window: WoO1, equipment: Eq1}
+  rationale: Flooding services can be bought by the hour. The address of the interface is known to every vehicle.
+  scalability: Fleet-Wide
+  actors: [Hacktivist, Organized Cybercrime]
+  mitigatedby: ddos-protection
+
+step abuse-kms-export-after-cloud-takeover:
+  name: Export the TLS key of the gateway from the key store
+  description: The attacker with administrator rights changes the policy of the key and exports it, or signs with it from outside.
+  target: backend-tls-private-key
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: The key store is made not to export, so the attacker must change the key policy, which is logged and alarmed.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: compromise-cloud-admin-account
+  mitigatedby: cloud-admin-hardening
+
+step delete-or-alter-audit-entries:
+  name: Delete or change entries of the audit log
+  target: audit-log
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: With database rights it is one query. The attacker must know the layout of the log.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Insider (Employee / Dealer / Supplier)]
+  preparedby: compromise-cloud-admin-account
+  mitigatedby: audit-log-immutability
+
+step use-shared-break-glass-account:
+  name: Act through a shared emergency account
+  description: The staff member uses an account that several people may use, so the log does not say which of them acted.
+  target: audit-log
+  potential: {time: ET0, expertise: SE0, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: It needs the knowledge that such an account exists and the right to open its seal.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+  mitigatedby: named-accounts-and-sealed-break-glass
+
+# =======================================================================================================
+# The package: the repository, the CDN, the download and the firmware
+# =======================================================================================================
+
+step compromise-cdn-account:
+  name: Take over an account at the content delivery network
+  target: content-delivery-network
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: The CDN is a third party with its own staff and its own account protection. A phished administrator account gives control of what the edge serves.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  mitigatedby: cdn-account-hardening
+
+step replace-package-at-cdn-edge:
+  name: Replace the package at the edge of the content delivery network
+  target: update-package
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: With the account, the object at the edge is replaced with a few commands. The vehicle still checks the signature.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: compromise-cdn-account
+  mitigatedby: package-signature-verification
+
+step replace-package-in-repository:
+  name: Replace the package in the origin repository
+  target: package-repository
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: With a cloud administrator account the object is overwritten. The repository is set to refuse it, and the vehicle checks the signature.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: compromise-cloud-admin-account
+  mitigatedby: [repository-object-lock, package-signature-verification]
+
+step capture-own-download-and-extract-firmware:
+  name: Download a package with the identity of a vehicle that the attacker owns and read the images
+  target: download-link
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: The attacker is the owner of the vehicle. The package is signed but not encrypted, so the images can be unpacked and disassembled at once.
+  scalability: Fleet-Wide
+  actors: [Vehicle Owner / Authorized User, Organized Cybercrime, Hacktivist]
+  mitigatedby: package-encryption
+
+step credential-stuffing-workshop-account:
+  name: Sign in to the workshop services with a leaked workshop credential
+  target: workshop-interface
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Workshop accounts are many and some reuse passwords. The attacker takes credentials from published leaks.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  mitigatedby: workshop-mfa-and-device-binding
+
+step abuse-workshop-account-to-download-packages:
+  name: Download packages through the workshop services without owning the vehicle
+  target: update-package
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: The workshop services hand out a package for any VIN that is entered. The attacker only has to enter VINs.
+  scalability: Fleet-Wide
+  actors: [Organized Cybercrime]
+  preparedby: credential-stuffing-workshop-account
+  mitigatedby: package-encryption
+
+step reverse-engineer-ota-client-firmware:
+  name: Disassemble the OTA client and the verifier and look for flaws
+  description: The attacker unpacks the images and reads the code that parses certificates and manifests. A flaw found once is in every vehicle.
+  target: update-package
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: A good reverse engineer needs weeks for a parser of this size. The firmware is a normal Linux image with symbols stripped.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby:
+    or:
+      - capture-own-download-and-extract-firmware
+      - dump-tcu-flash-via-uart
+      - desolder-and-dump-flash-chip
+
+step exploit-verifier-parsing-bug:
+  name: Make the verifier fail on a package that is built to exploit a flaw in its parser
+  description: A crafted certificate or manifest is parsed before the signature is checked, so the flaw is reached by anyone who can deliver a package.
+  target: package-verifier
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: Memory-safety flaws in ASN.1 and manifest parsers are well known, but a working exploit for an up-to-date build takes months.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: reverse-engineer-ota-client-firmware
+  mitigatedby: hardened-package-parsing
+
+# =======================================================================================================
+# The vehicle from a distance: the radio, the client and the time
+# =======================================================================================================
+
+step deploy-rogue-base-station:
+  name: Set up a rogue base station near the vehicle
+  description: A software radio and an open-source stack impersonate a mobile network and pull the vehicle onto it.
+  target: cellular-interface
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq2}
+  rationale: The equipment is a few thousand euro and the software is public. The vehicle must be in range for as long as the attack takes.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored, Hacktivist]
+
+step exploit-baseband-vulnerability:
+  name: Exploit a flaw in the baseband of the modem from the rogue base station
+  target: cellular-interface
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Baseband flaws that need no user action have been found in several modems. A reliable exploit for the exact modem takes months.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored]
+  preparedby: deploy-rogue-base-station
+
+step escalate-from-modem-to-linux:
+  name: Go from code in the modem to code in the operating system of the telematics unit
+  target: telematics-unit
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: The modem and the application processor share memory on some boards. If they do not, the attacker needs another flaw.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored]
+  preparedby: exploit-baseband-vulnerability
+  mitigatedby: modem-isolation
+
+step mitm-vehicle-tls-session:
+  name: Sit between the vehicle and the backend in the TLS session
+  description: The rogue base station relays the connection and presents a certificate for the backend.
+  target: cellular-link
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: The position comes from the base station. The vehicle accepts only a certificate that chains to the pinned backend CA, so the attacker also needs a certificate or a flaw.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: deploy-rogue-base-station
+  mitigatedby: tls-pinning-to-backend-ca
+
+step exploit-tls-validation-bug:
+  name: Pass the TLS validation of the OTA client with a certificate that should be refused
+  target: ota-client
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Certificate validation flaws are found again and again in TLS libraries. An attacker who has the firmware needs weeks to find one that applies.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored]
+  preparedby: reverse-engineer-ota-client-firmware
+
+step jam-cellular-connection:
+  name: Jam the mobile connection of the vehicle
+  target: cellular-interface
+  potential: {time: ET0, expertise: SE0, knowledge: KoIC0, window: WoO2, equipment: Eq1}
+  rationale: Jammers are sold on the internet, although their use is illegal. The vehicle has to stay in range, and it only delays the update.
+  scalability: Single Vehicle
+  actors: [Vehicle Owner / Authorized User, Organized Cybercrime]
+
+step replay-old-time-stamp:
+  name: Replay a signed time stamp from the past to the vehicle
+  description: The attacker records the signed time stamp that the backend sends, and plays it back later so that the secure element sets its clock back.
+  target: secure-time
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: It needs a position on the radio link and a recording of the right stamp. The vehicle checks a signature, and the stamp has a validity of a day.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: deploy-rogue-base-station
+  mitigatedby: time-stamp-freshness
+
+step spoof-gnss-time:
+  name: Spoof the satellite time that the vehicle falls back to
+  target: secure-time
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq2}
+  rationale: A software radio can send false satellite signals. The attacker has to be near the vehicle and the vehicle must have lost its backend time.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  mitigatedby: time-plausibility-check
+
+step exploit-ivi-application:
+  name: Take over an application of the infotainment unit from a distance
+  description: A flaw in the Bluetooth stack, a media parser or the browser of the head unit gives the attacker code on the infotainment unit.
+  target: infotainment-unit
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Infotainment units are big and have a large attack surface. The attacker must be in Bluetooth or Wi-Fi range or have an input that the unit processes.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime]
+
+step send-forged-consent-to-orchestrator:
+  name: Send a consent decision to the orchestrator in the name of the driver
+  target: consent-ui
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: Code on the infotainment unit uses the same interface as the consent screen. It needs only the message format.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime]
+  preparedby: exploit-ivi-application
+  mitigatedby: consent-message-authentication
+
+# =======================================================================================================
+# Inside the vehicle: privilege, the gateway, the CAN and the controllers
+# =======================================================================================================
+
+step escalate-from-ota-client-to-orchestrator:
+  name: Go from code in the OTA client to the rights of the update orchestrator
+  target: update-orchestrator
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: The two are separate processes with different rights. The attacker needs a flaw in the kernel or in the interface between them.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: ota-client-tampering
+  mitigatedby: orchestrator-privilege-separation
+
+step exploit-linux-kernel-vulnerability:
+  name: Use a flaw in the Linux kernel of the telematics unit
+  target: update-orchestrator
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Local privilege flaws in Linux are published every few weeks. The kernel of an embedded unit is often a few versions behind.
+  scalability: Fleet-Wide
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+
+step tap-can-harness:
+  name: Connect a device to the powertrain CAN wiring
+  description: The attacker clips onto the wires behind a panel, or uses a connector that is not the diagnostic connector.
+  target: powertrain-can
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: It takes a few minutes with access to the vehicle, and the wiring is documented in public repair manuals. Thieves do it.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+
+step spoof-vehicle-state-signals:
+  name: Send signals that say that the vehicle is parked while it drives
+  target: update-orchestrator
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The attacker must know which signals the orchestrator reads and send them faster than the real ECUs, while a person drives the vehicle.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: tap-can-harness
+  mitigatedby: vehicle-state-plausibility-checks
+
+step plug-malicious-obd-dongle:
+  name: Plug a dongle with the attacker's software into the diagnostic connector
+  description: The dongle is left by a valet or a repairer, or is sold to the owner as a tracker or tuner. It talks to the gateway as a tester.
+  target: obd-port
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: Dongles of this kind are common, and the connector is in the cabin. The attacker needs the dongle to stay plugged in, or the owner to plug it.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+
+step steal-workshop-tester-certificate:
+  name: Take the certificate of a workshop tester
+  description: An insider copies the tester's certificate, or malware on the tester's laptop takes it.
+  target: workshop-tester
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: The certificate is bound to the tester hardware, so it must be taken from a working tester or be extracted from it. It is worth a lot, so some insiders will sell it.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier), Organized Cybercrime]
+  assumes: workshops-use-managed-testers
+
+step exploit-gateway-diagnostic-bug:
+  name: Exploit a flaw in a diagnostic service of the gateway
+  description: A service such as security access or a routine control has a flaw that gives a session without authentication.
+  target: central-gateway
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: The gateway software is closed, so the attacker reads the firmware first. A flaw in a diagnostic stack takes months to find and then works on every vehicle of that software version.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+
+step open-programming-session:
+  name: Open a programming session towards a controller
+  target: central-gateway
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: Once authenticated, UDS is a standard that tools support. The gateway allows it only in certain vehicle states.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: plug-malicious-obd-dongle
+  mitigatedby: diagnostic-session-authentication
+
+step erase-controller-application:
+  name: Erase the application of a controller through the bootloader
+  target: vcu-bootloader
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: Erasing is a normal service of the programming session. The bootloader does not ask for a signature to erase.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: open-programming-session
+
+step flash-unsigned-image-via-uds:
+  name: Flash an image without a valid signature through UDS
+  target: vcu-bootloader
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: The attacker builds the image for the controller from the firmware that the OEM published, and flashes it as a tester does.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: open-programming-session
+  mitigatedby: [ecu-bootloader-signature-check, flash-driver-verification]
+
+step load-unsigned-flash-driver-via-uds:
+  name: Load the attacker's own flash driver into the RAM of the BMS
+  description: The older bootloader of the BMS runs the flash driver as it is received and then asks the driver to write. A driver that writes whatever it is told bypasses the check on the image.
+  target: bms-bootloader
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: It needs the memory map and the boot flow of the BMS, which the attacker gets from a unit on the bench. The service itself is standard.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: open-programming-session
+  mitigatedby: flash-driver-verification
+
+step exploit-uds-transfer-buffer-overflow:
+  name: Overflow a buffer in the transfer service of the bootloader
+  target: bms-bootloader
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: A flaw in a bootloader is rare but is found by fuzzing a unit on the bench. A working exploit has to fit the small RAM of the controller.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored]
+
+# =======================================================================================================
+# Hardware: the telematics unit, the secure element, the gateway and the controllers
+# =======================================================================================================
+
+step open-tcu-housing:
+  name: Open the housing of the telematics unit
+  description: The unit is taken out of the vehicle, or reached behind a panel, and its housing is opened without a trace that the owner would see.
+  target: telematics-unit
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: The housing is screwed or clipped shut. The attacker needs the vehicle for an hour, which a valet, a workshop or a thief has.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+
+step connect-uart-console:
+  name: Connect to the serial console of the telematics unit
+  description: The pads of the console are on the board. They are not used after production, but they were not removed.
+  target: tcu-debug-port
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: Pads are found by a continuity test, and a cable and a terminal program are all that is needed. The unit is open on the bench.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: open-tcu-housing
+  mitigatedby: debug-lockdown
+
+step bypass-jtag-lock-with-voltage-glitch:
+  name: Re-enable the JTAG port of the processor with a voltage glitch at boot
+  target: tcu-debug-port
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: The lock is read once at boot. A glitch at the right instant makes the processor skip it. Setting up the glitch for a particular processor takes months.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: open-tcu-housing
+
+step dump-tcu-flash-via-uart:
+  name: Read the flash of the telematics unit through the console
+  target: telematics-unit
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: With a shell on the console, copying the partitions is a short script.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: connect-uart-console
+  mitigatedby: flash-encryption-device-key
+
+step desolder-and-dump-flash-chip:
+  name: Remove the flash chip and read it in a programmer
+  target: telematics-unit
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq2}
+  rationale: A hot-air station and a chip reader do it in an afternoon. The unit is out of the vehicle for that time.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+  preparedby: open-tcu-housing
+  mitigatedby: flash-encryption-device-key
+
+step install-implant-via-uart-root-shell:
+  name: Install a persistent implant from the console
+  target: telematics-unit
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: From a root shell an implant is a binary and a startup entry. Secure boot is what keeps it from staying after a restart.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime]
+  preparedby: connect-uart-console
+  mitigatedby: secure-boot-chain
+
+step glitch-rom-signature-check:
+  name: Make the boot ROM accept an unsigned bootloader with a voltage or clock glitch
+  target: tcu-bootloader
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Fault injection against the signature check of a ROM is published for several processors. It needs the exact processor, a test setup and months of work.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: open-tcu-housing
+
+step write-malicious-system-image-to-inactive-slot:
+  name: Write an attacker's system image into the inactive slot and have it booted
+  target: tcu-inactive-slot
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: Writing the slot is easy with a programmer or a shell. The bootloader must also accept it.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: open-tcu-housing
+  mitigatedby: secure-boot-chain
+
+step attach-bus-interposer-to-secure-element:
+  name: Put a device on the bus between the processor and the secure element
+  description: A small board on the SPI or I2C lines records what passes, or changes the answers. It is the same attack that is used on TPMs.
+  target: tcu-hsm
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: It needs a clip or a soldered tap on a board with a fine pitch and the protocol of the element, which is partly proprietary.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: open-tcu-housing
+  mitigatedby: secure-element-channel-protection
+
+step use-secure-element-as-signing-oracle:
+  name: Have the secure element sign whatever the attacker wants
+  description: Code in the telematics unit calls the secure element as the OTA client does. The key stays in the element, but the identity can be used from the attacker's code.
+  target: tcu-hsm
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO0, equipment: Eq0}
+  rationale: The element has no way to know which software calls it. As long as the attacker's code runs, every call is possible.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: telematics-unit-tampering
+  mitigatedby: se-key-usage-policy
+
+step side-channel-key-extraction:
+  name: Recover the vehicle key from the secure element by side-channel analysis
+  description: The attacker records the power use or the electromagnetic field of thousands of signatures and calculates the key.
+  target: vehicle-private-key
+  potential: {time: ET4, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq3}
+  rationale: Evaluated elements resist the known attacks. A new method or a flaw in the implementation is needed, with a laboratory and many months.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored]
+  preparedby: open-tcu-housing
+  mitigatedby: secure-element-tamper-resistance
+  assumes: secure-element-evaluated
+
+step fault-inject-secure-element:
+  name: Recover the vehicle key by fault injection into the secure element
+  target: vehicle-private-key
+  potential: {time: ET4, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq3}
+  rationale: Laser or electromagnetic faults during a signature give the key with a few faulty results. The element has counter-measures, and the attacker needs a bench and a decapsulated chip.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored]
+  preparedby: open-tcu-housing
+  mitigatedby: secure-element-tamper-resistance
+  assumes: secure-element-evaluated
+
+step open-central-gateway-housing:
+  name: Open the housing of the central gateway
+  target: central-gateway
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: The gateway is behind the dashboard and takes longer to reach than the telematics unit. Otherwise it is the same work.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime]
+
+step rewrite-lifecycle-flag-in-flash:
+  name: Write the production state into the flash of the gateway
+  target: lifecycle-state
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: The attacker reads the flash, finds the flag and writes it back with a programmer. It needs the layout of the firmware.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime]
+  preparedby: open-central-gateway-housing
+  mitigatedby: lifecycle-state-in-secure-hardware
+
+step reset-lifecycle-state-via-diagnostic-exploit:
+  name: Set the vehicle back to the production state through a diagnostic exploit
+  target: lifecycle-state
+  potential: {time: ET1, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: With a session in the gateway the flag is one write. The attacker needs the layout of the state.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby:
+    and:
+      - plug-malicious-obd-dongle
+      - exploit-gateway-diagnostic-bug
+
+step reflash-installed-root-with-production-function:
+  name: Write the attacker's root certificate with the production function of the secure element
+  target: installed-root-certificate
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: In the production state the secure element accepts a new root from the end-of-line station. The attacker plays the station.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: lifecycle-state-tampering
+  mitigatedby: trust-anchor-write-protection
+
+step open-vcu-housing:
+  name: Open the housing of the vehicle control unit
+  target: vehicle-control-unit
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: The controller is under the hood or in the cabin, closed with screws and a seal.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Vehicle Owner / Authorized User]
+
+step glitch-bootloader-signature-check:
+  name: Make the bootloader of the VCU accept an image with a bad signature by glitching the processor
+  target: vcu-bootloader
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Fault injection against the single check that stands between a bad image and its start. The attacker needs the exact controller and weeks to find the instant.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: open-vcu-housing
+
+step reset-vcu-rollback-counter:
+  name: Set the rollback counter of the VCU back with a debug connection
+  target: vcu-rollback-counter
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: The counter is in external data flash, written with the same tools as the rest. The debug port of the processor must be reached.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: open-vcu-housing
+  mitigatedby: authenticated-counter-storage
+
+step chip-off-data-flash:
+  name: Take off the data flash of the VCU and write the old counter value
+  target: vcu-rollback-counter
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: As for the flash of the telematics unit, with the added work of finding the counter in the memory.
+  scalability: Single Vehicle
+  actors: [Organized Cybercrime]
+  preparedby: open-vcu-housing
+  mitigatedby: authenticated-counter-storage
+
+step extract-mcu-key-via-fault-injection:
+  name: Get the device key of the controller by fault injection
+  description: The key that protects the counter in the data flash is stored in the controller. Faults during its use reveal it.
+  target: vcu-rollback-counter
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq3}
+  rationale: As for the secure element, but with a controller that was not made for it. It needs a bench and weeks.
+  scalability: Single Vehicle
+  actors: [Nation-State / State-Sponsored]
+  preparedby: open-vcu-housing
+
+# =======================================================================================================
+# Production: the plant, the ECU manufacturer and the boot key
+# =======================================================================================================
+
+step phish-plant-it-user:
+  name: Phish a user of the plant IT network
+  target: plant-network
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: Plants have many users, shift work and old systems. A phished account is the usual start of an attack on a plant.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime]
+
+step pivot-from-it-to-production-network:
+  name: Move from the plant IT network into the production network
+  target: plant-network
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The networks are separate, but they share services and jump hosts. The attacker has to find the one that is open.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime]
+  preparedby: phish-plant-it-user
+  mitigatedby: plant-network-segmentation
+
+step abuse-vendor-remote-access:
+  name: Use the remote access of an equipment vendor to reach the production network
+  target: plant-network
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: Vendors keep a connection for maintenance, often with one shared account. The attacker needs the vendor's credentials.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+
+step compromise-provisioning-server:
+  name: Take over the plant provisioning server
+  target: provisioning-server
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: The server is in the production network and runs a standard operating system with a few services. It is patched on the plant's schedule, which is slow.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: pivot-from-it-to-production-network
+
+step request-certificates-through-plant-hsm:
+  name: Have the plant HSM sign certificate requests for vehicles that were not built
+  description: The server signs the requests with its credential, so the registration authority accepts them as the plant's.
+  target: provisioning-server
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: With the server the attacker uses the credential in the HSM like the real software does.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime, Nation-State / State-Sponsored]
+  preparedby: compromise-provisioning-server
+  mitigatedby: build-record-check-at-registration
+
+step deploy-ransomware-in-plant:
+  name: Encrypt the provisioning server and the stations with ransomware
+  target: provisioning-server
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: Ransomware is sold as a service and has stopped plants before. Once inside the production network it takes hours.
+  scalability: Limited Batch
+  actors: [Organized Cybercrime]
+  preparedby: pivot-from-it-to-production-network
+
+step replace-bundle-in-plant-store:
+  name: Replace the trust anchor bundle in the plant software store
+  target: trust-anchor-bundle
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: With a foothold in the production network the file is written like any other. The attacker must know which bundle the stations use.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored, Organized Cybercrime]
+  preparedby: pivot-from-it-to-production-network
+  mitigatedby: trust-anchor-bundle-signing
+
+step insider-swaps-trust-anchor-bundle:
+  name: Replace the trust anchor bundle as an employee of the plant
+  target: trust-anchor-bundle
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC2, window: WoO3, equipment: Eq0}
+  rationale: An employee with rights on the software store needs only the bundle. Changes are logged, so the window is short.
+  scalability: Limited Batch
+  actors: [Insider (Employee / Dealer / Supplier)]
+  mitigatedby: trust-anchor-bundle-signing
+
+step bribe-ecu-manufacturer-insider:
+  name: Have an employee of the ECU manufacturer fix another public key into the ECUs
+  target: ecu-manufacturer
+  potential: {time: ET3, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq1}
+  rationale: It takes months to find and win over someone with access to the programming line. Only a few people can change the key, and the change stands out in the records.
+  scalability: Limited Batch
+  actors: [Insider (Employee / Dealer / Supplier), Nation-State / State-Sponsored]
+  mitigatedby: ecu-manufacturer-attestation
+
+step intercept-and-substitute-key-on-supply-link:
+  name: Change the secure boot public key on its way to the ECU manufacturer
+  target: ecu-supply-link
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO3, equipment: Eq1}
+  rationale: The attacker needs a position on the business-to-business connection and a file that the manufacturer accepts.
+  scalability: Limited Batch
+  actors: [Nation-State / State-Sponsored]
+  mitigatedby: ecu-manufacturer-attestation
+
+step steal-boot-hsm-backup:
+  name: Take the backup of the secure boot key and the PINs
+  target: secure-boot-private-key
+  potential: {time: ET2, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq1}
+  rationale: As for the software signing key. The boot key is used rarely, so its backup is touched rarely and fewer people watch it.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier), Nation-State / State-Sponsored]
+  mitigatedby: key-backup-split-custody
+
+step collude-in-boot-ceremony:
+  name: Have two people at a boot key ceremony sign what the attacker provides
+  target: boot-key-hsm
+  potential: {time: ET3, expertise: SE1, knowledge: KoIC3, window: WoO3, equipment: Eq0}
+  rationale: Two people must agree, and a ceremony is minuted and watched. It happens a few times a year, so there are few occasions.
+  scalability: Fleet-Wide
+  actors: [Insider (Employee / Dealer / Supplier)]
+  mitigatedby: key-ceremony-controls
+
+step dump-decrypted-firmware-from-own-vehicle:
+  name: Read the decrypted images from a vehicle that the attacker owns
+  description: A vehicle has to decrypt a package to install it. The owner can read the images from the unit after that, through a debug interface or a dump of the memory.
+  target: package-store
+  potential: {time: ET2, expertise: SE3, knowledge: KoIC1, window: WoO1, equipment: Eq2}
+  rationale: It takes a debug interface or a memory dump and the skill to find the images in it. It needs a vehicle, and the images are the same for the whole line, so what one owner reads is known for all of them.
+  scalability: Fleet-Wide
+  actors: [Vehicle Owner / Authorized User, Organized Cybercrime]

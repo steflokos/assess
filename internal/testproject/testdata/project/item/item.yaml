@@ -1,0 +1,6 @@
+item test-gateway:
+  name: Test gateway
+  description: A gateway that fetches signed packages from a backend and installs them.
+  boundary: |
+    Inside: the backend and the gateway. Outside: the network between them.
+  environment: A test bench.

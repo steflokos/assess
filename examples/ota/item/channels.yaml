@@ -1,0 +1,170 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Communication links between components or interfaces, written  channel <id>:  at the top level.
+# schema.yaml lists every attribute.
+#
+# The channels are grouped by where they lie. A channel with several ends is a bus or a network that
+# any two of its ends can use. The data that travels over a channel is not written here: the flows
+# of the functions say it, and the report derives the rest.
+
+# ---- between the item and the outside --------------------------------------------------------------
+
+channel supplier-link:
+  name: Supplier link
+  description: Secure file transfer from the delivery systems of the suppliers to the intake of release management, over a site-to-site VPN. Each supplier has its own account and its own folder.
+  notes: {medium: internet VPN, protocol: SFTP, owner: Release engineering}
+  between: [supplier-delivery-system, supplier-intake-interface]
+  entrypoint: true
+
+channel operator-link:
+  name: Operator link
+  description: HTTPS from the managed workstations of the staff to the back-office portal, over the corporate network. Staff sign in with single sign-on and a hardware token.
+  notes: {medium: corporate network, protocol: HTTPS, owner: IT operations}
+  between: [operator-workstation, portal-interface]
+  entrypoint: true
+
+channel app-link:
+  name: App link
+  description: HTTPS from the owner's mobile app to the owner services, over the mobile network or Wi-Fi.
+  notes: {medium: internet, protocol: HTTPS, owner: Connectivity team}
+  between: [owner-mobile-app, owner-interface]
+  entrypoint: true
+
+channel workshop-link:
+  name: Workshop link
+  description: HTTPS from the workshop tester to the workshop services, over the workshop's own network and the internet.
+  notes: {medium: internet, protocol: HTTPS, owner: After-sales}
+  between: [workshop-tester, workshop-interface]
+  entrypoint: true
+
+channel cellular-link:
+  name: Cellular link
+  description: The control connection between the vehicle and the backend over the mobile network. Both sides authenticate with certificates in mutual TLS. Check-in, authorisations, certificate renewal and reports use it.
+  notes: {medium: radio, protocol: mutual TLS 1.3 over LTE and 5G, owner: Connectivity team}
+  between: [cellular-interface, vehicle-interface]
+  entrypoint: true
+
+channel download-link:
+  name: Download link
+  description: The package download from the content delivery network over the mobile network. The address is signed and expires, and the download can be resumed. The content is checked in the vehicle, not by the link.
+  notes: {medium: radio, protocol: HTTPS over LTE and 5G, owner: Connectivity team}
+  between: [cellular-interface, content-delivery-network]
+  entrypoint: true
+
+channel origin-link:
+  name: Origin link
+  description: The content delivery network pulls packages from the package repository when it does not have them yet.
+  notes: {medium: internet, protocol: HTTPS, owner: OTA platform team}
+  between: [content-delivery-network, origin-interface]
+  entrypoint: true
+
+channel soc-link:
+  name: Security operations link
+  description: The feed of security-relevant events that the security operations centre reads from telemetry.
+  notes: {medium: private connection, protocol: HTTPS and syslog over TLS, owner: Security operations}
+  between: [security-operations-centre, telemetry-export-interface]
+
+channel ecu-supply-link:
+  name: ECU supply link
+  description: The exchange of bootloaders, the secure boot public key and the records of made ECUs between the plant and the ECU manufacturers, over a business-to-business VPN with signed files.
+  notes: {medium: internet VPN, protocol: SFTP, owner: Purchasing and Plant IT}
+  between: [ecu-manufacturer, ecu-supply-interface]
+  entrypoint: true
+
+channel diagnostic-link:
+  name: Diagnostic link
+  description: The wired connection from the workshop tester to the diagnostic connector of the vehicle. It carries UDS over DoIP or CAN.
+  notes: {medium: wire, protocol: UDS over DoIP and CAN, owner: After-sales}
+  between: [obd-port, workshop-tester]
+  entrypoint: true
+
+# ---- the production plant ---------------------------------------------------------------------------
+
+channel plant-diagnostic-link:
+  name: Plant diagnostic link
+  description: The wired connection from an end-of-line station to the diagnostic connector of the vehicle in production mode. It carries UDS over DoIP.
+  notes: {medium: wire, protocol: UDS over DoIP, owner: Plant IT}
+  between: [eol-station, eol-diagnostic-interface]
+
+channel plant-network:
+  name: Plant network
+  description: The segmented network of the secured zone in the plant. The provisioning server, the software store and the end-of-line stations talk over it, and nothing else is connected.
+  notes: {medium: wire, protocol: HTTPS with mutual TLS, owner: Plant IT}
+  between: [provisioning-server, production-image-store, eol-station]
+
+channel plant-wan:
+  name: Plant WAN
+  description: The private connection from the plant to the backend. The provisioning server uses it to reach the registration authority and the vehicle registry.
+  notes: {medium: private WAN with a VPN, protocol: mutual TLS, owner: Plant IT}
+  between: [provisioning-server, registration-authority, vehicle-registry]
+
+channel baseline-sync-link:
+  name: Baseline sync link
+  description: The software store of the plant pulls the approved baseline packages from the package repository. It only reads.
+  notes: {medium: private WAN with a VPN, protocol: HTTPS, owner: Plant IT}
+  between: [package-repository, production-image-store]
+
+# ---- the PKI ----------------------------------------------------------------------------------------
+
+channel pki-ceremony-media:
+  name: PKI ceremony media
+  description: Removable media that carry certificate requests and certificates between the offline root and the issuing CAs, and the trust anchor bundle to the plant. Two people carry and check them, and each transfer is minuted.
+  notes: {medium: removable media, owner: PKI team}
+  between: [root-ca, software-ca, vehicle-ca, backend-ca, production-image-store]
+
+channel boot-ceremony-media:
+  name: Boot ceremony media
+  description: Removable media that carry bootloader builds to the offline boot key HSM and the signed bootloaders to the plant. Two people carry and check them.
+  notes: {medium: removable media, owner: Release engineering}
+  between: [boot-key-hsm, production-image-store]
+
+channel pki-network:
+  name: PKI network
+  description: The segmented network of the PKI. The registration authority, the issuing CAs and the revocation service talk over it, and nothing else is connected.
+  notes: {medium: wire, protocol: mutual TLS, owner: PKI team}
+  between: [registration-authority, software-ca, vehicle-ca, backend-ca, revocation-service]
+
+channel issuing-hsm-link:
+  name: Issuing HSM link
+  description: The network connection from the CA services to the issuing HSM, with one partition and one credential for each CA.
+  notes: {medium: wire, protocol: PKCS#11 over mutual TLS, owner: PKI team}
+  between: [software-ca, vehicle-ca, backend-ca, issuing-hsm]
+
+channel ra-link:
+  name: Registration link
+  description: How certificate requests reach the registration authority and how certificates return. The portal files the requests of staff, the vehicle API gateway forwards the renewal of vehicles, and the signing service and the director request their own certificates.
+  notes: {medium: wire, protocol: mutual TLS, owner: PKI team}
+  between: [registration-authority, backoffice-portal, vehicle-api-gateway, signing-service, update-director]
+
+channel crl-link:
+  name: Revocation link
+  description: How the revocation service hands the current revocation list to the vehicle API gateway and the director.
+  notes: {medium: wire, protocol: mutual TLS, owner: PKI team}
+  between: [revocation-service, vehicle-api-gateway, update-director]
+
+# ---- the OTA backend --------------------------------------------------------------------------------
+
+channel backend-network:
+  name: Backend service network
+  description: The internal network of the OTA services. The services talk over it with mutual TLS, and each API accepts only the services that need it.
+  notes: {medium: cloud network, protocol: mutual TLS, owner: OTA platform team}
+  between: [backoffice-portal, release-management, campaign-management, package-repository, vehicle-api-gateway, service-portal, telemetry-service]
+
+channel signing-network:
+  name: Signing network
+  description: The segmented network between the build pipeline and the signing service. Only the pipeline may send a signing request, and the signing service never starts a connection itself.
+  notes: {medium: cloud network, protocol: mutual TLS, owner: Release engineering}
+  between: [build-pipeline, signing-service]
+
+# ---- the vehicle ------------------------------------------------------------------------------------
+
+channel backbone-ethernet:
+  name: Vehicle backbone Ethernet
+  description: The Ethernet backbone of the vehicle. The telematics unit, the central gateway and the infotainment unit are on it, and flashing uses DoIP.
+  notes: {medium: wire, protocol: automotive Ethernet and DoIP, owner: Network team}
+  between: [tcu-backbone-interface, cgw-backbone-interface, ivi-ethernet-interface]
+
+channel powertrain-can:
+  name: Powertrain CAN
+  description: The CAN FD bus of the powertrain. The central gateway, the vehicle control unit and the battery management system are on it, and flashing uses UDS over ISO-TP.
+  notes: {medium: wire, protocol: CAN FD and UDS, owner: Network team}
+  between: [cgw-powertrain-interface, vcu-can-interface, bms-can-interface]

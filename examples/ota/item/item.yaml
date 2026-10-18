@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# The item definition (ISO/SAE 21434 clause 9.3). Exactly one item per project.
+# Its parts are described in the other files of this folder.
+item ota-system:
+  name: Over-the-air software update system
+  description: >
+    The system that brings new software into the vehicles of one vehicle line and keeps its keys and
+    certificates trustworthy. It covers the whole chain that the OEM owns: taking software from suppliers,
+    building, approving and signing it, the PKI behind the signatures, planning campaigns and distributing
+    packages, the first keys and software that a vehicle gets in the plant, and the update client in the
+    vehicle that verifies and installs.
+  notes: {domain: connectivity and software update, owner: OTA platform team, standard: UN R156 and ISO 24089}
+  boundary: |
+    Inside: the OTA backend (release management, signing, campaign management, package repository, vehicle
+    gateway, owner and workshop services, telemetry), the OEM PKI with its offline root and issuing CAs, the
+    production plant systems that provision vehicles, and the update stack in the vehicle (telematics unit,
+    central gateway, vehicle control unit, battery management system and infotainment unit).
+    Outside: the software delivery systems of suppliers, the content delivery network, the workstations of
+    staff, the owner's mobile app, the workshop tester, the factories of ECU manufacturers and the security
+    operations centre. The mobile network is only the medium of the cellular links.
+    External interfaces: the supplier intake, the staff portal, the owner and workshop services, the vehicle
+    interface of the backend, the origin of the package repository, the export of telemetry, the supply
+    interface of the plant, the cellular interface of the telematics unit, the diagnostic connector and the
+    debug ports of the controllers.
+  environment: >
+    Production vehicles in the field in many markets, connected over mobile networks and parked, charging or
+    driven. Software is produced by the OEM and by tier-1 suppliers, signed in the OEM's secured data centre
+    and installed in the vehicle with the owner's consent. New vehicles get their identity and first
+    software at the end of the assembly line. Workshops can update and recover vehicles when the over-the-air
+    path is not enough.

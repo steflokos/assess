@@ -1,0 +1,85 @@
+{{/* The parts of the report: what a placeholder of a template puts into the page. They are part of the program and are not edited; a company changes the page template instead (standard.html is the one that ships). Every part is given the page data, except "section", which is given a section. */}}
+{{define "meta"}}<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="{{.Meta.Tool}}">{{end}}
+{{define "csp"}}<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'sha256-{{.ScriptHash}}'">{{end}}
+{{define "style"}}<style>{{.CSS}}</style>{{end}}
+{{define "script"}}<script>{{.JS}}</script>{{end}}
+{{define "bar"}}<header class="bar">
+<a class="brand" href="#top">{{.Title}}</a>
+<span class="kind">Threat analysis and risk assessment</span>
+<span class="tools">
+<input id="filter" type="search" placeholder="Filter the tables   /" aria-label="Filter the rows of all tables" autocomplete="off" spellcheck="false" hidden>
+<span id="hits" class="hits" aria-live="polite"></span>
+<button id="theme" type="button" hidden>Theme</button>
+</span>
+</header>{{end}}
+{{define "toc"}}<nav class="toc" aria-label="Contents">
+<details open>
+<summary>Contents</summary>
+<ol>
+{{range .Placed}}<li><a href="#{{.ID}}"><span class="n">{{.Number}}</span>{{.Title}}</a>
+{{with .Sub}}<ol>
+{{range .}}<li><a href="#{{.ID}}"><span class="n">{{.Number}}</span>{{.Title}}{{with .Count}}<span class="c">{{.}}</span>{{end}}</a></li>
+{{end}}</ol>
+{{end}}</li>
+{{end}}</ol>
+</details>
+</nav>{{end}}
+{{define "cover"}}<header class="cover">
+{{template "cover.title" .}}
+{{template "cover.facts" .}}
+{{template "cover.stats" .}}
+{{template "cover.counts" .}}
+{{template "cover.statement" .}}
+</header>{{end}}
+{{define "cover.title"}}<p class="kicker">Threat analysis and risk assessment</p>
+<h1>{{.Title}}</h1>
+{{with .Description}}<p class="desc">{{.}}</p>{{end}}{{end}}
+{{define "cover.facts"}}{{template "facts" .Cover.Facts}}{{end}}
+{{define "cover.stats"}}<ul class="stats">
+{{range .Cover.Stats}}<li class="stat{{with .Class}} {{.}}{{end}}{{if .Levels}} wide{{end}}">{{if and .Ref (known .Ref)}}<a class="lab" href="#{{.Ref}}">{{.Label}}</a>{{else}}<span class="lab">{{.Label}}</span>{{end}}{{with .Levels}}<table class="lvls"><thead><tr><td></td>{{range .Levels}}<th scope="col"><span class="pill {{.Class}}">{{.Value}}</span></th>{{end}}</tr></thead><tbody>{{range .Rows}}<tr><th scope="row">{{.Label}}</th>{{range .Counts}}<td{{if not .}} class="zero"{{end}}>{{.}}</td>{{end}}</tr>{{end}}</tbody></table>{{else}}<span class="val">{{.Value}}</span>{{end}}{{with .Note}}<span class="note">{{.}}</span>{{end}}</li>
+{{end}}</ul>{{end}}
+{{define "cover.counts"}}<ul class="counts">
+{{range .Cover.Counts}}<li>{{if known .Ref}}<a href="#{{.Ref}}"><b>{{.Value}}</b> {{.Label}}</a>{{else}}<b>{{.Value}}</b> {{.Label}}{{end}}{{with .Note}} <span class="note">{{.}}</span>{{end}}</li>
+{{end}}</ul>{{end}}
+{{define "cover.statement"}}<p class="statement">{{.Cover.Statement}}</p>{{end}}
+{{define "footer"}}<footer class="foot">Made by {{.Meta.Tool}}{{with .Meta.Fingerprint}}. Input fingerprint <code>{{.}}</code>{{end}}.</footer>{{end}}
+{{define "section"}}<section id="{{.ID}}" class="part{{if eq .Level 2}} top{{end}}">
+{{if eq .Level 2}}<h2><span class="num">{{.Number}}</span>{{.Title}}{{with .Count}}<span class="count">{{.}}</span>{{end}}</h2>{{else}}<h3><span class="num">{{.Number}}</span>{{.Title}}{{with .Count}}<span class="count">{{.}}</span>{{end}}</h3>{{end}}
+{{with .Lead}}<p class="lead">{{.}}</p>{{end}}
+{{range .Blocks}}{{template "block" .}}{{end}}
+{{range .Sub}}{{template "section" .}}{{end}}
+</section>
+{{end}}
+{{define "block"}}{{with .Para}}<p>{{.}}</p>
+{{end}}{{with .Text}}<p class="prose">{{.}}</p>
+{{end}}{{with .Callout}}<p class="callout">{{.}}</p>
+{{end}}{{with .Facts}}{{template "facts" .}}{{end}}{{with .Table}}{{template "table" .}}{{end}}{{with .Details}}<details id="{{.ID}}"><summary>{{with .Key}}<code>{{.}}</code>{{end}}<span>{{.Summary}}</span></summary><pre>{{.Text}}</pre></details>
+{{end}}{{if .Legend}}<div class="alegend">{{attacklegend}}</div>
+{{end}}{{with .Attack}}<details id="{{.ID}}" class="attack"><summary><code>{{.Key}}</code><span>{{.Summary}}</span><span class="n">{{.Steps}} steps, {{.Controls}} controls</span></summary>
+<div class="atree">
+<input type="radio" class="vt" name="view-{{.ID}}" id="vt-{{.ID}}" checked><label for="vt-{{.ID}}">Tree</label>
+<input type="radio" class="vd" name="view-{{.ID}}" id="vd-{{.ID}}"><label for="vd-{{.ID}}">Diagram</label>
+<div class="atext">{{template "cell" .Tree}}</div>
+<div class="apic">{{attacksvg .Graph}}</div>
+</div></details>
+{{end}}{{with .Figure}}<figure class="figure"><div class="figwrap"><img src="{{.Src}}" alt="{{.Alt}}" decoding="async"></div><figcaption><span>{{.Caption}}</span><button class="zoom" type="button" hidden>Actual size</button></figcaption></figure>
+{{end}}{{end}}
+{{define "facts"}}<dl class="facts">
+{{range .}}<div><dt>{{.Label}}</dt><dd{{with .Value.Class}} class="{{.}}"{{end}}>{{template "cell" .Value}}</dd></div>
+{{end}}</dl>
+{{end}}
+{{define "table"}}{{if .Rows}}<div class="tablewrap" style="--n:{{len .Rows}};--need:{{.Need}}"><table{{if .Key}} class="keyed"{{end}}>
+{{with .Caption}}<caption>{{.}}</caption>
+{{end}}{{with .Cols}}<colgroup>{{range .}}<col style="width:{{.}}">{{end}}</colgroup>
+{{end}}<thead><tr>{{range .Head}}<th scope="col">{{.}}</th>{{end}}</tr></thead>
+<tbody>
+{{range .Rows}}<tr{{with .ID}} id="{{.}}"{{end}}{{with .Class}} class="{{.}}"{{end}}>{{range .Cells}}<td{{with .Class}} class="{{.}}"{{end}}>{{template "cell" .}}</td>{{end}}</tr>
+{{end}}</tbody>
+</table></div>
+{{else}}{{with .Caption}}<h4>{{.}}</h4>
+{{end}}<p class="empty">{{.Empty}}</p>
+{{end}}{{end}}
+{{define "text"}}{{if and .Ref (known .Ref)}}<a href="#{{.Ref}}">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}
+{{define "cell"}}{{with .Single}}{{template "text" .}}{{else}}{{range .Items}}{{if or (not .Optional) (known .Ref)}}<div{{with .Class}} class="{{.}}"{{end}}{{if .Depth}} style="--d:{{.Depth}}"{{end}}>{{with .Label}}<span class="label">{{.}}</span> {{end}}{{template "text" .}}{{with .Note}} <span class="note">{{.}}</span>{{end}}</div>{{end}}{{end}}{{end}}{{end}}

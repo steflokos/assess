@@ -1,0 +1,443 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# What goes wrong for stakeholders when an asset property is lost, written  damage <id>:  with the
+# impact rated per stakeholder. The assets come first: assess generate assets writes tara/assets.yaml.
+# schema.yaml lists every attribute.
+#
+# Each damage scenario is written for what it means once, to one vehicle or to the system. How far a
+# single attack reaches is not rated here. That is the scalability of the attack steps, and the policy
+# raises the risk value with it. So the same damage scenario serves an attack on one vehicle and an
+# attack on the fleet.
+#
+# The stakeholders that count for the risk are the road user and the OEM (policy.yaml).
+
+damage malicious-software-installed:
+  name: Software chosen by an attacker runs on a vehicle controller
+  description: An attacker gets their own software onto a controller of the vehicle, either through the update path with a trusted signature, or around it on the vehicle itself. On the vehicle control unit or the battery management system that is control of the drive, on the telematics unit it is control of the vehicle's connection.
+  compromises:
+    supplier-delivery: [Integrity]
+    release-candidate: [Integrity]
+    signing-service: [Integrity]
+    software-signing-private-key: [Confidentiality]
+    software-signing-certificate: [Authenticity]
+    secure-boot-private-key: [Confidentiality]
+    secure-boot-public-key: [Integrity]
+    update-package: [Integrity]
+    ota-client: [Integrity]
+    package-verifier: [Integrity]
+    telematics-unit: [Integrity]
+    tcu-debug-port: [Authenticity]
+    tcu-hsm: [Integrity]
+    installed-root-certificate: [Integrity]
+    lifecycle-state: [Integrity]
+    vcu-bootloader: [Integrity]
+    bms-bootloader: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Severe
+        rationale: Control of the vehicle control unit or the battery management system can stop the drive, change the torque or push the battery outside its limits
+      financial:
+        level: Major
+        rationale: Towing, repair or replacement of controllers, and the loss of use of the vehicle
+      operational:
+        level: Severe
+        rationale: The vehicle can lose its drive, its connection and its updates for good
+      privacy:
+        level: Major
+        rationale: Code in the telematics unit can read position, identity and usage data
+    oem:
+      safety:
+        level: Major
+        rationale: Liability for injuries that follow from software the OEM signed
+      financial:
+        level: Severe
+        rationale: Recall, workshop visits, legal costs and loss of type approval if it reaches many vehicles
+      operational:
+        level: Severe
+        rationale: Updates have to be stopped and the trust in the whole system rebuilt
+      privacy:
+        level: Major
+        rationale: Personal data of owners in the vehicles and in the backend is exposed
+
+damage trust-chain-broken:
+  name: The trust anchors or a signing certificate are in the hands of an attacker
+  description: The root key, a certificate for signing or the trust anchor in the vehicles can no longer be relied on. Vehicles cannot tell genuine software from an attacker's, and the OEM cannot say which vehicles to trust. A fix needs new keys in every vehicle.
+  compromises:
+    root-ca-private-key: [Confidentiality, Availability]
+    software-signing-certificate: [Authenticity]
+    registration-authority: [Integrity]
+    certificate-revocation-list: [Availability]
+    trust-anchor-bundle: [Integrity]
+    installed-root-certificate: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Moderate
+        rationale: Software that a vehicle accepts may be an attacker's, but nothing is installed until the attacker uses the position
+      financial:
+        level: Moderate
+        rationale: Vehicles have to visit a workshop to be re-keyed
+      operational:
+        level: Major
+        rationale: Updates stop until the keys are replaced, and a vehicle may refuse to update at all
+      privacy: {level: Negligible}
+    oem:
+      safety:
+        level: Major
+        rationale: The OEM cannot prove that the software in a vehicle is its own
+      financial:
+        level: Severe
+        rationale: Re-keying a fleet means a workshop campaign, and the PKI has to be rebuilt
+      operational:
+        level: Severe
+        rationale: No update can be trusted until a new root is in every vehicle
+      privacy:
+        level: Moderate
+        rationale: Vehicle identities cannot be told from forged ones until they are replaced
+
+damage fleet-cannot-be-updated:
+  name: The fleet cannot receive updates
+  description: The update path is cut for all vehicles, because the key that signs software is lost or the door that vehicles use is down. The fix for a vulnerability cannot reach the vehicles that need it, and the OEM cannot meet its duties under UN R156.
+  compromises:
+    software-signing-private-key: [Availability]
+    vehicle-api-gateway: [Availability]
+  impact:
+    roaduser:
+      safety:
+        level: Moderate
+        rationale: A known flaw stays open for longer than planned
+      financial: {level: Negligible}
+      operational:
+        level: Moderate
+        rationale: Functions that wait for an update stay missing
+      privacy: {level: Negligible}
+    oem:
+      safety:
+        level: Moderate
+        rationale: Vehicles stay exposed to a flaw that the OEM has already fixed
+      financial:
+        level: Major
+        rationale: Missed deadlines for fixes put the type approval and the software update management system at risk
+      operational:
+        level: Major
+        rationale: The release process runs with no way to deliver
+      privacy: {level: Negligible}
+
+damage update-delayed:
+  name: The update of a vehicle is delayed or blocked for a time
+  description: One vehicle, or the vehicles in reach of a radio, cannot fetch an update for a while. The update comes later, when the connection is back or in a workshop.
+  compromises:
+    download-link: [Availability]
+    cellular-interface: [Authenticity]
+  impact:
+    roaduser:
+      safety:
+        level: Moderate
+        rationale: A known flaw stays open until the update arrives
+      financial: {level: Negligible}
+      operational:
+        level: Moderate
+        rationale: A function that waits for the update stays missing
+      privacy: {level: Negligible}
+    oem:
+      safety: {level: Negligible}
+      financial: {level: Negligible}
+      operational:
+        level: Moderate
+        rationale: Campaigns take longer and more vehicles need the workshop path
+      privacy: {level: Negligible}
+
+damage vehicle-bricked:
+  name: A controller is left without valid software
+  description: The application of a controller is erased or replaced by software that does not start. The vehicle cannot start, drive or connect until a workshop recovers it.
+  compromises:
+    backoffice-portal: [Authenticity]
+    update-director: [Integrity]
+    campaign-definition: [Integrity]
+    central-gateway: [Integrity]
+    update-orchestrator: [Integrity]
+    powertrain-can: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Major
+        rationale: A vehicle that loses its drive on the road, or cannot be moved from a dangerous place
+      financial:
+        level: Major
+        rationale: Towing and recovery, and the cost of a vehicle that stands still
+      operational:
+        level: Severe
+        rationale: The vehicle cannot be used at all
+      privacy: {level: Negligible}
+    oem:
+      safety:
+        level: Moderate
+        rationale: Complaints and investigations after incidents
+      financial:
+        level: Major
+        rationale: Recovery visits, replacement controllers and goodwill
+      operational:
+        level: Major
+        rationale: Workshops cannot recover many vehicles at the same time
+      privacy: {level: Negligible}
+
+damage update-during-driving:
+  name: An update or a restart of a controller starts while the vehicle drives
+  description: The conditions for an update are met on paper but not in reality, and a controller goes into its bootloader or restarts on the road.
+  compromises:
+    update-orchestrator: [Integrity]
+    powertrain-can: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Severe
+        rationale: The drive, the steering assist or the brakes can drop out at speed
+      financial:
+        level: Moderate
+        rationale: Damage and repair after an incident
+      operational:
+        level: Major
+        rationale: The vehicle stops and has to be recovered
+      privacy: {level: Negligible}
+    oem:
+      safety:
+        level: Major
+        rationale: Liability for an update that was started while the vehicle drove
+      financial:
+        level: Major
+        rationale: Claims, recall and investigation
+      operational:
+        level: Major
+        rationale: Updates are suspended until the cause is shown to be removed
+      privacy: {level: Negligible}
+
+damage wrong-software-installed:
+  name: Valid but unintended software is installed
+  description: A vehicle gets a genuine, signed package that was not meant for it, an old version with a known flaw, or one for another hardware variant. Nothing is forged, but the result does not work or is open to attack.
+  compromises:
+    authorisation-signing-private-key: [Confidentiality]
+    approval-record: [Integrity]
+    backoffice-portal: [Authenticity]
+    update-director: [Integrity]
+    campaign-definition: [Integrity]
+    vehicle-configuration: [Integrity]
+    vcu-rollback-counter: [Integrity]
+    secure-time: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Major
+        rationale: A controller with the wrong calibration or an old flaw
+      financial:
+        level: Moderate
+        rationale: Workshop visits to repair it
+      operational:
+        level: Major
+        rationale: Functions fail or are switched off
+      privacy: {level: Negligible}
+    oem:
+      safety:
+        level: Moderate
+        rationale: Reports of malfunctions
+      financial:
+        level: Major
+        rationale: Recovery of the affected vehicles
+      operational:
+        level: Major
+        rationale: The roll-out is stopped and checked
+      privacy: {level: Negligible}
+
+damage fleet-data-disclosed:
+  name: Vehicle identities and inventories of owners are disclosed
+  description: The VINs of vehicles, the versions of their software and what the backend knows of their owners and their connections reach someone who should not have them.
+  compromises:
+    vehicle-configuration: [Confidentiality]
+    vehicle-api-gateway: [Authenticity]
+    backend-tls-private-key: [Confidentiality]
+    ota-client: [Integrity]
+  impact:
+    roaduser:
+      safety: {level: Negligible}
+      financial:
+        level: Moderate
+        rationale: Targeted theft and fraud with the data
+      operational: {level: Negligible}
+      privacy:
+        level: Major
+        rationale: The vehicle and its owner can be tracked and profiled
+    oem:
+      safety: {level: Negligible}
+      financial:
+        level: Major
+        rationale: Fines for a breach of data protection law and the cost of informing owners
+      operational:
+        level: Moderate
+        rationale: Incident handling and a change of the interfaces
+      privacy:
+        level: Major
+        rationale: Personal data of many owners is exposed
+
+damage software-ip-lost:
+  name: Software and the knowledge of how it is built is lost to others
+  description: The images of the OEM and of its suppliers are copied and read. They reveal how the update system works and where it can be attacked.
+  compromises:
+    update-package: [Confidentiality]
+    workshop-interface: [Authenticity]
+    tcu-debug-port: [Authenticity]
+  impact:
+    roaduser:
+      safety:
+        level: Moderate
+        rationale: Flaws found in the software can be used against vehicles
+      financial: {level: Negligible}
+      operational: {level: Negligible}
+      privacy: {level: Negligible}
+    oem:
+      safety: {level: Negligible}
+      financial:
+        level: Moderate
+        rationale: Loss of part of the value of the software and of what suppliers have contributed, and claims from suppliers
+      operational:
+        level: Moderate
+        rationale: Flaws that outsiders have found must be fixed faster than planned
+      privacy: {level: Negligible}
+
+damage vehicle-identity-forged:
+  name: A vehicle identity is forged or copied
+  description: The backend accepts a vehicle that does not exist, or two vehicles with the same identity. It sends them updates and takes their reports, and it cannot tell which is the real one.
+  compromises:
+    vehicle-private-key: [Confidentiality]
+    vehicle-ca: [Integrity]
+    registration-authority: [Integrity]
+    provisioning-server: [Integrity]
+    tcu-hsm: [Integrity]
+  impact:
+    roaduser:
+      safety: {level: Negligible}
+      financial: {level: Negligible}
+      operational:
+        level: Moderate
+        rationale: Updates and notices meant for the vehicle go to a copy
+      privacy:
+        level: Moderate
+        rationale: The data of a real vehicle is answered to an impostor
+    oem:
+      safety: {level: Negligible}
+      financial:
+        level: Moderate
+        rationale: Fleet figures are wrong, and cost of tracing the false identities
+      operational:
+        level: Moderate
+        rationale: Campaigns and statistics cannot be trusted until the identities are cleaned up
+      privacy:
+        level: Moderate
+        rationale: Owner data may be given to the wrong party
+
+damage production-halted:
+  name: Vehicles cannot be provisioned and production stops
+  description: The line cannot give vehicles their certificates, so vehicles that are otherwise built cannot leave the plant.
+  compromises:
+    provisioning-server: [Availability]
+  impact:
+    roaduser:
+      safety: {level: Negligible}
+      financial: {level: Negligible}
+      operational:
+        level: Moderate
+        rationale: Deliveries are late
+      privacy: {level: Negligible}
+    oem:
+      safety: {level: Negligible}
+      financial:
+        level: Severe
+        rationale: A line that stands costs the OEM revenue every hour
+      operational:
+        level: Severe
+        rationale: The plant cannot deliver, and the schedule of dealers and suppliers breaks
+      privacy: {level: Negligible}
+
+damage vehicles-built-untrusted:
+  name: Vehicles leave the plant with the wrong or an attacker's keys, certificates or trust anchors
+  description: The vehicle starts life trusting something it should not. The fault is in every vehicle of a batch and cannot be seen from outside.
+  compromises:
+    provisioning-server: [Integrity]
+    trust-anchor-bundle: [Integrity]
+    secure-boot-public-key: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Major
+        rationale: A vehicle that accepts the attacker's software can later be taken over
+      financial:
+        level: Moderate
+        rationale: A workshop visit to correct the keys
+      operational:
+        level: Major
+        rationale: The vehicle cannot be updated until it is re-keyed
+      privacy:
+        level: Moderate
+        rationale: A vehicle with a false identity or trust anchor can be impersonated to the backend
+    oem:
+      safety:
+        level: Moderate
+        rationale: Vehicles that may not be what they claim
+      financial:
+        level: Severe
+        rationale: A batch has to be recalled and re-keyed one by one
+      operational:
+        level: Major
+        rationale: Delivery of the batch stops
+      privacy:
+        level: Moderate
+        rationale: Owner data may be exposed through the false identities
+
+damage evidence-lost:
+  name: Approvals, consent and audit records are lost or can be disputed
+  description: The OEM cannot show who approved a release or a campaign, or when. That is the evidence that UN R156 and the incident response need.
+  compromises:
+    audit-log: [Integrity, Non Repudiation]
+    approval-record: [Integrity]
+  impact:
+    roaduser:
+      safety: {level: Negligible}
+      financial:
+        level: Moderate
+        rationale: A dispute after a faulty update cannot be settled
+      operational: {level: Negligible}
+      privacy: {level: Negligible}
+    oem:
+      safety: {level: Negligible}
+      financial:
+        level: Major
+        rationale: A failed audit can cost the type approval, and disputes cannot be defended
+      operational:
+        level: Moderate
+        rationale: An incident cannot be traced to its cause
+      privacy: {level: Negligible}
+
+damage consent-bypassed:
+  name: An update is installed that the driver did not agree to
+  description: The decision of the driver is forged, so an update starts at a time or with a content that the driver did not accept.
+  compromises:
+    consent-ui: [Integrity]
+  impact:
+    roaduser:
+      safety:
+        level: Moderate
+        rationale: A function changes or is switched off without warning
+      financial: {level: Negligible}
+      operational:
+        level: Moderate
+        rationale: The vehicle is unavailable at a time the driver chose not to allow
+      privacy:
+        level: Moderate
+        rationale: The owner has no say over what is installed in their vehicle
+    oem:
+      safety: {level: Negligible}
+      financial:
+        level: Moderate
+        rationale: Complaints and a breach of the information duties of UN R156
+      operational: {level: Negligible}
+      privacy:
+        level: Moderate
+        rationale: Consent as a legal ground is not given

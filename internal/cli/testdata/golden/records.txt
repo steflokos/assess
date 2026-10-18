@@ -1,0 +1,14 @@
+asset 42
+assumption 6
+channel 24
+component 61
+control 52
+damage 14
+data 69
+function 21
+interface 19
+item 1
+risk 49
+rule 7
+step 112
+threat 49

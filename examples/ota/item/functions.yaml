@@ -1,0 +1,722 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# What the item does, written  function <id>:  A function can contain sub-functions and describe its
+# flow: the steps it takes through the system. A step that has  over  is at the sender, and the next
+# step is at the receiver. A step that uses a key lists the key and has no  over : the key stays where
+# it is. schema.yaml lists every attribute.
+#
+# The functions follow the life of the system:
+#   key-ceremony              the trust anchors are made
+#   ecu-production            the root of trust and the first software reach the ECUs
+#   vehicle-enrollment         a vehicle gets its identity at the end of the line
+#   software-release          software becomes a signed package
+#   campaign-planning         a package is planned for vehicles and approved
+#   ota-update                a vehicle is updated over the air (six sub-functions)
+#   owner-scheduling          the owner picks a time
+#   workshop-recovery         a workshop updates a vehicle that cannot update over the air
+#   certificate-lifecycle     certificates are renewed and revoked
+
+# ---- the trust anchors ------------------------------------------------------------------------------
+
+function key-ceremony:
+  name: Key ceremony
+  description: How the trust anchors are made. The offline root certifies an issuing CA, and the certificates reach the plant for the vehicles. The same steps repeat for the vehicle CA and the backend TLS CA, and again when a certificate expires.
+  notes: {owner: PKI team, policy: PKI-CPS-001}
+  flow:
+    - step: The software CA asks the issuing HSM to generate its key pair in its own partition
+      at: software-ca
+      over: issuing-hsm-link
+    - step: The HSM generates the key pair and returns only the public key
+      at: issuing-hsm
+      data: software-ca-private-key
+    - step: The CA writes a certificate request for the root onto removable media, and two people carry it to the safe room
+      at: software-ca
+      data: certificate-request
+      over: pki-ceremony-media
+    - step: The custodians activate the root HSM with their cards, and it signs the certificate of the issuing CA
+      at: [root-ca, root-ca-hsm]
+      data: [ceremony-activation-cards, root-ca-private-key, certificate-request]
+    - step: The root returns the certificate of the CA, with its own certificate, on removable media
+      at: root-ca
+      data: [software-ca-certificate, root-ca-certificate]
+      over: pki-ceremony-media
+    - step: The CA installs its certificate, and the PKI team checks the chain
+      at: software-ca
+      data: [software-ca-certificate, root-ca-certificate]
+    - step: The PKI team approves a new trust anchor bundle with the root and the issuing CA certificates, and carries it to the plant
+      at: root-ca
+      data: [root-ca-certificate, software-ca-certificate, vehicle-ca-certificate, backend-ca-certificate]
+      over: pki-ceremony-media
+    - step: The plant store keeps the bundle for the end-of-line stations
+      at: production-image-store
+      data: trust-anchor-bundle
+
+# ---- production ---------------------------------------------------------------------------------------
+
+function ecu-production:
+  name: ECU production
+  description: How the root of trust and the first software reach the ECUs. The OEM signs the bootloader, the ECU manufacturer fixes the secure boot key in the hardware and programs the bootloader, and the plant flashes the baseline at the end of the line. The bootloaders check the baseline in the same way as an update.
+  notes: {owner: Plant IT and Release engineering}
+  flow:
+    - step: In a ceremony two people have the offline HSM sign a bootloader build with the secure boot key
+      at: boot-key-hsm
+      data: secure-boot-private-key
+    - step: The signed bootloader and the public key are carried to the plant on removable media
+      at: [boot-key-hsm, signing-service]
+      data: [bootloader-package, secure-boot-public-key]
+      over: boot-ceremony-media
+    - step: The plant store keeps the signed bootloader with the public key, and hands them to the provisioning server
+      at: production-image-store
+      data: [bootloader-package, secure-boot-public-key]
+      over: plant-network
+    - step: The provisioning server sends the bootloader and the public key to the ECU manufacturer
+      at: provisioning-server
+      data: [bootloader-package, secure-boot-public-key]
+      over: ecu-supply-link
+    - step: The manufacturer fixes the public key into the hardware of each ECU, programs the bootloader, and sends the record of the ECUs it made
+      at: ecu-manufacturer
+      data: ecu-manufacturing-record
+      over: ecu-supply-link
+    - step: The provisioning server checks the record against its order and keeps it
+      at: [provisioning-server, ecu-supply-interface]
+      data: ecu-manufacturing-record
+    - step: The package repository publishes an approved baseline for the line
+      at: package-repository
+      data: update-package
+      over: baseline-sync-link
+    - step: The plant store checks the signature of the baseline and keeps it for the line
+      at: production-image-store
+      data: [update-package, production-software-baseline]
+      over: plant-network
+    - step: The end-of-line station flashes the baseline to the ECUs through the diagnostic connector, and the bootloaders check it as they do for an update
+      at: eol-station
+      data: production-software-baseline
+      over: plant-diagnostic-link
+    - step: The gateway accepts the programming session because the vehicle is in the production state
+      at: [central-gateway, diagnostic-access-control]
+      data: [diagnostic-access-policy, lifecycle-state]
+
+function vehicle-enrollment:
+  name: Vehicle enrollment
+  description: How a vehicle gets its identity at the end of the line. The vehicle makes its own key pair, the plant has a certificate issued for it, and the vehicle receives the certificate and the trust anchors. The plant then closes production mode.
+  notes: {owner: Plant IT with the PKI team}
+  flow:
+    - step: The end-of-line station opens a production session and asks the telematics unit to make its key pair
+      at: eol-station
+      over: plant-diagnostic-link
+    - step: The gateway checks that the vehicle is in the production state
+      at: [central-gateway, diagnostic-access-control]
+      data: [diagnostic-access-policy, lifecycle-state]
+    - step: The gateway routes the session to the telematics unit
+      at: [central-gateway, eol-diagnostic-interface]
+      over: backbone-ethernet
+    - step: The secure element generates the key pair inside, and the key never leaves it
+      at: [tcu-hsm, tcu-backbone-interface]
+      data: vehicle-private-key
+    - step: The telematics unit returns a certificate request that is signed with the new key
+      at: [tcu-hsm, tcu-backbone-interface]
+      data: certificate-request
+      over: backbone-ethernet
+    - step: The gateway sends the request to the station
+      at: [central-gateway, cgw-backbone-interface]
+      data: certificate-request
+      over: plant-diagnostic-link
+    - step: The station passes the request to the provisioning server
+      at: eol-station
+      data: certificate-request
+      over: plant-network
+    - step: The plant HSM authenticates the request with the key of the plant
+      at: [provisioning-server, plant-hsm]
+      data: [plant-client-private-key, plant-client-certificate]
+    - step: The provisioning server sends the request to the registration authority over the private connection
+      at: provisioning-server
+      data: certificate-request
+      over: plant-wan
+    - step: The registration authority checks the plant credential, and that a vehicle with this VIN was built and has no certificate yet
+      at: registration-authority
+      data: [certificate-request, plant-client-certificate]
+    - step: The registration authority passes the approved request to the vehicle CA
+      at: registration-authority
+      data: certificate-request
+      over: pki-network
+    - step: The vehicle CA asks the issuing HSM to sign the certificate
+      at: vehicle-ca
+      data: certificate-request
+      over: issuing-hsm-link
+    - step: The HSM signs with the key of the vehicle CA and returns the signature
+      at: issuing-hsm
+      data: vehicle-ca-private-key
+    - step: The vehicle CA issues the vehicle certificate
+      at: vehicle-ca
+      data: vehicle-certificate
+      over: pki-network
+    - step: The registration authority returns the certificate to the plant
+      at: registration-authority
+      data: vehicle-certificate
+      over: plant-wan
+    - step: The provisioning server records the vehicle in the build record and gives the certificate to the station
+      at: provisioning-server
+      data: [vehicle-certificate, vehicle-build-record]
+      over: plant-network
+    - step: The plant store gives the station the trust anchor bundle
+      at: production-image-store
+      data: trust-anchor-bundle
+      over: plant-network
+    - step: The station writes the certificate and the trust anchors to the vehicle
+      at: eol-station
+      data: [vehicle-certificate, trust-anchor-bundle]
+      over: plant-diagnostic-link
+    - step: The gateway routes them to the telematics unit
+      at: [central-gateway, eol-diagnostic-interface]
+      data: [vehicle-certificate, trust-anchor-bundle]
+      over: backbone-ethernet
+    - step: The secure element stores the certificate and the root and intermediate certificates as write-protected objects
+      at: [tcu-hsm, tcu-backbone-interface]
+      data: [vehicle-certificate, installed-root-certificate, installed-intermediate-certificates]
+    - step: The provisioning server sends the build record to the vehicle registry
+      at: provisioning-server
+      data: vehicle-build-record
+      over: plant-wan
+    - step: The registry creates the record of the vehicle with its identity and its first configuration
+      at: vehicle-registry
+      data: [vehicle-identity-record, vehicle-configuration]
+    - step: The station sets the lifecycle state to delivered, which closes production mode for good
+      at: [central-gateway, diagnostic-access-control]
+      data: lifecycle-state
+
+# ---- release and campaigns -----------------------------------------------------------------------------
+
+function software-release:
+  name: Software release and signing
+  description: How software gets from a supplier to a signed package in the repository. Nothing is signed without an approved release, and the build pipeline never holds a key.
+  notes: {owner: Release engineering}
+  flow:
+    - step: A supplier delivers software with release notes, test evidence and the list of components
+      at: supplier-delivery-system
+      data: supplier-delivery
+      over: supplier-link
+    - step: Release management checks the account and the delivery, and stores it
+      at: [release-management, supplier-intake-interface]
+      data: supplier-delivery
+    - step: The artifact store keeps the delivery with its bill of materials
+      at: artifact-store
+      data: [supplier-delivery, software-bill-of-materials]
+    - step: The pipeline builds and integrates the images, runs the tests and the scans, and makes a release candidate
+      at: build-pipeline
+      data: release-candidate
+    - step: A release manager approves the candidate in the portal
+      at: operator-workstation
+      data: approval-record
+      over: operator-link
+    - step: The portal records the approval, with a second approver for sensitive releases, and tells release management
+      at: backoffice-portal
+      data: approval-record
+      over: backend-network
+    - step: The pipeline sends the approved candidate to the signing service with a request that names the approval
+      at: build-pipeline
+      data: release-candidate
+      over: signing-network
+    - step: The signing service checks the request against the approved release, and the HSM signs the images and the manifest inside
+      at: [signing-service, signing-hsm]
+      data: software-signing-private-key
+    - step: The signing service returns the signatures with the certificate chain
+      at: signing-service
+      data: [signature-bundle, software-signing-certificate, software-ca-certificate]
+      over: signing-network
+    - step: The pipeline assembles the package from the manifest, the images, the signatures and the installation plan
+      at: build-pipeline
+      data: update-package
+      over: backend-network
+    - step: The repository stores the package, which cannot be changed afterwards
+      at: package-repository
+      data: update-package
+    - step: Telemetry writes the release, the approvals and the signing to the audit log
+      at: telemetry-service
+      data: audit-log
+
+function campaign-planning:
+  name: Campaign planning and approval
+  description: How a package is planned for vehicles. A campaign manager defines it, the planner checks it against the registry, and a second person approves it before the director authorises any vehicle.
+  notes: {owner: OTA platform team}
+  flow:
+    - step: A campaign manager defines the campaign with the package, the vehicle groups, the waves, the conditions and the stop criteria
+      at: operator-workstation
+      data: campaign-definition
+      over: operator-link
+    - step: The portal checks the role of the user and passes the definition on
+      at: backoffice-portal
+      data: campaign-definition
+      over: backend-network
+    - step: The planner checks the campaign against the registry for hardware variants, installed versions and dependencies
+      at: [campaign-planner, vehicle-registry]
+      data: [campaign-definition, vehicle-configuration]
+    - step: The planner asks the portal for the second approval
+      at: campaign-planner
+      data: campaign-definition
+      over: backend-network
+    - step: A second approver approves the campaign, and the portal records the approval
+      at: backoffice-portal
+      data: approval-record
+      over: backend-network
+    - step: The planner activates the campaign, and from now on the director may authorise vehicles for it
+      at: campaign-planner
+      data: campaign-definition
+      over: backend-network
+    - step: Telemetry writes the campaign and its approvals to the audit log
+      at: telemetry-service
+      data: audit-log
+
+# ---- the update in the vehicle -------------------------------------------------------------------------
+
+function ota-update:
+  name: Over-the-air update
+  description: How a vehicle gets and installs new software. The vehicle asks, the backend authorises, the package comes from the content delivery network, the vehicle verifies everything itself, the driver decides, the ECUs install through their bootloaders, and the result is reported.
+  notes: {owner: OTA platform team with Vehicle software, regulation: UN R156}
+
+  function update-discovery:
+    name: Update discovery
+    description: How the vehicle finds out that there is an update for it, and is authorised to install it.
+    flow:
+      - step: At ignition or on its schedule the orchestrator hands its inventory of ECUs and versions to the OTA client
+        at: update-orchestrator
+        data: vehicle-inventory
+      - step: The secure element signs the TLS handshake with the vehicle key
+        at: [ota-client, tcu-hsm]
+        data: vehicle-private-key
+      - step: The client opens a mutual TLS session and sends the check-in with its certificate and its inventory
+        at: [ota-client, cellular-interface]
+        data: [vehicle-certificate, vehicle-inventory]
+        over: cellular-link
+      - step: The key store of the gateway signs the TLS handshake of the gateway
+        at: [vehicle-api-gateway, gateway-key-store]
+        data: backend-tls-private-key
+      - step: The gateway checks the vehicle certificate against the certificate of the vehicle CA and the revocation list
+        at: vehicle-api-gateway
+        data: [vehicle-ca-certificate, certificate-revocation-list]
+      - step: The gateway passes the check-in on with the identity of the vehicle
+        at: vehicle-api-gateway
+        data: [vehicle-certificate, vehicle-inventory]
+        over: backend-network
+      - step: The director looks up the vehicle and the active campaigns, and decides what the vehicle may install now
+        at: update-director
+        data: [vehicle-configuration, vehicle-identity-record, campaign-definition, vehicle-inventory]
+      - step: The director HSM signs an install authorisation
+        at: [update-director, director-hsm]
+        data: authorisation-signing-private-key
+      - step: The director returns the authorisation with the certificate of the signing key and the current revocation list
+        at: update-director
+        data: [install-authorisation, authorisation-signing-certificate, certificate-revocation-list]
+        over: backend-network
+      - step: The gateway returns the answer in the same TLS session
+        at: [vehicle-api-gateway, vehicle-interface]
+        data: [install-authorisation, authorisation-signing-certificate, certificate-revocation-list]
+        over: cellular-link
+      - step: The client receives the answer and hands it to the verifier
+        at: [ota-client, cellular-interface]
+        data: [install-authorisation, authorisation-signing-certificate, certificate-revocation-list]
+      - step: The secure element sets its secure time from the signed time stamp in the answer
+        at: tcu-hsm
+        data: secure-time
+
+  function package-download:
+    name: Package download
+    description: How the package gets to the vehicle. The content delivery network serves it and is not trusted, because the vehicle checks the content afterwards.
+    flow:
+      - step: The client asks the content delivery network for the package, with the signed and time-limited address from the authorisation
+        at: [ota-client, cellular-interface]
+        data: install-authorisation
+        over: download-link
+      - step: If the network does not have the package yet, it asks the package repository
+        at: content-delivery-network
+        over: origin-link
+      - step: The repository checks the signed address and returns the package
+        at: [package-repository, origin-interface]
+        data: update-package
+        over: origin-link
+      - step: The network keeps a copy and sends the package to the vehicle in ranges
+        at: content-delivery-network
+        data: update-package
+        over: download-link
+      - step: The client receives the package, resumes after an interruption and hands it to the package store
+        at: [ota-client, cellular-interface]
+        data: update-package
+      - step: The package store keeps it as the staged package
+        at: package-store
+        data: staged-package
+
+  function package-verification:
+    name: Package verification
+    description: How the vehicle decides on its own that an authorisation and a package are genuine. Nothing the network said is believed until these checks have passed.
+    flow:
+      - step: The verifier checks the authorisation, with its signature chain up to the installed root, its validity and its time window against the secure time, the vehicle identity, and the revocation list
+        at: [package-verifier, tcu-hsm]
+        data: [install-authorisation, authorisation-signing-certificate, installed-root-certificate, installed-intermediate-certificates, certificate-revocation-list, secure-time]
+      - step: The verifier checks the signature chain of the package against the same root, the versions in the manifest against the rollback counters, and the hash of every image
+        at: [package-verifier, tcu-hsm]
+        data: [staged-package, package-manifest, installed-root-certificate, installed-intermediate-certificates, rollback-counters, secure-time]
+      - step: A package that fails a check is deleted and the reason is logged, and an accepted one is released for installation
+        at: package-verifier
+        data: update-log
+      - step: The orchestrator takes over the accepted package and writes the update state
+        at: update-orchestrator
+        data: [staged-package, update-state]
+
+  function update-consent:
+    name: Update consent
+    description: How the vehicle makes sure the update may start now, and that the driver agrees.
+    flow:
+      - step: The orchestrator checks the conditions of the vehicle, such as parked, enough battery, no fault and no other update
+        at: update-orchestrator
+        data: update-state
+      - step: The orchestrator asks the infotainment unit to show the update to the driver
+        at: [update-orchestrator, tcu-backbone-interface]
+        data: update-state
+        over: backbone-ethernet
+      - step: The driver sees what changes and how long it takes, and chooses to install now, later or not at all
+        at: [consent-ui, ivi-ethernet-interface]
+        data: consent-decision
+        over: backbone-ethernet
+      - step: The orchestrator takes the decision, and ends or postpones the update when the driver does not agree
+        at: [update-orchestrator, tcu-backbone-interface]
+        data: [consent-decision, update-state]
+
+  function update-installation:
+    name: Update installation
+    description: How the ECUs install what they are given. The orchestrator takes them in the order of the installation plan, and each ECU checks again with its own trust anchor before it writes.
+    flow:
+      - step: The orchestrator takes the ECUs in the order of the installation plan
+        at: update-orchestrator
+        data: [staged-package, installation-plan, update-state]
+
+    function controller-flashing:
+      name: Flashing a controller
+      description: How a controller with a bootloader is flashed through UDS. It is shown for the vehicle control unit. The battery management system follows the same steps, but only when the vehicle is parked and not charging.
+      flow:
+        - step: The orchestrator opens a programming session towards the vehicle control unit and sends the flash driver and the image
+          at: [update-orchestrator, tcu-backbone-interface]
+          data: [flash-driver-image, firmware-image]
+          over: backbone-ethernet
+        - step: The gateway checks who is asking, for which ECU and in which vehicle state, and allows only the orchestrator to program
+          at: [central-gateway, diagnostic-access-control]
+          data: [diagnostic-access-policy, lifecycle-state]
+        - step: The gateway routes the session to the powertrain bus
+          at: [central-gateway, cgw-backbone-interface]
+          data: [flash-driver-image, firmware-image]
+          over: powertrain-can
+        - step: The bootloader loads the flash driver into RAM only after it has checked its signature against the trust anchor
+          at: [vcu-bootloader, vcu-can-interface]
+          data: [flash-driver-image, vcu-trust-anchor]
+        - step: The bootloader erases the application, receives the image in blocks, writes it, and checks the signature and the version against the rollback counter before it marks the image valid
+          at: vcu-bootloader
+          data: [firmware-image, vcu-trust-anchor, vcu-rollback-counter]
+        - step: The new application starts, and the bootloader raises the rollback counter
+          at: [vcu-bootloader, vcu-application]
+          data: [vcu-application-image, vcu-rollback-counter]
+        - step: The bootloader reports the result on the powertrain bus
+          at: [vcu-bootloader, vcu-can-interface]
+          over: powertrain-can
+        - step: The gateway passes the result on to the telematics unit
+          at: [central-gateway, cgw-powertrain-interface]
+          over: backbone-ethernet
+        - step: The orchestrator records the result and goes on with the next ECU
+          at: [update-orchestrator, tcu-backbone-interface]
+          data: update-state
+        - step: For the battery management system the orchestrator first checks that the vehicle is parked and not charging, and then sends the same flash driver and image
+          at: [update-orchestrator, tcu-backbone-interface]
+          data: [flash-driver-image, firmware-image]
+          over: backbone-ethernet
+        - step: The gateway applies the rules for the battery management system and routes the session
+          at: [central-gateway, diagnostic-access-control, cgw-backbone-interface]
+          data: [flash-driver-image, firmware-image]
+          over: powertrain-can
+        - step: The bootloader of the BMS checks the flash driver and the image against its trust anchor, and refuses an image that does not fit the safety variant of the hardware
+          at: [bms-bootloader, bms-can-interface]
+          data: [flash-driver-image, firmware-image, bms-trust-anchor]
+        - step: The new BMS application starts
+          at: bms-application
+          data: bms-application-image
+
+    function slot-update:
+      name: Updating with two slots
+      description: How a controller with two system slots installs, shown for the infotainment unit and then for the telematics unit itself. The new image goes into the inactive slot and becomes active only after the bootloader has checked it.
+      flow:
+        - step: The orchestrator sends the system image to the infotainment unit
+          at: [update-orchestrator, tcu-backbone-interface]
+          data: system-image
+          over: backbone-ethernet
+        - step: The updater writes the image into the inactive slot, and checks its hash and signature against the trust anchor
+          at: [ivi-updater, ivi-ethernet-interface]
+          data: [system-image, ivi-inactive-slot, ivi-trust-anchor]
+        - step: After a restart the bootloader checks the new slot, switches to it, and falls back if the new system does not confirm in time
+          at: ivi-bootloader
+          data: [ivi-inactive-slot, ivi-active-slot, ivi-trust-anchor]
+        - step: The new system confirms after a successful start
+          at: ivi-system
+          data: ivi-active-slot
+        - step: The telematics unit writes its own new system image into its inactive slot
+          at: tcu-platform
+          data: [system-image, tcu-inactive-slot]
+        - step: After the restart its bootloader checks the new slot against the trust anchor, switches to it, and falls back if it does not confirm
+          at: tcu-bootloader
+          data: [tcu-inactive-slot, tcu-active-slot, tcu-trust-anchor]
+
+  function update-reporting:
+    name: Update reporting
+    description: How the result is reported and watched. The vehicle signs its report, and telemetry passes security-relevant events on.
+    flow:
+      - step: The orchestrator collects the result of every ECU and writes the update state and the log
+        at: update-orchestrator
+        data: update-state
+      - step: The secure element signs the update report with the vehicle key
+        at: [ota-client, tcu-hsm]
+        data: vehicle-private-key
+      - step: The client sends the signed report with the log
+        at: [ota-client, cellular-interface]
+        data: [update-report, update-log]
+        over: cellular-link
+      - step: The gateway checks the signature and passes the report on
+        at: vehicle-api-gateway
+        data: update-report
+        over: backend-network
+      - step: Telemetry stores the report and the log, and writes the audit log
+        at: telemetry-service
+        data: [update-report, audit-log]
+        over: backend-network
+      - step: The registry records the new versions of the vehicle
+        at: vehicle-registry
+        data: vehicle-configuration
+      - step: Telemetry exports security-relevant events, such as a failed verification or a rollback
+        at: telemetry-service
+        data: update-report
+        over: soc-link
+      - step: The security operations centre reviews the events and opens an incident when needed
+        at: security-operations-centre
+
+function owner-scheduling:
+  name: Owner scheduling
+  description: How the owner sees an update in the app and picks a time. The consent is kept as evidence, and the director takes it into account.
+  notes: {owner: Connectivity team}
+  flow:
+    - step: The owner sees the update in the app and chooses a time to install it
+      at: owner-mobile-app
+      data: consent-record
+      over: app-link
+    - step: The owner services check the account and the vehicle, and pass the decision on
+      at: [service-portal, owner-interface]
+      data: consent-record
+      over: backend-network
+    - step: The registry stores the consent and the chosen time with the vehicle
+      at: vehicle-registry
+      data: [consent-record, vehicle-configuration]
+
+function workshop-recovery:
+  name: Workshop recovery
+  description: How a workshop updates or recovers a vehicle that cannot update over the air. The workshop gets an authorised package for the VIN, and the vehicle checks it as it checks one that came over the air.
+  notes: {owner: After-sales}
+  flow:
+    - step: The gateway authenticates the tester against the access policy
+      at: [central-gateway, diagnostic-access-control]
+      data: diagnostic-access-policy
+    - step: The gateway returns the inventory of the vehicle, which it takes from the orchestrator
+      at: [central-gateway, obd-port]
+      data: vehicle-inventory
+      over: diagnostic-link
+    - step: The tester asks the workshop services for a package for this vehicle
+      at: workshop-tester
+      data: vehicle-inventory
+      over: workshop-link
+    - step: The workshop services check the workshop and the tester, and ask the director for an authorisation
+      at: [service-portal, workshop-interface]
+      data: vehicle-inventory
+      over: backend-network
+    - step: The director decides and returns an authorisation for the workshop session
+      at: update-director
+      data: install-authorisation
+      over: backend-network
+    - step: The workshop services ask the package repository for the package
+      at: service-portal
+      over: backend-network
+    - step: The repository returns the package
+      at: package-repository
+      data: update-package
+      over: backend-network
+    - step: The workshop services return the authorisation and the package to the tester
+      at: service-portal
+      data: [install-authorisation, update-package]
+      over: workshop-link
+    - step: The tester sends them to the vehicle in a programming session
+      at: workshop-tester
+      data: [install-authorisation, update-package]
+      over: diagnostic-link
+    - step: The gateway checks the session against the access policy
+      at: [central-gateway, diagnostic-access-control]
+      data: diagnostic-access-policy
+    - step: The gateway hands the authorisation and the package to the orchestrator, which verifies and installs as for an update over the air
+      at: [central-gateway, cgw-backbone-interface]
+      data: [install-authorisation, update-package]
+      over: backbone-ethernet
+    - step: The orchestrator verifies the package and installs the ECUs
+      at: [update-orchestrator, tcu-backbone-interface]
+      data: [staged-package, update-state]
+
+# ---- certificates --------------------------------------------------------------------------------------
+
+function certificate-lifecycle:
+  name: Certificate lifecycle
+  description: How certificates are renewed and revoked after the first issue. The vehicle renews its own certificate, the services renew theirs through the registration authority, and a revocation reaches the gateway, the director and every vehicle.
+  notes: {owner: PKI team}
+
+  function vehicle-certificate-renewal:
+    name: Vehicle certificate renewal
+    description: How a vehicle gets a new certificate over the air before the old one expires. It proves possession of the old key.
+    flow:
+      - step: Before the certificate expires the secure element makes a new key pair and a request signed with the old key
+        at: [ota-client, tcu-hsm]
+        data: [vehicle-private-key, certificate-request]
+      - step: The client sends the request to the backend
+        at: [ota-client, cellular-interface]
+        data: certificate-request
+        over: cellular-link
+      - step: The gateway checks the old certificate and passes the request to the registration authority
+        at: vehicle-api-gateway
+        data: certificate-request
+        over: ra-link
+      - step: The registration authority checks the old certificate, that the vehicle is not revoked, and the rate of renewals
+        at: registration-authority
+        data: [certificate-request, vehicle-identity-record]
+      - step: The registration authority passes the approved request to the vehicle CA
+        at: registration-authority
+        data: certificate-request
+        over: pki-network
+      - step: The vehicle CA asks the issuing HSM to sign the new certificate
+        at: vehicle-ca
+        data: certificate-request
+        over: issuing-hsm-link
+      - step: The HSM signs with the key of the vehicle CA and returns the signature
+        at: issuing-hsm
+        data: vehicle-ca-private-key
+      - step: The vehicle CA issues the certificate
+        at: vehicle-ca
+        data: vehicle-certificate
+        over: pki-network
+      - step: The registration authority returns the certificate to the gateway
+        at: registration-authority
+        data: vehicle-certificate
+        over: ra-link
+      - step: The gateway sends it to the vehicle
+        at: [vehicle-api-gateway, vehicle-interface]
+        data: vehicle-certificate
+        over: cellular-link
+      - step: The secure element stores the new certificate, and deletes the old key after the first successful use
+        at: [ota-client, cellular-interface, tcu-hsm]
+        data: [vehicle-certificate, vehicle-private-key]
+
+  function service-certificate-issuance:
+    name: Service certificate issuance
+    description: How the signing service gets the certificate of its signing key. The director's key and the TLS key of the gateway follow the same path through the software CA and the backend TLS CA.
+    flow:
+      - step: The signing HSM generates a new key pair and a certificate request
+        at: [signing-service, signing-hsm]
+        data: [software-signing-private-key, certificate-request]
+      - step: The signing service sends the request to the registration authority
+        at: signing-service
+        data: certificate-request
+        over: ra-link
+      - step: The registration authority checks the requester and the approvals of two people recorded in the portal
+        at: registration-authority
+        data: [certificate-request, approval-record]
+      - step: The registration authority passes the approved request to the software CA
+        at: registration-authority
+        data: certificate-request
+        over: pki-network
+      - step: The software CA asks the issuing HSM to sign the certificate
+        at: software-ca
+        data: certificate-request
+        over: issuing-hsm-link
+      - step: The HSM signs with the key of the software CA and returns the signature
+        at: issuing-hsm
+        data: software-ca-private-key
+      - step: The software CA issues the certificate
+        at: software-ca
+        data: software-signing-certificate
+        over: pki-network
+      - step: The registration authority returns the certificate to the signing service
+        at: registration-authority
+        data: software-signing-certificate
+        over: ra-link
+      - step: The signing service installs the certificate and retires the old key after the overlap period
+        at: signing-service
+        data: software-signing-certificate
+
+  function gateway-certificate-renewal:
+    name: Gateway certificate renewal
+    description: How the vehicle API gateway gets a new TLS certificate from the backend TLS CA before the old one expires.
+    flow:
+      - step: The key store of the gateway generates a new key pair and a certificate request
+        at: [vehicle-api-gateway, gateway-key-store]
+        data: [backend-tls-private-key, certificate-request]
+      - step: The gateway sends the request to the registration authority
+        at: vehicle-api-gateway
+        data: certificate-request
+        over: ra-link
+      - step: The registration authority checks the requester and the approval, and passes the request to the backend TLS CA
+        at: registration-authority
+        data: certificate-request
+        over: pki-network
+      - step: The backend TLS CA asks the issuing HSM to sign the certificate
+        at: backend-ca
+        data: certificate-request
+        over: issuing-hsm-link
+      - step: The HSM signs with the key of the backend TLS CA and returns the signature
+        at: issuing-hsm
+        data: backend-ca-private-key
+      - step: The CA issues the certificate
+        at: backend-ca
+        data: backend-tls-certificate
+        over: pki-network
+      - step: The registration authority returns the certificate to the gateway
+        at: registration-authority
+        data: backend-tls-certificate
+        over: ra-link
+      - step: The gateway installs the certificate
+        at: vehicle-api-gateway
+        data: backend-tls-certificate
+
+  function certificate-revocation:
+    name: Certificate revocation
+    description: How a certificate is revoked, for example after a compromise or when a vehicle is reported stolen. It is shown for a vehicle certificate. A revoked signing certificate takes the same path through the software CA.
+    flow:
+      - step: A PKI officer revokes the certificate in the portal
+        at: operator-workstation
+        over: operator-link
+      - step: The portal passes the revocation on with the approval of a second person
+        at: backoffice-portal
+        data: approval-record
+        over: ra-link
+      - step: The registration authority asks the revocation service to publish a new list
+        at: registration-authority
+        over: pki-network
+      - step: The revocation service asks the vehicle CA to sign the new list
+        at: revocation-service
+        data: certificate-revocation-list
+        over: pki-network
+      - step: The vehicle CA asks the issuing HSM to sign the list
+        at: vehicle-ca
+        data: certificate-revocation-list
+        over: issuing-hsm-link
+      - step: The HSM signs with the key of the vehicle CA and returns the signature
+        at: issuing-hsm
+        data: vehicle-ca-private-key
+      - step: The vehicle CA returns the signed list
+        at: vehicle-ca
+        data: certificate-revocation-list
+        over: pki-network
+      - step: The revocation service hands the list to the gateway and the director
+        at: revocation-service
+        data: certificate-revocation-list
+        over: crl-link
+      - step: The gateway refuses the revoked vehicle from now on, and the director withholds authorisations from it. The list reaches every other vehicle with its next authorisation
+        at: [vehicle-api-gateway, update-director]
+        data: certificate-revocation-list
+      - step: The registry marks the vehicle as revoked
+        at: vehicle-registry
+        data: vehicle-identity-record

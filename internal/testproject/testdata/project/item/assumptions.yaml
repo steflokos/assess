@@ -1,0 +1,3 @@
+assumption secure-element-holds-key:
+  name: The secure element of the gateway keeps the device key from being read out
+  description: The secure element is evaluated, and a flaw found after the evaluation is not covered.

@@ -1,0 +1,441 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Cybersecurity controls, written  control <id>:  once and used by any number of attack steps.
+# schema.yaml lists every attribute.
+#
+# reduction     the effort the control demands of an attacker who goes through it, in the same five factors as a step
+# threatenedby  how an attacker goes around it: steps, or other threat scenarios. The calculation takes the easier of
+#               going through (the reduction) and going around.
+# target        where the control is deployed. A control with one target is expected to be listed by every step that acts there.
+#
+# Controls that exist today are written here. A control that is only planned is not, because the residual risk counts
+# every control in this file (controls.exclude in policy.yaml leaves one out).
+
+# =======================================================================================================
+# People, accounts and the build
+# =======================================================================================================
+
+control phishing-resistant-mfa:
+  name: Phishing-resistant sign-in with hardware tokens
+  description: Staff sign in to the portal with FIDO2 security keys that are bound to the address of the portal, so a proxy page cannot pass the sign-in on.
+  target: [backoffice-portal, operator-workstation]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: An attacker needs another way to a session than a lookalike page. That takes weeks and a foothold on the workstation or a call to the helpdesk.
+  threatenedby:
+    or:
+      - social-engineer-helpdesk-mfa-reset
+      - steal-session-token-with-infostealer
+
+control helpdesk-reset-verification:
+  name: The helpdesk resets a token only after a callback and a second approver
+  description: A new token is enrolled only after the helpdesk has called the manager of the staff member on the number in the HR register, which is not public, and a second helpdesk member has approved it. The new token works only after a day.
+  target: [backoffice-portal, operator-workstation]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO3, equipment: Eq0}
+  rationale: The attacker must know the manager and be able to answer on the registered number, or win over two people at the helpdesk.
+
+control device-bound-sessions:
+  name: Sessions are bound to the managed device and expire after an hour
+  description: A session is valid only on the device that signed in, which proves itself with a key in its security chip. A copied cookie is refused, and a session ends after an hour without activity.
+  target: [backoffice-portal, operator-workstation]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Malware that takes the session has to act on the device itself, in the short time the session lives, and where the endpoint protection sees it.
+
+control four-eyes-approval:
+  name: Second approver for releases and campaigns
+  description: A release and a campaign each need two different staff members with the right role. The portal records both in the approval record.
+  target: [backoffice-portal, campaign-management]
+  reduction: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO3, equipment: Eq0}
+  rationale: The attacker needs a second identity or a second person. Both are possible but slow, and only a few people have the role.
+  threatenedby:
+    or:
+      - collude-second-approver
+      - exploit-portal-self-approval-flaw
+
+control supplier-account-hardening:
+  name: Supplier access over VPN with named accounts and a second factor
+  description: Each supplier has its own accounts that need a second factor and a connection from allowed addresses over a VPN. A delivery carries a hash that the supplier confirms on a second channel.
+  target: [supplier-intake-interface, supplier-link]
+  reduction: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq1}
+  rationale: It stops the cheap credential attacks. A well-resourced attacker goes through the supplier instead.
+
+control supplier-delivery-review:
+  name: Review, binary comparison and tests of every supplier delivery
+  description: Release management compares every delivery with the previous one, scans the binaries and the list of components, and runs the integration and security tests before a release candidate is made.
+  target: release-management
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: Code that hides from a review of this kind must be written for it. That is possible for a strong attacker and is not for a casual one.
+
+control build-isolation-and-pinning:
+  name: Isolated build runners, short-lived tokens and pinned dependencies
+  description: Each build runs on a fresh runner with a token that lives for one job. The dependencies are pinned by hash and come from an internal mirror, and a change in the list of components is reviewed.
+  target: [build-pipeline, release-management]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: A stolen token is useless after the job, and a poisoned library does not enter without a change that someone reviews.
+
+# =======================================================================================================
+# Signing and the keys
+# =======================================================================================================
+
+control signing-request-validation:
+  name: The signing service signs only the approved digest
+  description: A signing request has to name an approval, and the service signs only the digest that was approved and recorded. It refuses a request from outside the release windows and limits how many it signs.
+  target: [signing-service, release-candidate]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: An attacker with a pipeline identity cannot choose the content any more. A change after approval has a different digest and is refused.
+
+control signing-network-isolation:
+  name: The signing network accepts only the pipeline, and starts no connection
+  description: The signing service sits in a network that accepts connections only from the pipeline controller and never starts one. Administration is from a separate jump host.
+  target: [signing-network, signing-service]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The attacker needs a way through the rules from a build runner. It is possible with a flaw in the controller or a host that the rules trust.
+
+control signing-activity-monitoring:
+  name: Alerts on every signing outside a release window
+  description: Every use of the signing key is logged outside the service and compared with the approved releases. A signature that has no release behind it raises an alarm in the security operations centre at once.
+  target: [signing-service, signing-hsm]
+  reduction: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: It does not stop a signature, but it limits the time the attacker has before the key is blocked. It makes the quiet use of the key difficult.
+
+control key-backup-split-custody:
+  name: Key backups in split custody at separate sites
+  description: Backups of the signing keys are written to tokens that need a quorum to be read. They are kept in sealed storage at two sites, and their PINs are held by different people from the people who hold the tokens.
+  target: [software-signing-private-key, secure-boot-private-key, authorisation-signing-private-key]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC3, window: WoO3, equipment: Eq0}
+  rationale: An attacker needs people from at least three groups, or a break-in at two sites.
+
+control hsm-key-protection:
+  name: Keys in certified HSMs that cannot export them
+  description: Every key of the system is generated in an HSM that is certified to FIPS 140-3 level 3, is not exportable, and erases itself when its housing is opened wrongly.
+  target: [signing-hsm, root-ca-hsm, director-hsm, issuing-hsm, boot-key-hsm]
+  reduction: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq3}
+  rationale: The attacker needs a laboratory and a stolen device, or a flaw in the firmware of the HSM.
+  threatenedby: exploit-hsm-firmware-vulnerability
+  assumes: hsm-certified-as-claimed
+
+control key-ceremony-controls:
+  name: Ceremonies with witnesses, video and keys in different places
+  description: Every use of the root key and of the boot key is a scripted ceremony with at least three custodians from different lines, an independent witness, video and a minute. The cards are kept at three sites.
+  target: [root-ca, boot-key-hsm]
+  reduction: {time: ET3, expertise: SE2, knowledge: KoIC2, window: WoO3, equipment: Eq1}
+  rationale: An attacker must win over several people who watch each other, or break in at several sites.
+  assumes: custodians-independent
+
+# =======================================================================================================
+# The PKI
+# =======================================================================================================
+
+control pki-network-segmentation:
+  name: The PKI network accepts only the CA hosts and the registration authority
+  description: The PKI network has no route to the internet and allows only named hosts. The registration authority is the only door, and it parses requests in a sandbox.
+  target: [pki-network, registration-authority]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: The attacker needs a flaw in the one host that is reachable, and after it another step to move.
+
+control ra-dual-control-and-attestation:
+  name: Two approvals and key attestation for a signing certificate
+  description: The registration authority issues a software signing certificate only for a key that the HSM attests to have generated, with two approvals recorded in the portal, and with a profile that names the requester.
+  target: [registration-authority, software-ca]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO3, equipment: Eq1}
+  rationale: A key of the attacker has no attestation, so the attacker needs the approvals and a request from a real HSM.
+  threatenedby: collude-second-approver
+
+control crl-freshness-fail-closed:
+  name: A vehicle limits updates when its revocation list is too old
+  description: The vehicle takes a new revocation list with every authorisation. If the list is older than seven days it accepts no software for the ECUs it drives, apart from a security fix signed by the newest chain.
+  target: [tcu-hsm, certificate-revocation-list]
+  reduction: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Blocking the list for more than a week at one vehicle takes a long presence, and the vehicle stops accepting what the attacker wants.
+
+control ecu-manufacturer-attestation:
+  name: The ECU manufacturer confirms the hash of the key in every ECU
+  description: The manufacturer's record of each ECU carries a signed hash of the secure boot key that was fixed. The plant compares it with the key it sent, and the first boot at the end of the line checks it again.
+  target: [ecu-manufacturer, ecu-supply-link]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: A substituted key shows in the record unless the attacker also changes the record, which is signed by the manufacturer.
+
+# =======================================================================================================
+# The backend and the cloud
+# =======================================================================================================
+
+control cloud-admin-hardening:
+  name: Administrator access to the cloud tenant only with just-in-time rights and approval
+  description: Administrators have no standing rights. They request a role for a limited time with a second approval, from managed devices and with hardware tokens, and everything they do is logged outside the tenant.
+  target: [ota-backend, update-director]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: A stolen administrator account has no rights until someone approves them, so the attacker needs a second person or the approver's session.
+  assumes: cloud-tenant-segregated
+
+control director-authorisation-policy:
+  name: The director HSM signs only authorisations inside a policy
+  description: The HSM checks every authorisation against a policy before it signs. It allows only package versions that are on the list for a campaign, limits the number of authorisations an hour, and refuses versions that are lower than the newest.
+  target: [director-hsm, update-director]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: An attacker with the director cannot make it sign a package outside the campaigns, so the attacker also needs the policy.
+
+control staged-rollout-and-stop-criteria:
+  name: Waves, canary vehicles and an automatic stop
+  description: A campaign starts with a small group of canary vehicles, and the next wave starts only when their reports are good. The director stops the campaign if failures pass a limit.
+  target: [campaign-management, campaign-definition]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO3, equipment: Eq0}
+  rationale: A bad campaign does not reach the whole fleet before the stop. The attacker would have to disable the criteria, which is itself a change that needs approval.
+
+control vehicle-api-rate-limits-and-anomaly-detection:
+  name: Authorisation per VIN, rate limits and detection of scans
+  description: The vehicle API checks that the VIN in a request is that of the authenticated vehicle, limits the requests of an identity, and raises an alarm when an identity asks for others or scans.
+  target: [vehicle-api-gateway, vehicle-configuration]
+  reduction: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: It stops simple scans and the simplest object-level flaws. A careful attacker keeps below the limits.
+
+control ddos-protection:
+  name: DDoS protection in front of the vehicle interface
+  description: Traffic to the vehicle interface goes through a scrubbing service with rate limits and an allowlist of vehicle certificates, and the backend scales out.
+  target: [vehicle-api-gateway, vehicle-interface]
+  reduction: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq2}
+  rationale: A flood by the hour is absorbed. An attacker needs a very large network of devices or a flaw that costs the service much per request.
+
+control audit-log-immutability:
+  name: Audit log in write-once storage with a hash chain
+  description: The audit log is written to storage that cannot be changed for ten years, with a hash chain that is signed every hour and kept by the security operations centre.
+  target: [audit-log, telemetry-service]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Deleting an entry breaks the chain, so the attacker must also change what the security operations centre holds.
+
+control named-accounts-and-sealed-break-glass:
+  name: Named accounts only, and a sealed emergency account that two people open
+  description: Every action is done by a named account. The one emergency account is sealed, opening the seal alerts the security operations centre, and two people have to open it together.
+  target: [audit-log, backoffice-portal]
+  reduction: {time: ET2, expertise: SE1, knowledge: KoIC2, window: WoO3, equipment: Eq0}
+  rationale: Acting without a name needs two people and sets off an alert.
+
+control cdn-account-hardening:
+  name: Single sign-on, hardware tokens and change approval at the content delivery network
+  description: The contract with the content delivery network requires accounts through the OEM's single sign-on with hardware tokens, and every change of the configuration needs a second approver on the OEM side.
+  target: [content-delivery-network, download-link]
+  reduction: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO2, equipment: Eq0}
+  rationale: It stops a simple account takeover. The OEM does not run the provider, so it cannot be sure the terms are kept.
+
+control repository-object-lock:
+  name: The package repository refuses to change or delete a published package
+  description: Published packages are written with an object lock for the lifetime of the vehicle line, and a new version is a new object. Only a separate break-glass role can lift a lock.
+  target: [package-repository, update-package]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: An administrator account is not enough to overwrite a package.
+
+control workshop-mfa-and-device-binding:
+  name: Workshop accounts with a second factor, on registered devices only
+  description: A workshop user needs a hardware token and a registered tester, and the services limit how many packages an account may ask for.
+  target: [workshop-interface, workshop-tester]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: A leaked password is useless on its own, and a stolen tester is noticed by the limit.
+
+# =======================================================================================================
+# The package in the vehicle
+# =======================================================================================================
+
+control package-signature-verification:
+  name: The vehicle verifies the signature of every package against its own installed root
+  description: The verifier checks the chain of the package up to the root in the secure element, the validity and the revocation list, the version against the rollback counters and the hash of every image. It trusts nothing that the network or the content delivery network said.
+  target: [package-verifier, update-package]
+  reduction: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: A package that is not signed by the OEM's chain is refused. The attacker needs the key, a certificate for their own key, or a flaw in the verifier.
+  threatenedby:
+    or:
+      - software-signing-private-key-disclosure
+      - signing-service-tampering
+      - software-signing-certificate-spoofing
+      - exploit-verifier-parsing-bug
+
+control hardened-package-parsing:
+  name: Memory-safe parsers that are fuzzed and run in a sandbox
+  description: The code that reads certificates and manifests is written in a memory-safe language where possible, is fuzzed with every build, and runs in a process with no rights beyond reading the package.
+  target: [package-verifier, ota-client]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: A flaw is found less often, and one that is found gives less than code in the telematics unit.
+
+control orchestrator-privilege-separation:
+  name: The OTA client and the update orchestrator are separate processes with different rights
+  description: The client that talks to the network has no right to use the diagnostic connection. The orchestrator takes only signed requests from it through a narrow interface. Both run with mandatory access control.
+  target: [update-orchestrator, ota-client]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: Code in the client does not give the right to flash. The attacker needs a second flaw.
+  threatenedby: exploit-linux-kernel-vulnerability
+
+control modem-isolation:
+  name: The modem is isolated from the application processor
+  description: The modem runs on its own processor and talks to the application processor only through a narrow interface with an IOMMU. Its firmware is updated with the modem vendor's fixes.
+  target: [telematics-unit, cellular-interface]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: Code in the modem does not give code in the operating system without another flaw.
+
+control tls-pinning-to-backend-ca:
+  name: The vehicle accepts only certificates of the backend TLS CA
+  description: The OTA client does not use the public root list. It accepts only a chain to the backend TLS CA that is installed in the secure element, with mutual TLS and the revocation list.
+  target: [ota-client, cellular-link]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: A rogue base station cannot present a certificate that the vehicle accepts, so it can only drop or delay the connection.
+  threatenedby:
+    or:
+      - backend-tls-private-key-disclosure
+      - exploit-tls-validation-bug
+
+control time-stamp-freshness:
+  name: Signed time stamps that are bound to a fresh request
+  description: The secure element asks for the time with a random number that the backend signs back. A recorded stamp does not match a new number and is refused, and the clock never goes back.
+  target: [secure-time, tcu-hsm]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Replay of a recording is not enough, so the attacker has to change the source of time instead.
+  threatenedby: spoof-gnss-time
+
+control consent-message-authentication:
+  name: The consent decision is signed in a way that the orchestrator checks
+  description: The consent screen sends the decision with a key that only the screen's trusted application holds. The orchestrator accepts no decision that is not signed for the current update.
+  target: [consent-ui, update-orchestrator]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: Code elsewhere on the infotainment unit cannot send a decision that is accepted.
+
+control vehicle-state-plausibility-checks:
+  name: Parked is read from independent signals that are protected by SecOC
+  description: The orchestrator starts an update only if the speed, the gear and the ignition state agree. The signals come from different ECUs with authenticated messages and a freshness value, and a change during an update stops it.
+  target: [update-orchestrator, powertrain-can]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Faking several signals at once, with fresh authentication, is much more work than faking one.
+
+# =======================================================================================================
+# The vehicle: gateway, controllers and hardware
+# =======================================================================================================
+
+control diagnostic-session-authentication:
+  name: Programming sessions only with an authenticated tester or orchestrator
+  description: The gateway opens a programming session only after certificate-based authentication of the tester, or a request from the orchestrator that is signed. Each session has a time limit and is allowed only in certain vehicle states.
+  target: [central-gateway, obd-port]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: A dongle with no credential gets no session, so the attacker needs a certificate of a tester or a flaw in the gateway.
+  threatenedby:
+    or:
+      - steal-workshop-tester-certificate
+      - exploit-gateway-diagnostic-bug
+
+control ecu-bootloader-signature-check:
+  name: The bootloader checks the signature of every image before it runs it
+  description: The bootloader of the controller checks the signature of the application against the trust anchor it holds, and refuses an image with a lower version than the rollback counter.
+  target: [vcu-bootloader, bms-bootloader]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: The image of an attacker is refused unless the check is bypassed. That takes a fault attack on the controller.
+  threatenedby: glitch-bootloader-signature-check
+
+control flash-driver-verification:
+  name: The bootloader checks the signature of the flash driver before it runs it
+  description: The flash driver that a tester loads into RAM is signed like an image. The bootloader runs it only if the signature is valid, so a driver that writes anything cannot be used.
+  target: [vcu-bootloader, bms-bootloader]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: The attacker needs a flaw in the bootloader that runs before the check.
+  threatenedby: exploit-uds-transfer-buffer-overflow
+
+control debug-lockdown:
+  name: Debug ports are locked by the lifecycle at the end of the line
+  description: The lifecycle fuses of the processors disable JTAG and the console after production, and the bootloader of the units does not offer a shell.
+  target: [tcu-debug-port, vcu-debug-port]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: A closed port gives nothing to a clip and a laptop. The attacker needs a fault attack to open it again.
+  threatenedby: bypass-jtag-lock-with-voltage-glitch
+
+control flash-encryption-device-key:
+  name: The flash is encrypted with a device-unique key
+  description: The system and data partitions are encrypted with a key that the secure element releases only to a booted, verified system. A chip that is read out gives only ciphertext.
+  target: [telematics-unit, vehicle-control-unit]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: A dump of the flash chip is of no use without the key. Reading the firmware then needs a way to run code on the unit.
+
+control secure-boot-chain:
+  name: Secure boot from a ROM key that is fixed in the processor
+  description: The boot ROM checks the bootloader against a key hash in fuses, and every later stage checks the next. An implant or a changed image does not boot.
+  target: [tcu-bootloader, telematics-unit]
+  reduction: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq3}
+  rationale: Persistence needs a way around the ROM. That takes a fault attack on the exact processor.
+  threatenedby: glitch-rom-signature-check
+
+control secure-element-channel-protection:
+  name: The processor and the secure element talk over an authenticated, encrypted channel
+  description: The channel to the secure element is encrypted and authenticated with keys that are set at the end of the line (SCP03). A device on the bus sees only ciphertext and cannot answer in the element's place.
+  target: [tcu-hsm, telematics-unit]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: An interposer has to know the channel keys, which sit in the processor, so it needs a second attack.
+
+control se-key-usage-policy:
+  name: The secure element limits what its keys may sign
+  description: The identity key signs only TLS client authentication and reports, never raw data, and the element limits how many signatures it makes in a time and only when the system is verified.
+  target: [tcu-hsm, vehicle-private-key]
+  reduction: {time: ET1, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq0}
+  rationale: A signing oracle that is rate limited and tied to a verified system is much less useful, but code that runs in the verified system still has it.
+
+control secure-element-tamper-resistance:
+  name: A secure element that is evaluated against side-channel and fault attacks
+  description: The element is certified to common criteria EAL5+ including attack methods for side channels and fault injection, and its key operations are protected by counter-measures.
+  target: [tcu-hsm, vehicle-private-key]
+  reduction: {time: ET4, expertise: SE3, knowledge: KoIC2, window: WoO3, equipment: Eq3}
+  rationale: The known attacks do not work against it, so the attacker needs a new one.
+  assumes: secure-element-evaluated
+
+control lifecycle-state-in-secure-hardware:
+  name: The lifecycle state is kept in one-way hardware
+  description: The state is a counter in the secure element or in OTP memory that can only move from production to delivered, and the gateway reads it from there.
+  target: [lifecycle-state, central-gateway]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Writing a flag in flash no longer changes the state. The attacker needs to defeat the hardware itself.
+
+control trust-anchor-write-protection:
+  name: The trust anchors in the secure element are write-protected after delivery
+  description: After the vehicle is delivered, the secure element changes the installed root only on a command that is signed by the PKI with a fresh challenge. The production function is closed for good.
+  target: [installed-root-certificate, tcu-hsm]
+  reduction: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Playing the end-of-line station no longer works, so the attacker needs the PKI's key or a flaw in the element.
+  threatenedby: tcu-hsm-tampering
+
+control authenticated-counter-storage:
+  name: The rollback counter is stored with a MAC under a device key
+  description: The counter in the data flash carries a MAC and a nonce under a key in the controller's protected memory. A changed or older value is refused at boot.
+  target: [vcu-rollback-counter, vcu-bootloader]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: Writing an old value does not work without the key.
+  threatenedby: extract-mcu-key-via-fault-injection
+
+# =======================================================================================================
+# Production
+# =======================================================================================================
+
+control plant-network-segmentation:
+  name: The production network is separate and allows named flows only
+  description: The production network is behind a firewall with an allowlist. It has no route to the internet, a jump host with a second factor is the only way in, and the vendors' access is on request and recorded.
+  target: [plant-network, provisioning-server]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Moving from the office network to the production network needs a way through the firewall.
+  threatenedby: abuse-vendor-remote-access
+
+control build-record-check-at-registration:
+  name: A vehicle certificate is issued only for a VIN with an open build record
+  description: The registration authority issues a vehicle certificate only if the plant has an open build record for the VIN, no certificate was issued before, and the key in the request is the one that the vehicle generated. It limits the number of certificates a plant may ask for in a shift.
+  target: [registration-authority, provisioning-server]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq0}
+  rationale: A foothold in the plant does not make certificates for vehicles that were not built, and a flood of requests stands out.
+
+control trust-anchor-bundle-signing:
+  name: The trust anchor bundle is signed, and the station checks the signature and the hash
+  description: Each version of the bundle is signed by two members of the PKI team. The end-of-line stations hold the expected hash from a separate channel and refuse a bundle that does not match.
+  target: [trust-anchor-bundle, production-image-store]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Changing the bundle also needs the signatures or the station's expected hash.
+
+control package-encryption:
+  name: The images of a package are encrypted for the vehicles that install them
+  description: The images are encrypted with a content key of the campaign. The key is wrapped for each vehicle in its authorisation, and only the secure element of that vehicle can unwrap it. The package repository, the download link and the workshop services only handle ciphertext.
+  target: [update-package, tcu-hsm]
+  reduction: {time: ET2, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: Anyone who reads a package without a vehicle gets ciphertext, which closes the workshop path and the download link. The owner of a vehicle still gets the images from the unit after decryption.
+  threatenedby: dump-decrypted-firmware-from-own-vehicle
+
+control time-plausibility-check:
+  name: Satellite time is used only when it agrees with the other sources
+  description: The secure element takes satellite time only while it agrees with the last backend time and with its own counter within a small margin. It never sets the clock back.
+  target: [secure-time, tcu-hsm]
+  reduction: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq1}
+  rationale: A spoofed signal has to follow the real time closely, which means a slow drift over days. A jump is refused.

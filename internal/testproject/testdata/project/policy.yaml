@@ -1,0 +1,48 @@
+# The policy of the test project. The numbers follow the attack potential example of ISO/SAE 21434.
+feasibility:
+  points:
+    time:      {ET0: 0, ET1: 1, ET2: 4, ET3: 17, ET4: 19}
+    expertise: {SE0: 0, SE1: 3, SE2: 6, SE3: 8}
+    knowledge: {KoIC0: 0, KoIC1: 3, KoIC2: 7, KoIC3: 11}
+    window:    {WoO0: 0, WoO1: 1, WoO2: 4, WoO3: 10}
+    equipment: {Eq0: 0, Eq1: 4, Eq2: 7, Eq3: 9}
+  levels:
+    - upto: 13
+      level: High
+    - upto: 19
+      level: Medium
+    - upto: 24
+      level: Low
+    - level: Very Low
+  combine:
+    steps:
+      time:      sum
+      expertise: max
+      knowledge: max
+      window:    max
+      equipment: max
+    controls:
+      time:      max
+      expertise: sum
+      knowledge: sum
+      window:    sum
+      equipment: sum
+
+impact:
+  across: max
+  between: max
+  stakeholders: [roaduser, oem]
+
+risk:
+  matrix:
+    Severe:     {High: 5, Medium: 4, Low: 3, Very Low: 2}
+    Major:      {High: 4, Medium: 3, Low: 2, Very Low: 1}
+    Moderate:   {High: 3, Medium: 2, Low: 2, Very Low: 1}
+    Negligible: {High: 1, Medium: 1, Low: 1, Very Low: 1}
+  affinity: 2
+
+scalability:
+  mode: escalator
+  of: bottleneck
+  raise: {Single Vehicle: 0, Limited Batch: 1, Fleet-Wide: 2}
+  cap: 5

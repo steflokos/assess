@@ -1,0 +1,14 @@
+function update:
+  name: Update the gateway
+  description: The gateway fetches a package and installs it.
+  flow:
+    - step: The gateway asks the backend for a package
+      at: gateway
+      over: service-link
+    - step: The backend answers with the update package
+      at: api-interface
+      data: update-package
+      over: service-link
+    - step: The gateway checks the package and installs the firmware
+      at: gateway
+      data: [firmware-image, device-key]

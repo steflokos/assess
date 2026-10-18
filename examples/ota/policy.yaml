@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=.assess/schema-policy.json
+# Policy: the values the calculations use. The numbers are yours: check them against your copy of
+# ISO/SAE 21434 and change what your method does differently. schema.yaml describes every key.
+#
+# Where the values below come from
+#   feasibility.points, feasibility.levels
+#       the attack potential example of ISO/SAE 21434, which follows ISO/IEC 18045
+#   risk.matrix
+#       an example matrix. The one in the standard is informative, so use the matrix of your method
+#   feasibility.combine, impact, risk.affinity
+#       choices of assess. The standard does not fix them
+#
+# A section that is present must be complete, and "assess validate" names what is missing. The sections
+# controls and scalability are optional and written as comments at the end.
+
+feasibility:
+  points:                         # points for each rating key. The five factors of a step add up
+    time:      {ET0: 0, ET1: 1, ET2: 4, ET3: 17, ET4: 19}
+    expertise: {SE0: 0, SE1: 3, SE2: 6, SE3: 8}
+    knowledge: {KoIC0: 0, KoIC1: 3, KoIC2: 7, KoIC3: 11}
+    window:    {WoO0: 0, WoO1: 1, WoO2: 4, WoO3: 10}
+    equipment: {Eq0: 0, Eq1: 4, Eq2: 7, Eq3: 9}
+  levels:                         # attack potential to feasibility level, first match from the top
+    - upto: 13                    # the highest attack potential this band covers
+      level: High
+    - upto: 19
+      level: Medium
+    - upto: 24
+      level: Low
+    - level: Very Low             # the last band has no upto
+  combine:                        # how the effort of the elements of a path joins, factor by factor: sum | max
+    steps:                        # the attack steps of the path
+      time:      sum
+      expertise: max
+      knowledge: max
+      window:    max
+      equipment: max
+    controls:                     # the controls the attacker has to defeat, applied on top of the steps
+      time:      max
+      expertise: sum
+      knowledge: sum
+      window:    sum
+      equipment: sum
+
+impact:
+  across: max                     # max | sum: how the four impact categories of one stakeholder combine
+  between: max                    # max | sum: how the stakeholders combine (omitted means max)
+  stakeholders: [roaduser, oem]   # roaduser | oem | supplier: whose impact counts for the risk. The OEM counts here
+                                  # because a fault of the update system is paid for by the OEM first: recalls, type approval, liability
+  # With sum at either stage, say what a level is worth and where the totals fall back into levels:
+  # points: {Severe: , Major: , Moderate: , Negligible: }
+  # levels:
+  #   - {upto: , level: Negligible}
+  #   - {upto: , level: Moderate}
+  #   - {upto: , level: Major}
+  #   - {level: Severe}
+
+risk:
+  matrix:                         # risk value for each impact level and feasibility level
+    Severe:     {High: 5, Medium: 4, Low: 3, Very Low: 2}
+    Major:      {High: 4, Medium: 3, Low: 2, Very Low: 1}
+    Moderate:   {High: 3, Medium: 2, Low: 2, Very Low: 1}
+    Negligible: {High: 1, Medium: 1, Low: 1, Very Low: 1}
+  affinity: 2                     # the highest risk value the project accepts without a goal, on the scale of the matrix
+                                  # With the escalator, an attack on the whole fleet against a severe damage is worth 4 even when it
+                                  # is very hard (Very Low). Such risks are goals here: the controls raise the effort as far as they can,
+                                  # and what is left is shared, avoided or kept visible. A risk is accepted only at 2 or below.
+                                  # a risk with a value before any control at or below it is a Claim, a higher one a Goal
+
+# controls:                       # every control counts unless it is listed here
+#   exclude: []                   # ids of controls the calculation ignores, as if they were not deployed (residual only)
+
+scalability:                      # not part of the standard: it is a choice of this project
+  mode: escalator                 # the risk value from the matrix goes up with how far one attack reaches
+  of: bottleneck                  # the narrowest step of a path sets it: one step on one vehicle keeps the whole path at one vehicle
+  raise: {Single Vehicle: 0, Limited Batch: 1, Fleet-Wide: 2}   # added to the risk value
+  cap: 5                          # the risk value never goes above this, the highest of the matrix

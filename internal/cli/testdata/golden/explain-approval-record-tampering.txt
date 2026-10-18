@@ -1,0 +1,65 @@
+approval-record-tampering  Tampering with Approval record
+
+rules in force (feasibility.combine in the policy)
+            ET   SE   KoIC  WoO  Eq
+  steps     sum  max  max   max  max
+  controls  max  sum  sum   sum  sum
+levels: High up to 13, Medium up to 19, Low up to 24, Very Low above
+
+BASE (controls ignored): High, total 11
+4 paths. The easiest has the lowest total and a tie goes to the path written first
+
+easiest path (#1)
+  how the path is built
+    step approve-release-with-stolen-identity
+      needs step social-engineer-helpdesk-mfa-reset
+
+                                                 ET     SE     KoIC     WoO     Eq
+  step     approve-release-with-stolen-identity  ET0=0  SE0=0  KoIC1=3  WoO1=1  Eq0=0
+  step     social-engineer-helpdesk-mfa-reset    ET1=1  SE1=3  KoIC1=3  WoO2=4  Eq0=0
+  stage 1  steps combined by                     sum    max    max      max     max
+           result                                1      3      3        4       0
+  total 11 = 1 + 3 + 3 + 4 + 0  ->  High
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+next easiest paths and the ones that decide a risk (explain -all shows each as a table)
+  #2  total 12  High  Fleet-Wide  approve-release-with-stolen-identity + aitm-phish-staff
+  #3  total 21  Low  Fleet-Wide  approve-release-with-stolen-identity + steal-session-token-with-infostealer
+  #4  total 24  Low  Fleet-Wide  collude-second-approver
+
+RESIDUAL (controls applied): Low, total 24
+7 paths. The easiest has the lowest total and a tie goes to the path written first
+
+easiest path (#1)
+  how the path is built
+    step collude-second-approver
+
+                                    ET     SE     KoIC     WoO      Eq
+  step     collude-second-approver  ET2=4  SE1=3  KoIC2=7  WoO3=10  Eq0=0
+  stage 1  steps combined by        sum    max    max      max      max
+           result                   4      3      7        10       0
+  total 24 = 4 + 3 + 7 + 10 + 0  ->  Low
+  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+
+next easiest paths and the ones that decide a risk (explain -all shows each as a table)
+  #2  total 39  Very Low  Fleet-Wide  approve-release-with-stolen-identity + aitm-phish-staff + exploit-portal-self-approval-flaw + defeat phishing-resistant-mfa + bypass four-eyes-approval
+  #3  total 41  Very Low  Fleet-Wide  approve-release-with-stolen-identity + social-engineer-helpdesk-mfa-reset + exploit-portal-self-approval-flaw + defeat helpdesk-reset-verification + bypass four-eyes-approval
+  #4  total 48  Very Low  Fleet-Wide  approve-release-with-stolen-identity + steal-session-token-with-infostealer + exploit-portal-self-approval-flaw + defeat device-bound-sessions + bypass four-eyes-approval
+
+risk per damage scenario
+the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path
+  wrong-software-installed  impact Major
+    roaduser  safety Major, financial Moderate, operational Major, privacy Negligible  ->  max Major
+    oem       safety Moderate, financial Major, operational Major, privacy Negligible  ->  max Major
+    between   Major, Major  ->  max Major
+    base      High, matrix cell 4, Fleet-Wide +2 (cap 5), risk 5
+    residual  Low, matrix cell 2, Fleet-Wide +2 (cap 5), risk 4
+  evidence-lost  impact Major
+    roaduser  safety Negligible, financial Moderate, operational Negligible, privacy Negligible  ->  max Moderate
+    oem       safety Negligible, financial Major, operational Moderate, privacy Negligible  ->  max Major
+    between   Moderate, Major  ->  max Major
+    base      High, matrix cell 4, Fleet-Wide +2 (cap 5), risk 5
+    residual  Low, matrix cell 2, Fleet-Wide +2 (cap 5), risk 4
+
+risk of this threat scenario (the highest of its damage scenarios): 5 -> 4
+type: Goal (the base risk 5 is above the risk affinity 2)

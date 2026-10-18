@@ -1,0 +1,19 @@
+# The project that the tests of assess work on. It is small on purpose: every number in the
+# tests can be worked out by hand from this folder. Do not use it as a model for a real project.
+name: Test gateway
+description: A gateway that receives signed software packages from a backend and installs them.
+standards: [ISO/SAE 21434:2021]
+assessors: [Test engineer]
+date: 2026-01-15
+sources:
+  - name: Gateway architecture sketch
+    location: TEST-001
+    version: "1.0"
+extra:
+  - title: Scope
+    text: |
+      Everything in this project is made up for the tests of assess.
+  - title: Contacts
+    columns: [Role, Name]
+    rows:
+      - [Owner, Test engineer]

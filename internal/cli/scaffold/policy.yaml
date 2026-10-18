@@ -1,0 +1,73 @@
+# Policy: the values that the calculations use. Check them against your copy of ISO/SAE 21434
+# and change what your method does differently. schema.yaml describes every key.
+#
+# Where the values below come from
+#   feasibility.points, feasibility.levels
+#       the attack potential example of ISO/SAE 21434, which follows ISO/IEC 18045
+#   risk.matrix
+#       an example matrix. The matrix in the standard is only informative, so use the matrix of your method
+#   feasibility.combine, impact, risk.affinity
+#       choices of assess. The standard does not fix them
+#
+# A section that is present must be complete. assess validate names what is missing. The sections
+# controls and scalability are optional and written as comments at the end.
+
+feasibility:
+  points:                         # points for each rating key. The five factors of a step add up
+    time:      {ET0: 0, ET1: 1, ET2: 4, ET3: 17, ET4: 19}
+    expertise: {SE0: 0, SE1: 3, SE2: 6, SE3: 8}
+    knowledge: {KoIC0: 0, KoIC1: 3, KoIC2: 7, KoIC3: 11}
+    window:    {WoO0: 0, WoO1: 1, WoO2: 4, WoO3: 10}
+    equipment: {Eq0: 0, Eq1: 4, Eq2: 7, Eq3: 9}
+  levels:                         # turns attack potential into a feasibility level. The first match from the top wins
+    - upto: 13                    # the highest attack potential this band covers
+      level: High
+    - upto: 19
+      level: Medium
+    - upto: 24
+      level: Low
+    - level: Very Low             # the last band has no upto
+  combine:                        # how the effort of the parts of a path adds up, factor by factor: sum or max
+    steps:                        # the attack steps of the path
+      time:      sum
+      expertise: max
+      knowledge: max
+      window:    max
+      equipment: max
+    controls:                     # the controls the attacker has to defeat, applied on top of the steps
+      time:      max
+      expertise: sum
+      knowledge: sum
+      window:    sum
+      equipment: sum
+
+impact:
+  across: max                     # max or sum: how the four impact categories of one stakeholder become one level
+  between: max                    # max or sum: how the stakeholders become one level (max if you leave it out)
+  stakeholders: [roaduser]        # roaduser, oem or supplier: whose impact counts for the risk
+  # If either stage is sum, say what each level is worth and where the totals turn back into levels:
+  # points: {Severe: , Major: , Moderate: , Negligible: }
+  # levels:
+  #   - {upto: , level: Negligible}
+  #   - {upto: , level: Moderate}
+  #   - {upto: , level: Major}
+  #   - {level: Severe}
+
+risk:
+  matrix:                         # risk value for each impact level and feasibility level
+    Severe:     {High: 5, Medium: 4, Low: 3, Very Low: 2}
+    Major:      {High: 4, Medium: 3, Low: 2, Very Low: 1}
+    Moderate:   {High: 3, Medium: 2, Low: 2, Very Low: 1}
+    Negligible: {High: 1, Medium: 1, Low: 1, Very Low: 1}
+  affinity: 3                     # the highest risk value the project accepts without a goal, on the scale of the matrix
+                                  # a risk at or below it before any control is a Claim, a higher one is a Goal
+
+# controls:                       # every control counts unless it is listed here
+#   exclude: []                   # ids of controls the calculation ignores, as if they were not deployed (residual only)
+#
+# scalability:                    # not part of the standard. If you leave this section out, scalability is ignored
+#   mode: escalator               # ignored, escalator or matrix
+#   of: bottleneck                # which step of the path sets it: bottleneck, initial or broadest
+#   raise: {Single Vehicle: , Limited Batch: , Fleet-Wide: }   # escalator: added to the risk value
+#   cap:                          # escalator: the risk value does not go above this (if you leave it out: the highest in the matrix)
+#   # matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix

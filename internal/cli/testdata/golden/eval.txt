@@ -1,0 +1,125 @@
+combine steps:    ET sum, SE max, KoIC max, WoO max, Eq max
+combine controls: ET max, SE sum, KoIC sum, WoO sum, Eq sum
+impact:           categories max, stakeholders max
+scalability:      escalator, from the bottleneck step
+risk affinity:    2 (a risk of 2 or less before any control is a Claim, a higher one a Goal)
+
+item ota-system
+  base      5   decided by supplier-delivery-tampering   (every control ignored)
+  residual  4   decided by supplier-delivery-tampering   (the controls applied)
+
+THREAT                                         BASE              RESIDUAL        RISK    TYPE
+supplier-delivery-tampering                    Low (23)          Very Low (37)   5 -> 4  Goal
+  malicious-software-installed                 impact Severe                     5 -> 4
+release-candidate-tampering                    Medium (17)       Very Low (38)   5 -> 4  Goal
+  malicious-software-installed                 impact Severe                     5 -> 4
+approval-record-tampering                      High (11)         Low (24)        5 -> 4  Goal
+  wrong-software-installed                     impact Major                      5 -> 4
+  evidence-lost                                impact Major                      5 -> 4
+backoffice-portal-spoofing                     High (11)         Very Low (32)   5 -> 4  Goal
+  vehicle-bricked                              impact Severe                     5 -> 4
+  wrong-software-installed                     impact Major                      5 -> 3
+signing-service-tampering                      Very Low (28)     Very Low (45)   4 -> 4  Goal
+  malicious-software-installed                 impact Severe                     4 -> 4
+software-signing-private-key-disclosure        Very Low (32)     Very Low (59)   4 -> 4  Goal
+  malicious-software-installed                 impact Severe                     4 -> 4
+software-signing-private-key-denial            Very Low (25)     Very Low (55)   3 -> 3  Goal
+  fleet-cannot-be-updated                      impact Major                      3 -> 3
+software-signing-certificate-spoofing          Medium (19)       Very Low (48)   5 -> 4  Goal
+  malicious-software-installed                 impact Severe                     5 -> 4
+  trust-chain-broken                           impact Severe                     5 -> 4
+secure-boot-private-key-disclosure             Very Low (32)     Very Low (59)   4 -> 4  Goal
+  malicious-software-installed                 impact Severe                     4 -> 4
+campaign-definition-tampering                  High (11)         Very Low (62)   5 -> 4  Goal
+  vehicle-bricked                              impact Severe                     5 -> 4
+  wrong-software-installed                     impact Major                      5 -> 3
+update-director-tampering                      Low (20)          Very Low (33)   5 -> 4  Goal
+  vehicle-bricked                              impact Severe                     5 -> 4
+  wrong-software-installed                     impact Major                      4 -> 3
+authorisation-signing-private-key-disclosure   Low (22)          Very Low (49)   4 -> 3  Goal
+  wrong-software-installed                     impact Major                      4 -> 3
+vehicle-configuration-tampering                Medium (15)       Very Low (28)   5 -> 3  Goal
+  wrong-software-installed                     impact Major                      5 -> 3
+vehicle-configuration-disclosure               High (12)         Very Low (25)   5 -> 3  Goal
+  fleet-data-disclosed                         impact Major                      5 -> 3
+update-package-tampering                       Medium (14)       Very Low (59)   5 -> 4  Goal
+  malicious-software-installed                 impact Severe                     5 -> 4
+update-package-disclosure                      High (9)          Low (24)        5 -> 4  Goal
+  software-ip-lost                             impact Moderate                   5 -> 4
+vehicle-api-gateway-denial                     High (8)          Very Low (26)   5 -> 3  Goal
+  fleet-cannot-be-updated                      impact Major                      5 -> 3
+vehicle-api-gateway-spoofing                   Low (22)          Very Low (47)   3 -> 2  Goal
+  fleet-data-disclosed                         impact Major                      3 -> 2
+  update-delayed                               impact Moderate                   3 -> 2
+backend-tls-private-key-disclosure             Low (22)          Very Low (39)   4 -> 3  Goal
+  fleet-data-disclosed                         impact Major                      4 -> 3
+workshop-interface-spoofing                    High (8)          Medium (18)     5 -> 4  Goal
+  software-ip-lost                             impact Moderate                   5 -> 4
+audit-log-tampering                            Low (21)          Very Low (59)   4 -> 3  Goal
+  evidence-lost                                impact Major                      4 -> 3
+audit-log-repudiation                          High (11)         Very Low (35)   5 -> 3  Goal
+  evidence-lost                                impact Major                      5 -> 3
+root-ca-private-key-disclosure                 Very Low (41)     Very Low (68)   4 -> 4  Goal
+  trust-chain-broken                           impact Severe                     4 -> 4
+root-ca-private-key-denial                     Very Low (29)     Very Low (72)   4 -> 4  Goal
+  trust-chain-broken                           impact Severe                     4 -> 4
+registration-authority-tampering               Very Low (27)     Very Low (48)   4 -> 4  Goal
+  trust-chain-broken                           impact Severe                     4 -> 4
+  vehicle-identity-forged                      impact Moderate                   3 -> 3
+vehicle-ca-tampering                           Very Low (26)     Very Low (47)   3 -> 3  Goal
+  vehicle-identity-forged                      impact Moderate                   3 -> 3
+certificate-revocation-list-denial             Very Low (39)     Very Low (84)   3 -> 3  Goal
+  trust-chain-broken                           impact Severe                     3 -> 3
+provisioning-server-tampering                  Very Low (30)     Very Low (51)   3 -> 3  Goal
+  vehicles-built-untrusted                     impact Severe                     3 -> 3
+  vehicle-identity-forged                      impact Moderate                   2 -> 2
+provisioning-server-denial                     Very Low (27)     Very Low (31)   3 -> 3  Goal
+  production-halted                            impact Severe                     3 -> 3
+trust-anchor-bundle-tampering                  Low (21)          Very Low (45)   4 -> 3  Goal
+  vehicles-built-untrusted                     impact Severe                     4 -> 3
+  trust-chain-broken                           impact Severe                     4 -> 3
+secure-boot-public-key-tampering               Very Low (33)     Very Low (54)   3 -> 3  Goal
+  vehicles-built-untrusted                     impact Severe                     3 -> 3
+  malicious-software-installed                 impact Severe                     3 -> 3
+lifecycle-state-tampering                      Very Low (26)     Very Low (42)   2 -> 2  Claim
+  malicious-software-installed                 impact Severe                     2 -> 2
+cellular-interface-spoofing                    Low (21)          Low (21)        3 -> 3  Goal
+  update-delayed                               impact Moderate                   3 -> 3
+ota-client-tampering                           Very Low (42)     Very Low (68)   4 -> 4  Goal
+  malicious-software-installed                 impact Severe                     4 -> 4
+  fleet-data-disclosed                         impact Major                      3 -> 3
+package-verifier-tampering                     Very Low (38)     Very Low (65)   4 -> 4  Goal
+  malicious-software-installed                 impact Severe                     4 -> 4
+secure-time-tampering                          Low (24)          Very Low (42)   3 -> 2  Goal
+  wrong-software-installed                     impact Major                      3 -> 2
+consent-ui-tampering                           Low (20)          Very Low (36)   3 -> 2  Goal
+  consent-bypassed                             impact Moderate                   3 -> 2
+download-link-denial                           High (8)          High (8)        3 -> 3  Goal
+  update-delayed                               impact Moderate                   3 -> 3
+update-orchestrator-tampering                  Very Low (26)     Very Low (47)   4 -> 4  Goal
+  update-during-driving                        impact Severe                     4 -> 4
+  vehicle-bricked                              impact Severe                     4 -> 4
+central-gateway-tampering                      Medium (19)       Low (23)        4 -> 3  Goal
+  vehicle-bricked                              impact Severe                     4 -> 3
+powertrain-can-tampering                       Medium (15)       Medium (15)     4 -> 4  Goal
+  update-during-driving                        impact Severe                     4 -> 4
+  vehicle-bricked                              impact Severe                     4 -> 4
+vcu-bootloader-tampering                       Low (23)          Very Low (67)   3 -> 2  Goal
+  malicious-software-installed                 impact Severe                     3 -> 2
+bms-bootloader-tampering                       Very Low (28)     Very Low (49)   2 -> 2  Claim
+  malicious-software-installed                 impact Severe                     2 -> 2
+telematics-unit-tampering                      Low (23)          Very Low (45)   3 -> 2  Goal
+  malicious-software-installed                 impact Severe                     3 -> 2
+tcu-debug-port-spoofing                        Medium (16)       Very Low (42)   4 -> 2  Goal
+  malicious-software-installed                 impact Severe                     4 -> 2
+  software-ip-lost                             impact Moderate                   2 -> 1
+tcu-hsm-tampering                              Low (23)          Very Low (57)   3 -> 2  Goal
+  vehicle-identity-forged                      impact Moderate                   2 -> 1
+  malicious-software-installed                 impact Severe                     3 -> 2
+vehicle-private-key-disclosure                 Very Low (48)     Very Low (82)   1 -> 1  Claim
+  vehicle-identity-forged                      impact Moderate                   1 -> 1
+installed-root-certificate-tampering           Very Low (27)     Very Low (69)   2 -> 2  Claim
+  malicious-software-installed                 impact Severe                     2 -> 2
+  trust-chain-broken                           impact Severe                     2 -> 2
+vcu-rollback-counter-tampering                 Very Low (29)     Very Low (50)   1 -> 1  Claim
+  wrong-software-installed                     impact Major                      1 -> 1

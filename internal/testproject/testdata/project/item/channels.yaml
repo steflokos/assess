@@ -1,0 +1,4 @@
+channel service-link:
+  name: Service link
+  description: The connection between the gateway and the API interface of the backend.
+  between: [gateway, api-interface]

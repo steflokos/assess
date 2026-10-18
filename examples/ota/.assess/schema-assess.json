@@ -1,0 +1,87 @@
+{
+  "$ref": "#/definitions/config",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "config": {
+      "additionalProperties": false,
+      "description": "The tool configuration: which format this project is written for.",
+      "properties": {
+        "apiVersion": {
+          "description": "Project format version. The only supported value is assess/v1beta1.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "keys": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where assess verify finds the public keys to check signatures with. This is a file, or a folder of .pub and .pem files, relative to the project. Keep private keys out of the project."
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Path to the policy file, relative to the project. If you leave it out, it is policy.yaml."
+        },
+        "template": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Path to the report template, relative to the project. The template is an HTML page with placeholders that say where each part of the report goes. If you leave it out, assess uses the standard template. Run assess template to get a copy to start from."
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The version of assess that wrote this project, such as v0.1.0. assess init writes it. assess warns when you run an older version, because it may not read the files right."
+        }
+      },
+      "required": [
+        "apiVersion"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "The file assess.yaml of an assess project. assess schema writes this file. Do not edit it.",
+  "title": "assess.yaml",
+  "x-assess-api-version": "assess/v1beta1"
+}

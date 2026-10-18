@@ -1,0 +1,3 @@
+# Statements that the analysis relies on. Write one as  assumption <id>:  with the statement as its name.
+# A threat scenario, attack step, control or risk that holds only while an assumption is true points to it
+# with assumes. schema.yaml lists every attribute.

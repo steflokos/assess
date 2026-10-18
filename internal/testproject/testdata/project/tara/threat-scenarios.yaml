@@ -1,0 +1,32 @@
+threat update-package-tampering:
+  name: Tampering with Update package
+  description: The package that the gateway installs is not the one the backend sent.
+  damages: unsafe-software-runs
+  steps:
+    or:
+      - modify-package-in-transit
+      - sign-malicious-package
+
+threat firmware-image-tampering:
+  name: Tampering with Firmware image
+  description: The software on the gateway is replaced.
+  damages: unsafe-software-runs
+  steps:
+    or:
+      - reflash-over-debug-port
+
+threat device-key-disclosure:
+  name: Disclosure of Device key
+  description: The key of a gateway is read out.
+  damages: fleet-credentials-leak
+  steps:
+    or:
+      - extract-key-from-flash
+
+threat api-interface-spoofing:
+  name: Spoofing of API interface
+  description: Somebody acts as a gateway towards the backend.
+  damages: fleet-credentials-leak
+  steps:
+    or:
+      - impersonate-gateway

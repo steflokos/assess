@@ -1,0 +1,2 @@
+# Actions that an attacker takes. Write one as  step <id>:  once, and any number of threat scenarios can use it.
+# schema.yaml lists every attribute.

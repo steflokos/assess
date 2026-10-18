@@ -1,0 +1,2 @@
+# Communication links between components or interfaces. Write one as  channel <id>:  at the top level.
+# schema.yaml lists every attribute.

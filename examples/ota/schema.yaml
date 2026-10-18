@@ -1,0 +1,909 @@
+# schema.yaml - how to structure the files of an assess project
+#
+# assess schema writes this file. Do not edit it. Run assess schema again after you upgrade assess.
+# assess validate reports anything that does not fit this file.
+#
+# How to read it
+#   required                 the attribute must be written
+#   optional                 it may be left out
+#   A | B | C                exactly one of these values
+#   [A | B]                  a list of these values
+#   <text>                   free text. Put it in quotes if it contains ": "
+#   <id>                     an id you choose: letters, digits, "." "_" "-", unique in the whole project
+#   <id of a function>       the id of a record of that kind: one id, or a list of ids
+#   <number>                 a whole number
+#   and: [...]  or: [...]    boolean logic over step ids, nested as needed
+#   kind <id>: ...           a record: a heading, then an indented block of attributes and child records
+#                            A threat is written threat <asset>-<stride>: the id names the asset and the property.
+#                            An asset is written asset <element-id>: with the id of its element.
+#                            A risk is written risk <threat-id>: with the id of its threat scenario.
+#
+# Layout of a project
+#   assess.yaml     tool configuration
+#   project.yaml    project information
+#   policy.yaml     the policy: the values the calculations use
+#   iterations.yaml the closed iterations, written by assess finalize
+#   schema.yaml     this file
+#   item/           the item definition
+#   tara/           the threat analysis and risk assessment
+#   concept/        the cybersecurity concept: the risks
+#   rules/          the rules "assess lint" checks the project against, written in CEL
+#
+# Write a record in the folder of its kind. Subfolders are fine. A yaml file anywhere else
+# is not read. Indentation means "contains". A record that can contain other kinds says so below.
+
+---
+# assess.yaml: Tool configuration: which format this project is written for.
+# required. Project format version. The only supported value is assess/v1beta1.
+apiVersion: <text>
+# optional. The version of assess that wrote this project, such as v0.1.0. assess init writes it.
+# assess warns when you run an older version, because it may not read the files right.
+version: <text>
+# optional. Path to the policy file, relative to the project. If you leave it out, it is
+# policy.yaml.
+policy: <text>
+# optional. Where assess verify finds the public keys to check signatures with. This is a file, or a
+# folder of .pub and .pem files, relative to the project. Keep private keys out of the project.
+keys: <text>
+# optional. Path to the report template, relative to the project. The template is an HTML page with
+# placeholders that say where each part of the report goes. If you leave it out, assess uses the
+# standard template. Run assess template to get a copy to start from.
+template: <text>
+
+---
+# project.yaml: Project information: who carried out the assessment, when and against which
+# standards.
+# required. Name of the assessment project.
+name: <text>
+# optional. What this project assesses and why.
+description: <text>
+# optional. Standards and regulations the assessment refers to.
+standards: [<text>]
+# optional. People who carried out the assessment.
+assessors: [<text>]
+# optional. Date of the assessment, as YYYY-MM-DD.
+date: <text>
+# optional. The documents and other sources the assessment is based on, each with where to find it
+# and the version used.
+sources:
+  # required. Title of the document or other source.
+  - name: <text>
+    # optional. Where to find it: a URL, a path or a document number.
+    location: <text>
+    # optional. The version or revision that was used.
+    version: <text>
+# optional. Further information for the report, in the order you write it. Each block has a title
+# and either a text or a table.
+extra:
+  # required. The heading of the block.
+  - title: <text>
+    # optional. Plain text, on as many lines as you like. A block has a text or a table, not both.
+    text: <text>
+    # optional. The headings of the columns of a table. A table needs columns and rows.
+    columns: [<text>]
+    # optional. The rows of a table, each a list with one cell per column.
+    rows: [[<text>]]
+# optional. Notes for people, as key and value, such as owner or ticket. assess does not read them.
+notes: {key: value}
+
+---
+# policy.yaml: Policy: the values that the calculations use. Check them against the standard and
+# change what your method does differently. Every section is optional, but a section that is present
+# must be complete. assess.yaml can name another file inside the project.
+# optional. Which controls count in the calculation.
+controls:
+  # optional. Controls that the calculation ignores, as if they were not deployed. One id or a list
+  # of ids. The base value ignores every control anyway, so this only changes the residual value.
+  exclude: <id of a control>
+# optional. How attack potential is added up and turned into a feasibility level.
+feasibility:
+  # optional. Points for each rating key. The five factors of a step add up to its attack potential.
+  # Write all five tables, each with every key.
+  points:
+    # optional. Points for ET0 to ET4.
+    time: {ET0: <number>, ET1: <number>, ET2: <number>, ET3: <number>, ET4: <number>}
+    # optional. Points for SE0 to SE3.
+    expertise: {SE0: <number>, SE1: <number>, SE2: <number>, SE3: <number>}
+    # optional. Points for KoIC0 to KoIC3.
+    knowledge: {KoIC0: <number>, KoIC1: <number>, KoIC2: <number>, KoIC3: <number>}
+    # optional. Points for WoO0 to WoO3.
+    window: {WoO0: <number>, WoO1: <number>, WoO2: <number>, WoO3: <number>}
+    # optional. Points for Eq0 to Eq3.
+    equipment: {Eq0: <number>, Eq1: <number>, Eq2: <number>, Eq3: <number>}
+  # optional. Turns attack potential into a feasibility level. The first band that matches from the
+  # top wins. Each band except the last gives the highest attack potential it covers. The last band
+  # has none.
+  levels:
+    # optional. The highest attack potential this band covers. Leave it out in the last band.
+    - upto: <number>
+      # required. The feasibility level for this band.
+      level: High | Medium | Low | Very Low
+  # optional. How the effort of the parts of a path adds up, factor by factor. sum adds the numbers
+  # and max takes the largest. Write one table for the attack steps and one for the controls the
+  # attacker has to defeat, each with all five factors. At an or, assess always takes the easiest
+  # path.
+  combine:
+    # required. For the attack steps of a path, including the steps of a bypass of a control. For
+    # example, time: sum and the others max.
+    steps:
+      # required. Elapsed time: sum or max.
+      time: sum | max
+      # required. Specialist expertise: sum or max.
+      expertise: sum | max
+      # required. Knowledge of the item or component: sum or max.
+      knowledge: sum | max
+      # required. Window of opportunity: sum or max.
+      window: sum | max
+      # required. Equipment: sum or max.
+      equipment: sum | max
+    # required. For the controls the attacker has to defeat. They apply on top of the steps. For
+    # example, time: max and the others sum, so a control that is in place raises the other factors.
+    controls: <same as feasibility.combine.steps>
+# optional. Which impact counts for the risk and how the impact of a damage scenario is worked out.
+impact:
+  # optional. How the four impact categories of one stakeholder become one level. max takes the
+  # worst. sum adds their points and looks the total up in levels.
+  across: max | sum
+  # optional. How the stakeholders become one level. max takes the worst and is the default. sum
+  # adds their points and looks the total up in levels. Every stakeholder that counts, counts the
+  # same.
+  between: max | sum
+  # optional. Whose impact counts for the risk. A stakeholder a damage scenario does not rate is
+  # skipped.
+  stakeholders: [roaduser | oem | supplier]
+  # optional. Points of each impact level, for a stage that is sum. Write every level.
+  points: {Severe: <number>, Major: <number>, Moderate: <number>, Negligible: <number>}
+  # optional. Turns total points back into an impact level, for a stage that is sum. The first band
+  # that matches from the top wins. Each band except the last gives the highest total it covers. The
+  # last band has none.
+  levels:
+    # optional. The highest total this band covers. Leave it out in the last band.
+    - upto: <number>
+      # required. The impact level for this band.
+      level: Severe | Major | Moderate | Negligible
+# optional. How scalability (Single Vehicle, Limited Batch, Fleet-Wide) changes the risk. If you
+# leave this section out, scalability is ignored and the risk comes straight from the matrix.
+scalability:
+  # required. ignored: scalability does not change the risk. escalator: the risk value from the
+  # matrix goes up for each scalability (see raise). matrix: there is a separate risk matrix for
+  # each scalability (see matrix).
+  mode: ignored | escalator | matrix
+  # optional. Which step of the path sets its scalability. bottleneck is the narrowest step and is
+  # the default. initial is the narrowest step that needs nothing before it. broadest is the widest
+  # step, which is the worst case.
+  of: bottleneck | initial | broadest
+  # optional. Escalator: how much the risk value is raised for each scalability. Write every
+  # scalability.
+  raise: {Single Vehicle: <number>, Limited Batch: <number>, Fleet-Wide: <number>}
+  # optional. Escalator: the risk value does not go above this. If you leave it out, it is the
+  # highest value in risk.matrix. The escalator never lowers a value.
+  cap: <number>
+  # optional. Matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix.
+  # Write every combination.
+  matrix:
+    Single Vehicle:
+      Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+    Limited Batch:
+      Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+    Fleet-Wide:
+      Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+      Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+# optional. How impact and feasibility give a risk value.
+risk:
+  # optional. Risk value for each impact level and feasibility level. Write every combination.
+  matrix:
+    Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+    Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+    Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+    Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+  # optional. The highest risk value the project accepts without a goal, on the same scale as the
+  # matrix. A risk whose base value (before any control) is at most this is a Claim. A higher one is
+  # a Goal. This is the type of the risk record. If you leave it out, no type is set.
+  affinity: <number>
+
+---
+# iterations.yaml: The closed iterations of the assessment. assess finalize adds an iteration when
+# the decisions of a round are complete, and assess sign adds signatures to it. Each iteration holds
+# the hash of the one before it, so assess verify can find a change. Do not edit this file by hand.
+# optional. The closed iterations, oldest first. assess finalize writes them. Do not edit them. Each
+# one holds the hash of the one before it, so assess verify can find a change.
+iterations:
+  # required. The number of the iteration. Numbers start at 1 and have no gap.
+  - number: <number>
+    # required. The date and time it was finalized, as RFC 3339 with the time zone, such as
+    # 2026-10-18T14:32:07+02:00.
+    date: <text>
+    # optional. Who finalized it. This is the list of assessors in project.yaml, unless you gave
+    # -by.
+    by: [<text>]
+    # optional. What this iteration was, in a sentence.
+    note: <text>
+    # optional. The version of assess that finalized it.
+    tool: <text>
+    # required. A fingerprint of the project files the decisions were made from. These are the
+    # configuration, the project file, the policy and the records. assess finalize uses it to see
+    # whether anything changed since.
+    inputs: <text>
+    # optional. Your decision for every risk, by the id of its threat scenario. It holds the
+    # treatment, the base and residual values, and a short digest of the rationale and the
+    # reference.
+    decisions: {key: value}
+    # optional. The hash of the iteration before it. The first iteration has none.
+    previous: <text>
+    # required. The hash of this iteration.
+    hash: <text>
+    # optional. Signatures of the hash, added by assess sign.
+    signatures:
+      # required. Who signed.
+      - by: <text>
+        # required. The fingerprint of the public key that checks the signature.
+        key: <text>
+        # required. The signature, in base64.
+        sig: <text>
+
+---
+# item/: The item definition (ISO/SAE 21434 clause 9.3). It covers what is assessed, what it does,
+# its architecture, the links between its parts and the assumptions made.
+
+# item: The item definition (ISO/SAE 21434 clause 9.3). It says what is assessed, where its boundary
+# is and what is assumed about it. A project has exactly one.
+# Written in item/, at the top level.
+item <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required. What is inside the item and what is outside it. Name the external interfaces.
+  boundary: <text>
+  # optional. Where and how the item is used (its operating environment).
+  environment: <text>
+
+# assumption: A statement about the item or its environment that the analysis relies on, such as
+# "the owner keeps the phone locked". You write it once. Threat scenarios, attack steps, controls
+# and risks that hold only while it is true point to it with assumes. It is not part of any
+# calculation.
+# Written in item/, at the top level.
+assumption <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+
+# function: Something the item does. Write sub-functions inside it. Its flow lists the steps it
+# takes through the system.
+# Written in item/, at the top level or inside a function. May contain: function.
+function <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. The route the function takes through the system, as a list of steps in order.
+  flow:
+    # optional. What happens in this step, in a sentence.
+    - step: <text>
+      # optional. Where the step happens. This is the component or interface that does it. With
+      # over, it is the sender. One id or a list of ids of components or interfaces. A component
+      # named here takes part in the function, so it does not need to list the function in
+      # functions.
+      at: <id of a component or interface>
+      # optional. The data it handles. One id or a list of ids of data elements.
+      data: <id of a data element>
+      # optional. The channel the result is sent over next. One id or a list of ids of channels. The
+      # data of this step travels over it, so the data does not need to list it in over. The next
+      # step is at the receiver, so assess reads the direction from the order of the steps. The
+      # sender and the receiver must be connected to the channel. A step with several channels has
+      # no single receiver.
+      over: <id of a channel>
+  # optional, repeatable. Something the item does. Write sub-functions inside it. Its flow lists the
+  # steps it takes through the system.
+  function <id>: ...
+
+# component: A physical or logical building block that realizes functions. It is an asset when
+# tara/assets.yaml has a record for it. Without one it is only context.
+# Written in item/, at the top level or inside a component. May contain: component, interface, data.
+component <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. The functions this component realizes, only for functions that have no flow. One id or
+  # a list of ids. Do not repeat what a flow already names.
+  functions: <id of a function>
+  # optional, repeatable. A physical or logical building block that realizes functions. It is an
+  # asset when tara/assets.yaml has a record for it. Without one it is only context.
+  component <id>: ...
+  # optional, repeatable. An access point on a component, such as a port or a service. It is an
+  # asset when tara/assets.yaml has a record for it.
+  interface <id>: ...
+  # optional, repeatable. Information or key material the item holds or moves. It is an asset when
+  # tara/assets.yaml has a record for it.
+  data <id>: ...
+
+# interface: An access point on a component, such as a port or a service. It is an asset when
+# tara/assets.yaml has a record for it.
+# Written in item/, only inside a component.
+interface <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. External if the interface connects the item to something outside its boundary.
+  # Internal if it connects parts of the item with each other. If you leave it out, the exposure is
+  # not stated, and assess does not treat it as Internal.
+  exposure: Internal | External
+  # optional. True if an attacker can start an attack here. An external interface usually is an
+  # entry point, but you write it separately.
+  entrypoint: true | false
+
+# channel: A communication link between components or interfaces, such as a bus or a radio link. It
+# is an asset when tara/assets.yaml has a record for it.
+# Written in item/, at the top level.
+channel <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 2. The two or more things this channel connects. Ids of components or
+  # interfaces.
+  between: <id of a component or interface>
+  # optional. True if an attacker can start an attack here.
+  entrypoint: true | false
+
+# data: Information or key material the item holds or moves. It is an asset when tara/assets.yaml
+# has a record for it.
+# Written in item/, at the top level or inside a component or a data. May contain: data.
+data <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. The channels the data travels over, only for transport that no function flow
+  # describes. One id or a list of ids. Do not repeat what a flow already says.
+  over: <id of a channel>
+  # optional, repeatable. Information or key material the item holds or moves. It is an asset when
+  # tara/assets.yaml has a record for it.
+  data <id>: ...
+
+---
+# tara/: Threat analysis and risk assessment. It holds the assets and their cybersecurity
+# properties, the damage scenarios, the threat scenarios and the attack steps and controls they use.
+
+# asset: An element of the architecture that matters for cybersecurity (ISO/SAE 21434 asset
+# identification). It has the id of that element and the cybersecurity properties whose loss would
+# do harm. An element with no asset record is only context. assess generate assets writes a record
+# for every element with all the properties. You then remove what does not apply.
+# Written in tara/, at the top level.
+# The id is the id of the element (a component, an interface, a channel or a data element) it is the
+# asset of, so there is no attribute for the link, and an element has at most one asset. An asset
+# and its element share the id, because assets have an id space of their own.
+asset <element-id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The cybersecurity properties that matter for this asset. These are the
+  # ones whose loss leads to a damage scenario. Remove the ones that do not apply. Delete the whole
+  # record if the element is only context.
+  properties: [Confidentiality | Integrity | Availability | Authenticity | Non Repudiation]
+
+# damage: What goes wrong for stakeholders when the listed asset properties are lost, with its
+# impact rating (ISO/SAE 21434 clauses 15.3 and 15.5).
+# Written in tara/, at the top level.
+damage <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required. The asset properties whose loss causes this damage. Write them as asset-id: [Property,
+  # ...].
+  compromises:
+    <id of an asset>: [Confidentiality | Integrity | Availability | Authenticity | Non Repudiation]
+  # required. Impact rating per stakeholder. The road user is required.
+  impact:
+    # required. Impact on the road user. Required.
+    roaduser:
+      # required. Impact on safety.
+      safety:
+        # required. The impact level.
+        level: Severe | Major | Moderate | Negligible
+        # optional. Why you chose this level. Put the text in quotes if it contains ': ' or sits
+        # inside { }.
+        rationale: <text>
+      # required. Financial impact.
+      financial: <same as impact.roaduser.safety>
+      # required. Impact on operation and availability of functions.
+      operational: <same as impact.roaduser.safety>
+      # required. Impact on privacy.
+      privacy: <same as impact.roaduser.safety>
+    # optional. Impact on the vehicle manufacturer.
+    oem: <same as impact.roaduser>
+    # optional. Impact on suppliers and other third parties: tier-1, tier-2 and further
+    # manufacturers.
+    supplier: <same as impact.roaduser>
+
+# threat: A threat scenario. It is a possible cause for losing one cybersecurity property of one
+# asset. It lists the damage it can cause and its attack path.
+# Written in tara/, at the top level.
+# The id says which property of which asset. It is the asset id, a hyphen and a STRIDE word, and the
+# word stands for the property (spoofing is Authenticity, tampering is Integrity, repudiation is Non
+# Repudiation, disclosure is Confidentiality, denial is Availability). The asset must list that
+# property. There is one threat scenario for each asset property. The different ways to carry it out
+# are alternatives inside steps.
+threat <asset>-<stride>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. The damage scenarios this threat can cause. One id or a list of ids.
+  damages: <id of a damage scenario>
+  # optional. The attack path of the threat scenario. It is boolean logic over attack steps and
+  # other threat scenarios. Write an id, or and: / or: followed by a list of ids and more and: / or:
+  # blocks.
+  #   nested, as boolean logic:
+  #     steps:
+  #       or:
+  #         - <id of an attack step or threat scenario>
+  #         - and: [<id of an attack step or threat scenario>, <id of an attack step or threat scenario>]
+  steps: <id of an attack step or threat scenario>
+  # optional. The assumptions this depends on. It holds only while they hold. One id or a list of
+  # ids.
+  assumes: <id of an assumption>
+
+# step: One action an attacker takes. You write it once and any number of threat scenarios can use
+# it. It has the effort it takes, what must happen before it and the controls that mitigate it.
+# Written in tara/, at the top level.
+step <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. The architecture element the step is carried out on, typically an interface or a
+  # channel.
+  target: <id of a component, interface, channel or data element>
+  # optional. The effort the step takes, rated in the five factors. Write all five or none.
+  potential:
+    # required. Elapsed time, ET0 to ET4.
+    time: ET0 | ET1 | ET2 | ET3 | ET4
+    # required. Specialist expertise, SE0 to SE3.
+    expertise: SE0 | SE1 | SE2 | SE3
+    # required. Knowledge of the item or component, KoIC0 to KoIC3.
+    knowledge: KoIC0 | KoIC1 | KoIC2 | KoIC3
+    # required. Window of opportunity, WoO0 to WoO3.
+    window: WoO0 | WoO1 | WoO2 | WoO3
+    # required. Equipment, Eq0 to Eq3.
+    equipment: Eq0 | Eq1 | Eq2 | Eq3
+  # optional. Why the attack potential was rated this way.
+  rationale: <text>
+  # optional. How far one successful attack reaches: one vehicle, a batch or the whole fleet.
+  scalability: Single Vehicle | Limited Batch | Fleet-Wide
+  # optional. Who would realistically carry out the step and why.
+  actors: [Nation-State / State-Sponsored | Organized Cybercrime | Hacktivist | Insider (Employee / Dealer / Supplier) | Vehicle Owner / Authorized User]
+  # optional. What must happen before this step. This is an attack step or a threat scenario, or
+  # and: / or: over them, nested as needed.
+  #   nested, as boolean logic:
+  #     preparedby:
+  #       or:
+  #         - <id of an attack step or threat scenario>
+  #         - and: [<id of an attack step or threat scenario>, <id of an attack step or threat scenario>]
+  preparedby: <id of an attack step or threat scenario>
+  # optional. The controls that mitigate this step. One id or a list of ids. Each control is a layer
+  # the attacker has to get past.
+  mitigatedby: <id of a control>
+  # optional. The assumptions this depends on. It holds only while they hold. One id or a list of
+  # ids.
+  assumes: <id of an assumption>
+
+# control: A cybersecurity control. You write it once and any number of threat scenarios can use it.
+# It has the effort it asks from the attacker and what can bypass it.
+# Written in tara/, at the top level.
+control <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. Where the control is deployed. One id or a list of ids of components, interfaces,
+  # channels or data.
+  target: <id of a component, interface, channel or data element>
+  # optional. How much effort the control asks from the attacker. Rate it in the same five factors
+  # and keys as the potential of an attack step. Lower numbers mean a weaker control. Write all five
+  # or none.
+  reduction:
+    # required. Elapsed time, ET0 to ET4.
+    time: ET0 | ET1 | ET2 | ET3 | ET4
+    # required. Specialist expertise, SE0 to SE3.
+    expertise: SE0 | SE1 | SE2 | SE3
+    # required. Knowledge of the item or component, KoIC0 to KoIC3.
+    knowledge: KoIC0 | KoIC1 | KoIC2 | KoIC3
+    # required. Window of opportunity, WoO0 to WoO3.
+    window: WoO0 | WoO1 | WoO2 | WoO3
+    # required. Equipment, Eq0 to Eq3.
+    equipment: Eq0 | Eq1 | Eq2 | Eq3
+  # optional. Why the reduction was rated this way.
+  rationale: <text>
+  # optional. What can bypass the control. This is an attack step or a threat scenario, or and: /
+  # or: over them, nested as needed.
+  #   nested, as boolean logic:
+  #     threatenedby:
+  #       or:
+  #         - <id of an attack step or threat scenario>
+  #         - and: [<id of an attack step or threat scenario>, <id of an attack step or threat scenario>]
+  threatenedby: <id of an attack step or threat scenario>
+  # optional. The assumptions this depends on. It holds only while they hold. One id or a list of
+  # ids.
+  assumes: <id of an assumption>
+
+---
+# concept/: The cybersecurity concept. It holds the risk of each threat scenario, with and without
+# the controls. Goals, claims and requirements follow from it.
+
+# risk: The risk of one threat scenario (ISO/SAE 21434 clause 15.8). It has the id of that threat
+# scenario. assess calculates its type (goal or claim) and its two values, one with every control
+# ignored and one with the controls applied. The treatment is your decision.
+# Written in concept/, at the top level.
+# The id is the id of the threat scenario it is the risk of, so there is no attribute for the link,
+# and a threat has at most one risk. A risk and its threat share the id, because risks have an id
+# space of their own.
+risk <threat-id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # optional. Calculated by assess. It is Goal when the base risk, before any control, is above the
+  # risk affinity of the policy. It is Claim when the base risk is at or below it. assess generate
+  # risks writes it. Do not edit it.
+  type: Goal | Claim
+  # optional. Calculated by assess: the risk value with every control ignored. assess generate risks
+  # writes it. Do not edit it.
+  base: <number>
+  # optional. Calculated by assess: the risk value with the controls applied, except the ones the
+  # policy excludes (controls.exclude). assess generate risks writes it. Do not edit it.
+  residual: <number>
+  # optional. How the risk is treated. This is your decision (ISO/SAE 21434 clause 15.9): Avoid,
+  # Reduce, Share or Accept. assess does not write it.
+  treatment: Avoid | Reduce | Share | Accept
+  # optional. Why you chose this treatment. assess does not write it.
+  rationale: <text>
+  # optional. Where the risk is tracked outside assess, such as the ids of its items in Jira. One
+  # text or a list. assess does not read them.
+  reference: [<text>]
+  # optional. The assumptions this depends on. The treatment holds only while they hold. One id or a
+  # list of ids.
+  assumes: <id of an assumption>
+
+---
+# rules/: The rules assess lint checks the project against, written in CEL. assess init writes a
+# basic set, and you can add your own.
+
+# rule: A check that the records of one kind must pass. You write it in CEL and assess lint runs it.
+# The check sees one record at a time and the calculated results. A record that fails it is a
+# finding at its own position.
+# Written in rules/, at the top level.
+rule <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required. The kind of record the rule checks: item, assumption, function, component, interface,
+  # channel, data, asset, damage, threat, step, control or risk. The check sees one record of that
+  # kind at a time, as a variable with the same name.
+  on: <RuleTarget>
+  # required. A CEL expression that is true when the record passes, for example risk.type != 'Goal'
+  # || risk.treatment in ['Avoid', 'Reduce']. A value that is still open has no value, so ask with
+  # has(risk.residual) first. schema.yaml lists the fields a check can use.
+  check: <text>
+  # optional. Error makes assess lint fail. Warning makes it fail only with -strict. If you leave it
+  # out, it is a Warning.
+  severity: Error | Warning
+  # optional. What to say when the check fails. Write a field of the record in braces, such as
+  # {unjustified}, and assess puts its value there. If you leave it out, the finding says that the
+  # record does not satisfy the rule.
+  message: <text>
+
+# What a check can read. The record being checked is a variable named after its kind, so on: risk
+# gives risk. Every rule can also read item, policy and the lists damages, threats, steps, controls
+# and risks. Compare text with == and in, and numbers with < <= == >= >. Search lists with exists(x,
+# ...) and all(x, ...), count them with size(...), and join conditions with && || and !.
+# A field marked open has no value when it has not been calculated or the policy does not set it. A
+# rule that reads it then could not be checked. It is not read as 0. has(risk.residual) asks whether
+# the value is there, so !has(risk.residual) || risk.residual < risk.base has an answer in both
+# cases.
+#
+# policy: The part of the policy a rule can read. The variable policy is there in every rule.
+  # affinity (int, open) risk.affinity of the policy: the highest risk the project accepts without a
+  # goal. Open when the policy sets none.
+  # excluded (list(string)) controls.exclude of the policy: the ids of the controls the calculation
+  # leaves out.
+#
+# item (the variable on: item): The item, with its two risk values. The variable item is there in
+# every rule.
+  # id (string) The id of the item.
+  # name (string) The name of the item.
+  # base (int, open) The risk of the item with every control ignored: the highest risk of its threat
+  # scenarios. Open when it cannot be calculated.
+  # residual (int, open) The risk of the item with the controls applied. Open when it cannot be
+  # calculated.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# assumption (the variable on: assumption. The list assumptions holds all of them): An assumption of
+# the item definition, with the threat scenarios, attack steps, controls and risks that rely on it.
+  # id (string) The id of the assumption.
+  # name (string) The statement of the assumption.
+  # description (string) Why it is assumed. Empty when you wrote none.
+  # threats (list(string)) The ids of the threat scenarios that assume it.
+  # steps (list(string)) The ids of the attack steps that assume it.
+  # controls (list(string)) The ids of the controls that assume it.
+  # risks (list(string)) The ids of the risks that assume it.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# function (the variable on: function. The list functions holds all of them): A function of the
+# item.
+  # id (string) The id of the function.
+  # name (string) The name of the function.
+  # description (string) What the function does. Empty when you wrote none.
+  # parent (string) The id of the function it is a sub-function of. Empty at the top level.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# component (the variable on: component. The list components holds all of them): A component of the
+# architecture.
+  # id (string) The id of the component.
+  # name (string) The name of the component.
+  # description (string) What the component does. Empty when you wrote none.
+  # parent (string) The id of the component it is inside. Empty at the top level.
+  # asset (bool) True when the component has an asset record.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# interface (the variable on: interface. The list interfaces holds all of them): An interface of a
+# component.
+  # id (string) The id of the interface.
+  # name (string) The name of the interface.
+  # description (string) What the interface is. Empty when you wrote none.
+  # parent (string) The id of the component it is on.
+  # exposure (string) External, Internal, or empty when it is not stated.
+  # entrypoint (bool) True when an attacker can start an attack here.
+  # asset (bool) True when the interface has an asset record.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# channel (the variable on: channel. The list channels holds all of them): A communication link
+# between components or interfaces.
+  # id (string) The id of the channel.
+  # name (string) The name of the channel.
+  # description (string) What the channel is. Empty when you wrote none.
+  # between (list(string)) The ids of the components or interfaces it connects.
+  # entrypoint (bool) True when an attacker can start an attack here.
+  # asset (bool) True when the channel has an asset record.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# data (the variable on: data. The list dataelements holds all of them): A data element of the
+# architecture. The variable of a rule on data is called data, and the list of all of them is called
+# dataelements.
+  # id (string) The id of the data element.
+  # name (string) The name of the data element.
+  # description (string) What the data is. Empty when you wrote none.
+  # parent (string) The id of the component or the data it is in. Empty when it rests nowhere.
+  # over (list(string)) The ids of the channels it travels over, written on the data itself, for
+  # transport that no flow describes.
+  # asset (bool) True when the data element has an asset record.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# asset (the variable on: asset. The list assets holds all of them): An asset: an element of the
+# architecture that matters for cybersecurity, with its properties.
+  # id (string) The id of the asset, which is the id of its element.
+  # name (string) The name of the asset.
+  # kind (string) The kind of element it is: component, interface, channel or data.
+  # properties (list(string)) The cybersecurity properties listed for it.
+  # compromised (list(string)) The properties of the asset that some damage scenario compromises, in
+  # the order they are listed.
+  # unjustified (list(string)) The properties listed for the asset that no damage scenario
+  # compromises.
+  # damages (list(string)) The ids of the damage scenarios that compromise it.
+  # threats (list(string)) The ids of the threat scenarios written for it.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# damage (the variable on: damage. The list damages holds all of them): A damage scenario.
+  # id (string) The id of the damage scenario.
+  # name (string) The name of the damage scenario.
+  # threats (list(string)) The threat scenarios that can cause it.
+  # decides (list(string)) The threat scenarios whose base or residual risk this damage scenario
+  # decides. It decides when it has the highest risk value among the damage scenarios of the threat
+  # scenario.
+  # impact (string, open) The impact level that the policy makes from the ratings. Open when none of
+  # the stakeholders that the policy counts rates it, or when the policy cannot calculate it.
+  # ratings (list(Rating)) Every impact rating that is written.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# threat (the variable on: threat. The list threats holds all of them): A threat scenario.
+  # id (string) The id of the threat scenario.
+  # name (string) The name of the threat scenario.
+  # asset (string) The id of the asset, read from the id of the threat scenario.
+  # property (string) The cybersecurity property, read from the id of the threat scenario.
+  # damages (list(string)) The ids of the damage scenarios it can cause.
+  # steps (list(string)) The ids of the attack steps and threat scenarios its steps tree names.
+  # assumes (list(string)) The ids of the assumptions it relies on.
+  # calculated (bool) True when its feasibility could be calculated.
+  # base (Feasibility, open) The feasibility with every control ignored. Open when it cannot be
+  # calculated.
+  # residual (Feasibility, open) The feasibility with the controls applied. Open when it cannot be
+  # calculated.
+  # risk (RiskValues, open) The risk of the threat scenario. Open when it cannot be calculated.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# step (the variable on: step. The list steps holds all of them): An attack step.
+  # id (string) The id of the attack step.
+  # name (string) The name of the attack step.
+  # target (string) The id of the architecture element it is carried out on. Empty when you wrote
+  # none.
+  # rationale (string) Why the attack potential was rated this way. Empty when you wrote none.
+  # scalability (string) Single Vehicle, Limited Batch or Fleet-Wide. Empty when you wrote none.
+  # actors (list(string)) Who would carry it out.
+  # rated (bool) True when all five factors of the attack potential are written.
+  # mitigatedby (list(string)) The ids of the controls that mitigate it.
+  # assumes (list(string)) The ids of the assumptions it relies on.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# control (the variable on: control. The list controls holds all of them): A control.
+  # id (string) The id of the control.
+  # name (string) The name of the control.
+  # target (list(string)) The ids of the architecture elements it is deployed on.
+  # rationale (string) Why the reduction was rated this way. Empty when you wrote none.
+  # rated (bool) True when all five factors of the reduction are written.
+  # mitigates (list(string)) The ids of the attack steps it mitigates.
+  # excluded (bool) True when the policy leaves it out of the calculation.
+  # assumes (list(string)) The ids of the assumptions it relies on.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# risk (the variable on: risk. The list risks holds all of them): A risk, as written in
+# concept/risks.yaml.
+  # id (string) The id of the risk, which is the id of its threat scenario.
+  # name (string) The name of the risk.
+  # description (string) The description you wrote. Empty when there is none.
+  # type (string, open) Goal or Claim, as calculated. Open when the policy sets no risk affinity or
+  # the risk cannot be calculated.
+  # base (int, open) The risk value with every control ignored, as calculated. Open when it cannot
+  # be calculated.
+  # residual (int, open) The risk value with the controls applied, as calculated. Open when it
+  # cannot be calculated.
+  # treatment (string) The decision you took: Avoid, Reduce, Share or Accept. Empty while there is
+  # none.
+  # rationale (string) Why you chose it. Empty when you wrote none.
+  # reference (list(string)) The ids of the risk in an external tool such as Jira.
+  # assumes (list(string)) The ids of the assumptions it relies on.
+  # threat (Threat, open) The threat scenario this is the risk of.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# Rating: One impact rating of a damage scenario, as in damage.ratings.
+  # who (string) The stakeholder: roaduser, oem or supplier.
+  # category (string) The impact category: safety, financial, operational or privacy.
+  # level (string) The impact level: Severe, Major, Moderate or Negligible.
+  # rationale (string) Why this level was chosen. Empty when you wrote none.
+#
+# Feasibility: The attack feasibility of a threat scenario, as in threat.base and threat.residual.
+  # level (string) The feasibility level, for example Medium.
+  # total (int) The attack potential of the easiest path.
+#
+# RiskValues: The calculated risk of a threat scenario, as in threat.risk.
+  # type (string, open) Goal when the base risk is above the risk affinity, Claim when it is at or
+  # below it. Open when the policy sets no affinity.
+  # base (int, open) The highest risk over the damage scenarios with every control ignored.
+  # residual (int, open) The highest risk over the damage scenarios with the controls applied.
+
+---
+# Values. These are the allowed values of the enums above, with what they mean where the standard
+# says so.
+
+Exposure:
+  - Internal  # The interface connects parts of the item with each other.
+  - External  # The interface connects the item to something outside its boundary.
+
+Property:
+  - Confidentiality  # Information is available only to those authorised to see it.
+  - Integrity  # Data, code and state are accurate and have not been altered without authorisation.
+  - Availability  # The asset can be used when it is needed.
+  - Authenticity  # The origin or identity of the asset, message or party is genuine.
+  - Non Repudiation  # An action or message cannot later be credibly denied by whoever performed it.
+
+RuleTarget:
+  - item
+  - assumption
+  - function
+  - component
+  - interface
+  - channel
+  - data
+  - asset
+  - damage
+  - threat
+  - step
+  - control
+  - risk
+
+Severity:
+  - Error  # A failed rule makes assess lint fail.
+  - Warning  # A failed rule is reported. It makes assess lint fail only with -strict.
+
+---
+# Also checked by "assess validate"
+#   every id is unique in the whole project
+#   every reference points at a record of the kind its attribute allows
+#   an asset is an element of the architecture and lists each property once
+#   a damage scenario compromises and a threat scenario attacks, only properties its asset lists
+#   a fact that a function flow states is not written again (error: redundant). A component does not
+#   list a function that its flow names, and data does not list a channel that a flow step sends it over
+#   a block of extra in project.yaml is a text or a table, and every row of a table has one cell per
+#   column

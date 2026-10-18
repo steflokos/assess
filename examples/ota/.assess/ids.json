@@ -1,0 +1,2052 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "assumption": {
+      "enum": [
+        "hsm-certified-as-claimed",
+        "secure-element-evaluated",
+        "custodians-independent",
+        "cloud-tenant-segregated",
+        "suppliers-sign-delivery-hashes",
+        "workshops-use-managed-testers"
+      ],
+      "enumDescriptions": [
+        "assumption · The HSMs resist physical and logical attacks at the level of their certification",
+        "assumption · The secure element of the telematics unit resists side-channel and fault attacks at the level of its evaluation",
+        "assumption · The custodians of the root HSM do not work for the same line manager and are in three locations",
+        "assumption · The cloud tenant of the OTA backend is separate from the corporate IT tenant",
+        "assumption · Every supplier delivery carries a hash that the supplier confirms through a second channel",
+        "assumption · Workshops use testers that the OEM provides and manages"
+      ]
+    },
+    "channel": {
+      "enum": [
+        "supplier-link",
+        "operator-link",
+        "app-link",
+        "workshop-link",
+        "cellular-link",
+        "download-link",
+        "origin-link",
+        "soc-link",
+        "ecu-supply-link",
+        "diagnostic-link",
+        "plant-diagnostic-link",
+        "plant-network",
+        "plant-wan",
+        "baseline-sync-link",
+        "pki-ceremony-media",
+        "boot-ceremony-media",
+        "pki-network",
+        "issuing-hsm-link",
+        "ra-link",
+        "crl-link",
+        "backend-network",
+        "signing-network",
+        "backbone-ethernet",
+        "powertrain-can"
+      ],
+      "enumDescriptions": [
+        "channel · Supplier link",
+        "channel · Operator link",
+        "channel · App link",
+        "channel · Workshop link",
+        "channel · Cellular link",
+        "channel · Download link",
+        "channel · Origin link",
+        "channel · Security operations link",
+        "channel · ECU supply link",
+        "channel · Diagnostic link",
+        "channel · Plant diagnostic link",
+        "channel · Plant network",
+        "channel · Plant WAN",
+        "channel · Baseline sync link",
+        "channel · PKI ceremony media",
+        "channel · Boot ceremony media",
+        "channel · PKI network",
+        "channel · Issuing HSM link",
+        "channel · Registration link",
+        "channel · Revocation link",
+        "channel · Backend service network",
+        "channel · Signing network",
+        "channel · Vehicle backbone Ethernet",
+        "channel · Powertrain CAN"
+      ]
+    },
+    "component": {
+      "enum": [
+        "ota-backend",
+        "backoffice-portal",
+        "release-management",
+        "build-pipeline",
+        "artifact-store",
+        "signing-service",
+        "signing-hsm",
+        "boot-key-hsm",
+        "campaign-management",
+        "campaign-planner",
+        "vehicle-registry",
+        "update-director",
+        "director-hsm",
+        "package-repository",
+        "vehicle-api-gateway",
+        "gateway-key-store",
+        "service-portal",
+        "telemetry-service",
+        "oem-pki",
+        "root-ca",
+        "root-ca-hsm",
+        "issuing-hsm",
+        "software-ca",
+        "vehicle-ca",
+        "backend-ca",
+        "registration-authority",
+        "revocation-service",
+        "production-plant",
+        "provisioning-server",
+        "plant-hsm",
+        "production-image-store",
+        "eol-station",
+        "vehicle",
+        "telematics-unit",
+        "tcu-hsm",
+        "tcu-bootloader",
+        "tcu-platform",
+        "ota-client",
+        "package-verifier",
+        "package-store",
+        "update-orchestrator",
+        "central-gateway",
+        "diagnostic-access-control",
+        "vehicle-control-unit",
+        "vcu-bootloader",
+        "vcu-application",
+        "bms",
+        "bms-bootloader",
+        "bms-application",
+        "infotainment-unit",
+        "ivi-bootloader",
+        "ivi-system",
+        "ivi-updater",
+        "consent-ui",
+        "supplier-delivery-system",
+        "content-delivery-network",
+        "operator-workstation",
+        "owner-mobile-app",
+        "workshop-tester",
+        "ecu-manufacturer",
+        "security-operations-centre"
+      ],
+      "enumDescriptions": [
+        "component · OTA backend",
+        "component · Back-office portal",
+        "component · Release management",
+        "component · Build and integration pipeline",
+        "component · Release artifact store",
+        "component · Software signing service",
+        "component · Release signing HSM",
+        "component · Boot key HSM (offline)",
+        "component · Campaign management",
+        "component · Campaign planner",
+        "component · Vehicle registry",
+        "component · Update director",
+        "component · Director HSM",
+        "component · Package repository",
+        "component · Vehicle API gateway",
+        "component · Gateway key store",
+        "component · Owner and workshop services",
+        "component · Update telemetry and audit",
+        "component · OEM PKI",
+        "component · Root CA (offline)",
+        "component · Root CA HSM",
+        "component · Issuing CA HSM",
+        "component · Software signing CA (intermediate)",
+        "component · Vehicle CA (intermediate)",
+        "component · Backend TLS CA (intermediate)",
+        "component · Registration authority",
+        "component · Revocation service",
+        "component · Production plant systems",
+        "component · Plant provisioning server",
+        "component · Plant HSM",
+        "component · Production software store",
+        "component · End-of-line programming station",
+        "component · Vehicle",
+        "component · Telematics unit (TCU)",
+        "component · TCU secure element",
+        "component · TCU bootloader",
+        "component · TCU platform software",
+        "component · OTA client",
+        "component · Package verifier",
+        "component · Package store",
+        "component · Update orchestrator",
+        "component · Central gateway",
+        "component · Diagnostic access control",
+        "component · Vehicle control unit (VCU)",
+        "component · VCU bootloader",
+        "component · VCU application",
+        "component · Battery management system (BMS)",
+        "component · BMS bootloader",
+        "component · BMS application",
+        "component · Infotainment unit",
+        "component · Infotainment bootloader",
+        "component · Infotainment system software",
+        "component · Infotainment updater",
+        "component · Update consent screen",
+        "component · Supplier delivery system",
+        "component · Content delivery network",
+        "component · Staff workstation",
+        "component · Owner's mobile app (iOS and Android)",
+        "component · Workshop tester",
+        "component · ECU manufacturer",
+        "component · Security operations centre"
+      ]
+    },
+    "compromises": {
+      "additionalProperties": {
+        "type": [
+          "string",
+          "array"
+        ]
+      },
+      "properties": {
+        "approval-record": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "audit-log": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity",
+                "Non Repudiation"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation.",
+                "An action or message cannot later be credibly denied by whoever performed it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity",
+                  "Non Repudiation"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation.",
+                  "An action or message cannot later be credibly denied by whoever performed it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "authorisation-signing-private-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Confidentiality"
+              ],
+              "enumDescriptions": [
+                "Information is available only to those authorised to see it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Confidentiality"
+                ],
+                "enumDescriptions": [
+                  "Information is available only to those authorised to see it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "backend-tls-private-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Confidentiality"
+              ],
+              "enumDescriptions": [
+                "Information is available only to those authorised to see it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Confidentiality"
+                ],
+                "enumDescriptions": [
+                  "Information is available only to those authorised to see it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "backoffice-portal": {
+          "oneOf": [
+            {
+              "enum": [
+                "Authenticity"
+              ],
+              "enumDescriptions": [
+                "The origin or identity of the asset, message or party is genuine."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Authenticity"
+                ],
+                "enumDescriptions": [
+                  "The origin or identity of the asset, message or party is genuine."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "bms-bootloader": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "campaign-definition": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "cellular-interface": {
+          "oneOf": [
+            {
+              "enum": [
+                "Authenticity"
+              ],
+              "enumDescriptions": [
+                "The origin or identity of the asset, message or party is genuine."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Authenticity"
+                ],
+                "enumDescriptions": [
+                  "The origin or identity of the asset, message or party is genuine."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "central-gateway": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "certificate-revocation-list": {
+          "oneOf": [
+            {
+              "enum": [
+                "Availability"
+              ],
+              "enumDescriptions": [
+                "The asset can be used when it is needed."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Availability"
+                ],
+                "enumDescriptions": [
+                  "The asset can be used when it is needed."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "consent-ui": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "download-link": {
+          "oneOf": [
+            {
+              "enum": [
+                "Availability"
+              ],
+              "enumDescriptions": [
+                "The asset can be used when it is needed."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Availability"
+                ],
+                "enumDescriptions": [
+                  "The asset can be used when it is needed."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "installed-root-certificate": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "lifecycle-state": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "ota-client": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "package-verifier": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "powertrain-can": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "provisioning-server": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity",
+                "Availability"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation.",
+                "The asset can be used when it is needed."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity",
+                  "Availability"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation.",
+                  "The asset can be used when it is needed."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "registration-authority": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "release-candidate": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "root-ca-private-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Confidentiality",
+                "Availability"
+              ],
+              "enumDescriptions": [
+                "Information is available only to those authorised to see it.",
+                "The asset can be used when it is needed."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Confidentiality",
+                  "Availability"
+                ],
+                "enumDescriptions": [
+                  "Information is available only to those authorised to see it.",
+                  "The asset can be used when it is needed."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "secure-boot-private-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Confidentiality"
+              ],
+              "enumDescriptions": [
+                "Information is available only to those authorised to see it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Confidentiality"
+                ],
+                "enumDescriptions": [
+                  "Information is available only to those authorised to see it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "secure-boot-public-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "secure-time": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "signing-service": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "software-signing-certificate": {
+          "oneOf": [
+            {
+              "enum": [
+                "Authenticity"
+              ],
+              "enumDescriptions": [
+                "The origin or identity of the asset, message or party is genuine."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Authenticity"
+                ],
+                "enumDescriptions": [
+                  "The origin or identity of the asset, message or party is genuine."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "software-signing-private-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Confidentiality",
+                "Availability"
+              ],
+              "enumDescriptions": [
+                "Information is available only to those authorised to see it.",
+                "The asset can be used when it is needed."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Confidentiality",
+                  "Availability"
+                ],
+                "enumDescriptions": [
+                  "Information is available only to those authorised to see it.",
+                  "The asset can be used when it is needed."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "supplier-delivery": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "tcu-debug-port": {
+          "oneOf": [
+            {
+              "enum": [
+                "Authenticity"
+              ],
+              "enumDescriptions": [
+                "The origin or identity of the asset, message or party is genuine."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Authenticity"
+                ],
+                "enumDescriptions": [
+                  "The origin or identity of the asset, message or party is genuine."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "tcu-hsm": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "telematics-unit": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "trust-anchor-bundle": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "update-director": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "update-orchestrator": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "update-package": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity",
+                "Confidentiality"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation.",
+                "Information is available only to those authorised to see it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity",
+                  "Confidentiality"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation.",
+                  "Information is available only to those authorised to see it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "vcu-bootloader": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "vcu-rollback-counter": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "vehicle-api-gateway": {
+          "oneOf": [
+            {
+              "enum": [
+                "Availability",
+                "Authenticity"
+              ],
+              "enumDescriptions": [
+                "The asset can be used when it is needed.",
+                "The origin or identity of the asset, message or party is genuine."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Availability",
+                  "Authenticity"
+                ],
+                "enumDescriptions": [
+                  "The asset can be used when it is needed.",
+                  "The origin or identity of the asset, message or party is genuine."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "vehicle-ca": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "vehicle-configuration": {
+          "oneOf": [
+            {
+              "enum": [
+                "Integrity",
+                "Confidentiality"
+              ],
+              "enumDescriptions": [
+                "Data, code and state are accurate and have not been altered without authorisation.",
+                "Information is available only to those authorised to see it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Integrity",
+                  "Confidentiality"
+                ],
+                "enumDescriptions": [
+                  "Data, code and state are accurate and have not been altered without authorisation.",
+                  "Information is available only to those authorised to see it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "vehicle-private-key": {
+          "oneOf": [
+            {
+              "enum": [
+                "Confidentiality"
+              ],
+              "enumDescriptions": [
+                "Information is available only to those authorised to see it."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Confidentiality"
+                ],
+                "enumDescriptions": [
+                  "Information is available only to those authorised to see it."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        "workshop-interface": {
+          "oneOf": [
+            {
+              "enum": [
+                "Authenticity"
+              ],
+              "enumDescriptions": [
+                "The origin or identity of the asset, message or party is genuine."
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "Authenticity"
+                ],
+                "enumDescriptions": [
+                  "The origin or identity of the asset, message or party is genuine."
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "control": {
+      "enum": [
+        "phishing-resistant-mfa",
+        "helpdesk-reset-verification",
+        "device-bound-sessions",
+        "four-eyes-approval",
+        "supplier-account-hardening",
+        "supplier-delivery-review",
+        "build-isolation-and-pinning",
+        "signing-request-validation",
+        "signing-network-isolation",
+        "signing-activity-monitoring",
+        "key-backup-split-custody",
+        "hsm-key-protection",
+        "key-ceremony-controls",
+        "pki-network-segmentation",
+        "ra-dual-control-and-attestation",
+        "crl-freshness-fail-closed",
+        "ecu-manufacturer-attestation",
+        "cloud-admin-hardening",
+        "director-authorisation-policy",
+        "staged-rollout-and-stop-criteria",
+        "vehicle-api-rate-limits-and-anomaly-detection",
+        "ddos-protection",
+        "audit-log-immutability",
+        "named-accounts-and-sealed-break-glass",
+        "cdn-account-hardening",
+        "repository-object-lock",
+        "workshop-mfa-and-device-binding",
+        "package-signature-verification",
+        "hardened-package-parsing",
+        "orchestrator-privilege-separation",
+        "modem-isolation",
+        "tls-pinning-to-backend-ca",
+        "time-stamp-freshness",
+        "consent-message-authentication",
+        "vehicle-state-plausibility-checks",
+        "diagnostic-session-authentication",
+        "ecu-bootloader-signature-check",
+        "flash-driver-verification",
+        "debug-lockdown",
+        "flash-encryption-device-key",
+        "secure-boot-chain",
+        "secure-element-channel-protection",
+        "se-key-usage-policy",
+        "secure-element-tamper-resistance",
+        "lifecycle-state-in-secure-hardware",
+        "trust-anchor-write-protection",
+        "authenticated-counter-storage",
+        "plant-network-segmentation",
+        "build-record-check-at-registration",
+        "trust-anchor-bundle-signing",
+        "package-encryption",
+        "time-plausibility-check"
+      ],
+      "enumDescriptions": [
+        "control · Phishing-resistant sign-in with hardware tokens",
+        "control · The helpdesk resets a token only after a callback and a second approver",
+        "control · Sessions are bound to the managed device and expire after an hour",
+        "control · Second approver for releases and campaigns",
+        "control · Supplier access over VPN with named accounts and a second factor",
+        "control · Review, binary comparison and tests of every supplier delivery",
+        "control · Isolated build runners, short-lived tokens and pinned dependencies",
+        "control · The signing service signs only the approved digest",
+        "control · The signing network accepts only the pipeline, and starts no connection",
+        "control · Alerts on every signing outside a release window",
+        "control · Key backups in split custody at separate sites",
+        "control · Keys in certified HSMs that cannot export them",
+        "control · Ceremonies with witnesses, video and keys in different places",
+        "control · The PKI network accepts only the CA hosts and the registration authority",
+        "control · Two approvals and key attestation for a signing certificate",
+        "control · A vehicle limits updates when its revocation list is too old",
+        "control · The ECU manufacturer confirms the hash of the key in every ECU",
+        "control · Administrator access to the cloud tenant only with just-in-time rights and approval",
+        "control · The director HSM signs only authorisations inside a policy",
+        "control · Waves, canary vehicles and an automatic stop",
+        "control · Authorisation per VIN, rate limits and detection of scans",
+        "control · DDoS protection in front of the vehicle interface",
+        "control · Audit log in write-once storage with a hash chain",
+        "control · Named accounts only, and a sealed emergency account that two people open",
+        "control · Single sign-on, hardware tokens and change approval at the content delivery network",
+        "control · The package repository refuses to change or delete a published package",
+        "control · Workshop accounts with a second factor, on registered devices only",
+        "control · The vehicle verifies the signature of every package against its own installed root",
+        "control · Memory-safe parsers that are fuzzed and run in a sandbox",
+        "control · The OTA client and the update orchestrator are separate processes with different rights",
+        "control · The modem is isolated from the application processor",
+        "control · The vehicle accepts only certificates of the backend TLS CA",
+        "control · Signed time stamps that are bound to a fresh request",
+        "control · The consent decision is signed in a way that the orchestrator checks",
+        "control · Parked is read from independent signals that are protected by SecOC",
+        "control · Programming sessions only with an authenticated tester or orchestrator",
+        "control · The bootloader checks the signature of every image before it runs it",
+        "control · The bootloader checks the signature of the flash driver before it runs it",
+        "control · Debug ports are locked by the lifecycle at the end of the line",
+        "control · The flash is encrypted with a device-unique key",
+        "control · Secure boot from a ROM key that is fixed in the processor",
+        "control · The processor and the secure element talk over an authenticated, encrypted channel",
+        "control · The secure element limits what its keys may sign",
+        "control · A secure element that is evaluated against side-channel and fault attacks",
+        "control · The lifecycle state is kept in one-way hardware",
+        "control · The trust anchors in the secure element are write-protected after delivery",
+        "control · The rollback counter is stored with a MAC under a device key",
+        "control · The production network is separate and allows named flows only",
+        "control · A vehicle certificate is issued only for a VIN with an open build record",
+        "control · The trust anchor bundle is signed, and the station checks the signature and the hash",
+        "control · The images of a package are encrypted for the vehicles that install them",
+        "control · Satellite time is used only when it agrees with the other sources"
+      ]
+    },
+    "damage": {
+      "enum": [
+        "malicious-software-installed",
+        "trust-chain-broken",
+        "fleet-cannot-be-updated",
+        "update-delayed",
+        "vehicle-bricked",
+        "update-during-driving",
+        "wrong-software-installed",
+        "fleet-data-disclosed",
+        "software-ip-lost",
+        "vehicle-identity-forged",
+        "production-halted",
+        "vehicles-built-untrusted",
+        "evidence-lost",
+        "consent-bypassed"
+      ],
+      "enumDescriptions": [
+        "damage scenario · Software chosen by an attacker runs on a vehicle controller",
+        "damage scenario · The trust anchors or a signing certificate are in the hands of an attacker",
+        "damage scenario · The fleet cannot receive updates",
+        "damage scenario · The update of a vehicle is delayed or blocked for a time",
+        "damage scenario · A controller is left without valid software",
+        "damage scenario · An update or a restart of a controller starts while the vehicle drives",
+        "damage scenario · Valid but unintended software is installed",
+        "damage scenario · Vehicle identities and inventories of owners are disclosed",
+        "damage scenario · Software and the knowledge of how it is built is lost to others",
+        "damage scenario · A vehicle identity is forged or copied",
+        "damage scenario · Vehicles cannot be provisioned and production stops",
+        "damage scenario · Vehicles leave the plant with the wrong or an attacker's keys, certificates or trust anchors",
+        "damage scenario · Approvals, consent and audit records are lost or can be disputed",
+        "damage scenario · An update is installed that the driver did not agree to"
+      ]
+    },
+    "data": {
+      "enum": [
+        "approval-record",
+        "supplier-delivery",
+        "release-candidate",
+        "software-bill-of-materials",
+        "software-signing-private-key",
+        "software-signing-certificate",
+        "secure-boot-private-key",
+        "secure-boot-public-key",
+        "campaign-definition",
+        "vehicle-configuration",
+        "vehicle-identity-record",
+        "authorisation-signing-private-key",
+        "authorisation-signing-certificate",
+        "install-authorisation",
+        "update-package",
+        "package-manifest",
+        "software-image",
+        "firmware-image",
+        "flash-driver-image",
+        "system-image",
+        "signature-bundle",
+        "installation-plan",
+        "backend-tls-certificate",
+        "backend-tls-private-key",
+        "consent-record",
+        "update-report",
+        "audit-log",
+        "root-ca-private-key",
+        "root-ca-certificate",
+        "ceremony-activation-cards",
+        "software-ca-private-key",
+        "vehicle-ca-private-key",
+        "backend-ca-private-key",
+        "software-ca-certificate",
+        "vehicle-ca-certificate",
+        "backend-ca-certificate",
+        "certificate-request",
+        "certificate-revocation-list",
+        "plant-client-private-key",
+        "plant-client-certificate",
+        "ecu-manufacturing-record",
+        "vehicle-build-record",
+        "production-software-baseline",
+        "bootloader-package",
+        "trust-anchor-bundle",
+        "vehicle-private-key",
+        "vehicle-certificate",
+        "installed-root-certificate",
+        "installed-intermediate-certificates",
+        "rollback-counters",
+        "secure-time",
+        "tcu-trust-anchor",
+        "tcu-active-slot",
+        "tcu-inactive-slot",
+        "update-log",
+        "staged-package",
+        "vehicle-inventory",
+        "update-state",
+        "diagnostic-access-policy",
+        "lifecycle-state",
+        "vcu-trust-anchor",
+        "vcu-rollback-counter",
+        "vcu-application-image",
+        "bms-trust-anchor",
+        "bms-application-image",
+        "ivi-trust-anchor",
+        "ivi-active-slot",
+        "ivi-inactive-slot",
+        "consent-decision"
+      ],
+      "enumDescriptions": [
+        "data element · Approval record",
+        "data element · Supplier delivery",
+        "data element · Release candidate",
+        "data element · Software bill of materials",
+        "data element · Software signing private key",
+        "data element · Software signing certificate",
+        "data element · Secure boot private key",
+        "data element · Secure boot public key",
+        "data element · Campaign definition",
+        "data element · Vehicle configuration",
+        "data element · Vehicle identity record",
+        "data element · Authorisation signing private key",
+        "data element · Authorisation signing certificate",
+        "data element · Install authorisation",
+        "data element · Update package",
+        "data element · Package manifest",
+        "data element · Software image",
+        "data element · Firmware image",
+        "data element · Flash driver image",
+        "data element · System image",
+        "data element · Signature bundle",
+        "data element · Installation plan",
+        "data element · Backend TLS certificate",
+        "data element · Backend TLS private key",
+        "data element · Consent record",
+        "data element · Update report",
+        "data element · Audit log",
+        "data element · Root CA private key",
+        "data element · Root CA certificate",
+        "data element · Ceremony activation cards",
+        "data element · Software CA private key",
+        "data element · Vehicle CA private key",
+        "data element · Backend CA private key",
+        "data element · Software CA certificate",
+        "data element · Vehicle CA certificate",
+        "data element · Backend CA certificate",
+        "data element · Certificate request",
+        "data element · Certificate revocation list",
+        "data element · Plant client private key",
+        "data element · Plant client certificate",
+        "data element · ECU manufacturing record",
+        "data element · Vehicle build record",
+        "data element · Production software baseline",
+        "data element · Bootloader package",
+        "data element · Trust anchor bundle",
+        "data element · Vehicle private key",
+        "data element · Vehicle certificate",
+        "data element · Installed root certificate",
+        "data element · Installed intermediate certificates",
+        "data element · Rollback counters",
+        "data element · Secure time",
+        "data element · TCU trust anchor",
+        "data element · TCU active slot",
+        "data element · TCU inactive slot",
+        "data element · Update log",
+        "data element · Staged package",
+        "data element · Vehicle inventory",
+        "data element · Update state",
+        "data element · Diagnostic access policy",
+        "data element · Lifecycle state",
+        "data element · VCU trust anchor",
+        "data element · VCU rollback counter",
+        "data element · VCU application image",
+        "data element · BMS trust anchor",
+        "data element · BMS application image",
+        "data element · Infotainment trust anchor",
+        "data element · Infotainment active slot",
+        "data element · Infotainment inactive slot",
+        "data element · Consent decision"
+      ]
+    },
+    "function": {
+      "enum": [
+        "key-ceremony",
+        "ecu-production",
+        "vehicle-enrollment",
+        "software-release",
+        "campaign-planning",
+        "ota-update",
+        "update-discovery",
+        "package-download",
+        "package-verification",
+        "update-consent",
+        "update-installation",
+        "controller-flashing",
+        "slot-update",
+        "update-reporting",
+        "owner-scheduling",
+        "workshop-recovery",
+        "certificate-lifecycle",
+        "vehicle-certificate-renewal",
+        "service-certificate-issuance",
+        "gateway-certificate-renewal",
+        "certificate-revocation"
+      ],
+      "enumDescriptions": [
+        "function · Key ceremony",
+        "function · ECU production",
+        "function · Vehicle enrollment",
+        "function · Software release and signing",
+        "function · Campaign planning and approval",
+        "function · Over-the-air update",
+        "function · Update discovery",
+        "function · Package download",
+        "function · Package verification",
+        "function · Update consent",
+        "function · Update installation",
+        "function · Flashing a controller",
+        "function · Updating with two slots",
+        "function · Update reporting",
+        "function · Owner scheduling",
+        "function · Workshop recovery",
+        "function · Certificate lifecycle",
+        "function · Vehicle certificate renewal",
+        "function · Service certificate issuance",
+        "function · Gateway certificate renewal",
+        "function · Certificate revocation"
+      ]
+    },
+    "interface": {
+      "enum": [
+        "portal-interface",
+        "supplier-intake-interface",
+        "origin-interface",
+        "vehicle-interface",
+        "owner-interface",
+        "workshop-interface",
+        "telemetry-export-interface",
+        "ecu-supply-interface",
+        "cellular-interface",
+        "tcu-backbone-interface",
+        "tcu-debug-port",
+        "cgw-backbone-interface",
+        "cgw-powertrain-interface",
+        "obd-port",
+        "eol-diagnostic-interface",
+        "vcu-can-interface",
+        "vcu-debug-port",
+        "bms-can-interface",
+        "ivi-ethernet-interface"
+      ],
+      "enumDescriptions": [
+        "interface · Portal interface",
+        "interface · Supplier intake interface",
+        "interface · Origin interface",
+        "interface · Vehicle interface",
+        "interface · Owner interface",
+        "interface · Workshop interface",
+        "interface · Telemetry export interface",
+        "interface · ECU supply interface",
+        "interface · Cellular interface",
+        "interface · TCU backbone interface",
+        "interface · TCU debug port",
+        "interface · Gateway backbone interface",
+        "interface · Gateway powertrain interface",
+        "interface · Diagnostic connector",
+        "interface · End-of-line diagnostic interface",
+        "interface · VCU CAN interface",
+        "interface · VCU debug port",
+        "interface · BMS CAN interface",
+        "interface · Infotainment Ethernet interface"
+      ]
+    },
+    "step": {
+      "enum": [
+        "aitm-phish-staff",
+        "social-engineer-helpdesk-mfa-reset",
+        "steal-session-token-with-infostealer",
+        "exploit-portal-self-approval-flaw",
+        "approve-release-with-stolen-identity",
+        "collude-second-approver",
+        "steal-supplier-account",
+        "compromise-supplier-build-system",
+        "hide-malicious-code-in-delivery",
+        "alter-supplier-delivery-in-transit",
+        "compromise-build-dependency",
+        "steal-ci-token",
+        "breach-build-runner",
+        "modify-candidate-after-approval",
+        "pivot-to-signing-network",
+        "forge-signing-request",
+        "insider-sign-with-two-tokens",
+        "steal-hsm-backup-tokens",
+        "probe-hsm-with-invasive-attack",
+        "exploit-hsm-firmware-vulnerability",
+        "wipe-hsm-keys-by-insider",
+        "destroy-key-backups",
+        "compromise-ra-service",
+        "submit-fraudulent-signing-certificate-request",
+        "breach-pki-network",
+        "steal-issuing-hsm-credentials",
+        "issue-rogue-vehicle-certificates",
+        "issue-signing-certificate-with-stolen-credentials",
+        "collude-custodians",
+        "breach-safe-room",
+        "probe-root-hsm",
+        "destroy-root-hsm-and-backups",
+        "block-crl-delivery",
+        "use-own-vehicle-identity",
+        "exploit-director-api",
+        "compromise-cloud-admin-account",
+        "take-over-director-service-account",
+        "use-director-hsm-as-oracle",
+        "steal-director-hsm-backup",
+        "create-malicious-campaign",
+        "exploit-registry-api-idor",
+        "enumerate-vins-via-api",
+        "breach-registry-database",
+        "submit-false-inventory-from-compromised-tcu",
+        "volumetric-ddos-on-gateway",
+        "abuse-kms-export-after-cloud-takeover",
+        "delete-or-alter-audit-entries",
+        "use-shared-break-glass-account",
+        "compromise-cdn-account",
+        "replace-package-at-cdn-edge",
+        "replace-package-in-repository",
+        "capture-own-download-and-extract-firmware",
+        "credential-stuffing-workshop-account",
+        "abuse-workshop-account-to-download-packages",
+        "reverse-engineer-ota-client-firmware",
+        "exploit-verifier-parsing-bug",
+        "deploy-rogue-base-station",
+        "exploit-baseband-vulnerability",
+        "escalate-from-modem-to-linux",
+        "mitm-vehicle-tls-session",
+        "exploit-tls-validation-bug",
+        "jam-cellular-connection",
+        "replay-old-time-stamp",
+        "spoof-gnss-time",
+        "exploit-ivi-application",
+        "send-forged-consent-to-orchestrator",
+        "escalate-from-ota-client-to-orchestrator",
+        "exploit-linux-kernel-vulnerability",
+        "tap-can-harness",
+        "spoof-vehicle-state-signals",
+        "plug-malicious-obd-dongle",
+        "steal-workshop-tester-certificate",
+        "exploit-gateway-diagnostic-bug",
+        "open-programming-session",
+        "erase-controller-application",
+        "flash-unsigned-image-via-uds",
+        "load-unsigned-flash-driver-via-uds",
+        "exploit-uds-transfer-buffer-overflow",
+        "open-tcu-housing",
+        "connect-uart-console",
+        "bypass-jtag-lock-with-voltage-glitch",
+        "dump-tcu-flash-via-uart",
+        "desolder-and-dump-flash-chip",
+        "install-implant-via-uart-root-shell",
+        "glitch-rom-signature-check",
+        "write-malicious-system-image-to-inactive-slot",
+        "attach-bus-interposer-to-secure-element",
+        "use-secure-element-as-signing-oracle",
+        "side-channel-key-extraction",
+        "fault-inject-secure-element",
+        "open-central-gateway-housing",
+        "rewrite-lifecycle-flag-in-flash",
+        "reset-lifecycle-state-via-diagnostic-exploit",
+        "reflash-installed-root-with-production-function",
+        "open-vcu-housing",
+        "glitch-bootloader-signature-check",
+        "reset-vcu-rollback-counter",
+        "chip-off-data-flash",
+        "extract-mcu-key-via-fault-injection",
+        "phish-plant-it-user",
+        "pivot-from-it-to-production-network",
+        "abuse-vendor-remote-access",
+        "compromise-provisioning-server",
+        "request-certificates-through-plant-hsm",
+        "deploy-ransomware-in-plant",
+        "replace-bundle-in-plant-store",
+        "insider-swaps-trust-anchor-bundle",
+        "bribe-ecu-manufacturer-insider",
+        "intercept-and-substitute-key-on-supply-link",
+        "steal-boot-hsm-backup",
+        "collude-in-boot-ceremony",
+        "dump-decrypted-firmware-from-own-vehicle"
+      ],
+      "enumDescriptions": [
+        "attack step · Phish a staff member with an adversary-in-the-middle proxy",
+        "attack step · Have the helpdesk reset the hardware token of a staff member",
+        "attack step · Steal the session of a signed-in staff member with malware on the workstation",
+        "attack step · Approve one's own request by changing the approver in the request",
+        "attack step · Approve a release as the staff member whose session was taken",
+        "attack step · Win over a second approver",
+        "attack step · Take over the account of a supplier on the intake",
+        "attack step · Break into the build system of a supplier",
+        "attack step · Hide malicious code in a supplier delivery",
+        "attack step · Change a supplier delivery on its way to the intake",
+        "attack step · Get a poisoned open-source library into the build",
+        "attack step · Steal a token of the build system",
+        "attack step · Run code on a build runner",
+        "attack step · Change the release candidate after it was approved",
+        "attack step · Move from the build network into the signing network",
+        "attack step · Send a signing request that names an approved release but carries other content",
+        "attack step · Have an unapproved package signed by two key custodians",
+        "attack step · Take the backup tokens of the signing key and their PINs",
+        "attack step · Open the HSM and read the key from the chip",
+        "attack step · Exploit a flaw in the firmware of the HSM",
+        "attack step · Erase the keys in the HSM as an administrator",
+        "attack step · Destroy the backups of the signing key",
+        "attack step · Take over the registration authority through a flaw in its API",
+        "attack step · Ask for a software signing certificate for the attacker's key",
+        "attack step · Get into the segmented PKI network",
+        "attack step · Take the credentials with which a CA service uses its partition in the issuing HSM",
+        "attack step · Issue vehicle certificates through the vehicle CA with the stolen credentials",
+        "attack step · Issue a software signing certificate through the software CA with the stolen credentials",
+        "attack step · Win over three of the five custodians of the root HSM",
+        "attack step · Break into the safe room of the root HSM",
+        "attack step · Open the root HSM and read the key from the chip",
+        "attack step · Destroy the root HSM, its backup and the custodian cards",
+        "attack step · Keep the revocation list from reaching a vehicle",
+        "attack step · Use a vehicle identity that the attacker owns",
+        "attack step · Send a crafted check-in that a flaw in the director processes",
+        "attack step · Take over an administrator account of the cloud tenant",
+        "attack step · Take over the service account of the director",
+        "attack step · Have the director HSM sign authorisations that the campaigns did not ask for",
+        "attack step · Take the backup of the authorisation signing key",
+        "attack step · Create a campaign that sends valid software to the wrong vehicles",
+        "attack step · Change the record of another vehicle through the vehicle API",
+        "attack step · Read the inventory of other vehicles by going through VINs",
+        "attack step · Read the registry database with the rights of a cloud administrator",
+        "attack step · Report a false inventory from a telematics unit that the attacker controls",
+        "attack step · Flood the vehicle interface of the gateway",
+        "attack step · Export the TLS key of the gateway from the key store",
+        "attack step · Delete or change entries of the audit log",
+        "attack step · Act through a shared emergency account",
+        "attack step · Take over an account at the content delivery network",
+        "attack step · Replace the package at the edge of the content delivery network",
+        "attack step · Replace the package in the origin repository",
+        "attack step · Download a package with the identity of a vehicle that the attacker owns and read the images",
+        "attack step · Sign in to the workshop services with a leaked workshop credential",
+        "attack step · Download packages through the workshop services without owning the vehicle",
+        "attack step · Disassemble the OTA client and the verifier and look for flaws",
+        "attack step · Make the verifier fail on a package that is built to exploit a flaw in its parser",
+        "attack step · Set up a rogue base station near the vehicle",
+        "attack step · Exploit a flaw in the baseband of the modem from the rogue base station",
+        "attack step · Go from code in the modem to code in the operating system of the telematics unit",
+        "attack step · Sit between the vehicle and the backend in the TLS session",
+        "attack step · Pass the TLS validation of the OTA client with a certificate that should be refused",
+        "attack step · Jam the mobile connection of the vehicle",
+        "attack step · Replay a signed time stamp from the past to the vehicle",
+        "attack step · Spoof the satellite time that the vehicle falls back to",
+        "attack step · Take over an application of the infotainment unit from a distance",
+        "attack step · Send a consent decision to the orchestrator in the name of the driver",
+        "attack step · Go from code in the OTA client to the rights of the update orchestrator",
+        "attack step · Use a flaw in the Linux kernel of the telematics unit",
+        "attack step · Connect a device to the powertrain CAN wiring",
+        "attack step · Send signals that say that the vehicle is parked while it drives",
+        "attack step · Plug a dongle with the attacker's software into the diagnostic connector",
+        "attack step · Take the certificate of a workshop tester",
+        "attack step · Exploit a flaw in a diagnostic service of the gateway",
+        "attack step · Open a programming session towards a controller",
+        "attack step · Erase the application of a controller through the bootloader",
+        "attack step · Flash an image without a valid signature through UDS",
+        "attack step · Load the attacker's own flash driver into the RAM of the BMS",
+        "attack step · Overflow a buffer in the transfer service of the bootloader",
+        "attack step · Open the housing of the telematics unit",
+        "attack step · Connect to the serial console of the telematics unit",
+        "attack step · Re-enable the JTAG port of the processor with a voltage glitch at boot",
+        "attack step · Read the flash of the telematics unit through the console",
+        "attack step · Remove the flash chip and read it in a programmer",
+        "attack step · Install a persistent implant from the console",
+        "attack step · Make the boot ROM accept an unsigned bootloader with a voltage or clock glitch",
+        "attack step · Write an attacker's system image into the inactive slot and have it booted",
+        "attack step · Put a device on the bus between the processor and the secure element",
+        "attack step · Have the secure element sign whatever the attacker wants",
+        "attack step · Recover the vehicle key from the secure element by side-channel analysis",
+        "attack step · Recover the vehicle key by fault injection into the secure element",
+        "attack step · Open the housing of the central gateway",
+        "attack step · Write the production state into the flash of the gateway",
+        "attack step · Set the vehicle back to the production state through a diagnostic exploit",
+        "attack step · Write the attacker's root certificate with the production function of the secure element",
+        "attack step · Open the housing of the vehicle control unit",
+        "attack step · Make the bootloader of the VCU accept an image with a bad signature by glitching the processor",
+        "attack step · Set the rollback counter of the VCU back with a debug connection",
+        "attack step · Take off the data flash of the VCU and write the old counter value",
+        "attack step · Get the device key of the controller by fault injection",
+        "attack step · Phish a user of the plant IT network",
+        "attack step · Move from the plant IT network into the production network",
+        "attack step · Use the remote access of an equipment vendor to reach the production network",
+        "attack step · Take over the plant provisioning server",
+        "attack step · Have the plant HSM sign certificate requests for vehicles that were not built",
+        "attack step · Encrypt the provisioning server and the stations with ransomware",
+        "attack step · Replace the trust anchor bundle in the plant software store",
+        "attack step · Replace the trust anchor bundle as an employee of the plant",
+        "attack step · Have an employee of the ECU manufacturer fix another public key into the ECUs",
+        "attack step · Change the secure boot public key on its way to the ECU manufacturer",
+        "attack step · Take the backup of the secure boot key and the PINs",
+        "attack step · Have two people at a boot key ceremony sign what the attacker provides",
+        "attack step · Read the decrypted images from a vehicle that the attacker owns"
+      ]
+    },
+    "threat": {
+      "enum": [
+        "supplier-delivery-tampering",
+        "release-candidate-tampering",
+        "approval-record-tampering",
+        "backoffice-portal-spoofing",
+        "signing-service-tampering",
+        "software-signing-private-key-disclosure",
+        "software-signing-private-key-denial",
+        "software-signing-certificate-spoofing",
+        "secure-boot-private-key-disclosure",
+        "campaign-definition-tampering",
+        "update-director-tampering",
+        "authorisation-signing-private-key-disclosure",
+        "vehicle-configuration-tampering",
+        "vehicle-configuration-disclosure",
+        "update-package-tampering",
+        "update-package-disclosure",
+        "vehicle-api-gateway-denial",
+        "vehicle-api-gateway-spoofing",
+        "backend-tls-private-key-disclosure",
+        "workshop-interface-spoofing",
+        "audit-log-tampering",
+        "audit-log-repudiation",
+        "root-ca-private-key-disclosure",
+        "root-ca-private-key-denial",
+        "registration-authority-tampering",
+        "vehicle-ca-tampering",
+        "certificate-revocation-list-denial",
+        "provisioning-server-tampering",
+        "provisioning-server-denial",
+        "trust-anchor-bundle-tampering",
+        "secure-boot-public-key-tampering",
+        "lifecycle-state-tampering",
+        "cellular-interface-spoofing",
+        "ota-client-tampering",
+        "package-verifier-tampering",
+        "secure-time-tampering",
+        "consent-ui-tampering",
+        "download-link-denial",
+        "update-orchestrator-tampering",
+        "central-gateway-tampering",
+        "powertrain-can-tampering",
+        "vcu-bootloader-tampering",
+        "bms-bootloader-tampering",
+        "telematics-unit-tampering",
+        "tcu-debug-port-spoofing",
+        "tcu-hsm-tampering",
+        "vehicle-private-key-disclosure",
+        "installed-root-certificate-tampering",
+        "vcu-rollback-counter-tampering"
+      ],
+      "enumDescriptions": [
+        "threat scenario · Tampering with Supplier delivery",
+        "threat scenario · Tampering with Release candidate",
+        "threat scenario · Tampering with Approval record",
+        "threat scenario · Spoofing of Back-office portal",
+        "threat scenario · Tampering with Software signing service",
+        "threat scenario · Information disclosure of Software signing private key",
+        "threat scenario · Denial of service of Software signing private key",
+        "threat scenario · Spoofing of Software signing certificate",
+        "threat scenario · Information disclosure of Secure boot private key",
+        "threat scenario · Tampering with Campaign definition",
+        "threat scenario · Tampering with Update director",
+        "threat scenario · Information disclosure of Authorisation signing private key",
+        "threat scenario · Tampering with Vehicle configuration",
+        "threat scenario · Information disclosure of Vehicle configuration",
+        "threat scenario · Tampering with Update package",
+        "threat scenario · Information disclosure of Update package",
+        "threat scenario · Denial of service of Vehicle API gateway",
+        "threat scenario · Spoofing of Vehicle API gateway",
+        "threat scenario · Information disclosure of Backend TLS private key",
+        "threat scenario · Spoofing of Workshop interface",
+        "threat scenario · Tampering with Audit log",
+        "threat scenario · Repudiation of Audit log",
+        "threat scenario · Information disclosure of Root CA private key",
+        "threat scenario · Denial of service of Root CA private key",
+        "threat scenario · Tampering with Registration authority",
+        "threat scenario · Tampering with Vehicle CA (intermediate)",
+        "threat scenario · Denial of service of Certificate revocation list",
+        "threat scenario · Tampering with Plant provisioning server",
+        "threat scenario · Denial of service of Plant provisioning server",
+        "threat scenario · Tampering with Trust anchor bundle",
+        "threat scenario · Tampering with Secure boot public key",
+        "threat scenario · Tampering with Lifecycle state",
+        "threat scenario · Spoofing of Cellular interface",
+        "threat scenario · Tampering with OTA client",
+        "threat scenario · Tampering with Package verifier",
+        "threat scenario · Tampering with Secure time",
+        "threat scenario · Tampering with Update consent screen",
+        "threat scenario · Denial of service of Download link",
+        "threat scenario · Tampering with Update orchestrator",
+        "threat scenario · Tampering with Central gateway",
+        "threat scenario · Tampering with Powertrain CAN",
+        "threat scenario · Tampering with VCU bootloader",
+        "threat scenario · Tampering with BMS bootloader",
+        "threat scenario · Tampering with Telematics unit (TCU)",
+        "threat scenario · Spoofing of TCU debug port",
+        "threat scenario · Tampering with TCU secure element",
+        "threat scenario · Information disclosure of Vehicle private key",
+        "threat scenario · Tampering with Installed root certificate",
+        "threat scenario · Tampering with VCU rollback counter"
+      ]
+    }
+  },
+  "description": "The ids of the records of this project, offered by the editor where a record is referred to. assess writes this file. Do not edit it.",
+  "title": "ids of the records of an assess project"
+}

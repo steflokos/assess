@@ -1,0 +1,31 @@
+component backend:
+  name: Backend
+  description: The service that prepares update packages and sends them to gateways.
+
+  interface api-interface:
+    name: API interface
+    description: The endpoint that gateways call to fetch a package.
+    exposure: External
+    entrypoint: true
+
+  data update-package:
+    name: Update package
+    description: The signed software package for the gateway.
+
+component gateway:
+  name: Gateway
+  description: The device that receives packages, checks them and installs the firmware.
+
+  interface debug-port:
+    name: Debug port
+    description: A serial port on the board.
+    exposure: External
+    entrypoint: true
+
+  data firmware-image:
+    name: Firmware image
+    description: The software that runs on the gateway.
+
+  data device-key:
+    name: Device key
+    description: The private key that identifies the gateway to the backend.

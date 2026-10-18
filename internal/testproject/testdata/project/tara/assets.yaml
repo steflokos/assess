@@ -1,0 +1,19 @@
+asset update-package:
+  name: Update package
+  description: The package that the gateway installs. It must not change on the way.
+  properties: [Integrity]
+
+asset firmware-image:
+  name: Firmware image
+  description: The software that runs on the gateway.
+  properties: [Integrity]
+
+asset device-key:
+  name: Device key
+  description: The key that identifies the gateway.
+  properties: [Confidentiality]
+
+asset api-interface:
+  name: API interface
+  description: The endpoint that gateways call. It must be what it claims to be.
+  properties: [Authenticity]

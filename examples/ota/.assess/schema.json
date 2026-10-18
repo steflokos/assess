@@ -1,0 +1,2265 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "defaultSnippets": [
+    {
+      "body": {
+        "item ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "boundary": "${4}"
+        }
+      },
+      "description": "The item definition",
+      "label": "item"
+    },
+    {
+      "body": {
+        "assumption ${1}": {
+          "name": "${2}",
+          "description": "${3}"
+        }
+      },
+      "description": "An assumption the analysis relies on",
+      "label": "assumption"
+    },
+    {
+      "body": {
+        "function ${1}": {
+          "name": "${2}",
+          "description": "${3}"
+        }
+      },
+      "description": "A function of the item",
+      "label": "function"
+    },
+    {
+      "body": {
+        "component ${1}": {
+          "name": "${2}",
+          "description": "${3}"
+        }
+      },
+      "description": "A component of the item",
+      "label": "component"
+    },
+    {
+      "body": {
+        "channel ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "between": "[${4}, ${5}]"
+        }
+      },
+      "description": "A communication link",
+      "label": "channel"
+    },
+    {
+      "body": {
+        "data ${1}": {
+          "name": "${2}",
+          "description": "${3}"
+        }
+      },
+      "description": "A data element",
+      "label": "data"
+    },
+    {
+      "body": {
+        "asset ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "properties": "[${4|Confidentiality,Integrity,Availability,Authenticity,Non Repudiation|}]"
+        }
+      },
+      "description": "An element of the architecture that matters, with its properties",
+      "label": "asset"
+    },
+    {
+      "body": {
+        "damage ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "compromises": {
+            "${4}": "${5|Confidentiality,Integrity,Availability,Authenticity,Non Repudiation|}"
+          },
+          "impact": {
+            "roaduser": {
+              "safety": {
+                "level": "${6|Severe,Major,Moderate,Negligible|}"
+              },
+              "financial": {
+                "level": "${7|Severe,Major,Moderate,Negligible|}"
+              },
+              "operational": {
+                "level": "${8|Severe,Major,Moderate,Negligible|}"
+              },
+              "privacy": {
+                "level": "${9|Severe,Major,Moderate,Negligible|}"
+              }
+            }
+          }
+        }
+      },
+      "description": "A damage scenario with impact ratings",
+      "label": "damage scenario"
+    },
+    {
+      "body": {
+        "threat ${1}-${2|spoofing,tampering,repudiation,disclosure,denial|}": {
+          "name": "${3}",
+          "description": "${4}",
+          "damages": "${5}",
+          "steps": {
+            "or": [
+              "${6}"
+            ]
+          }
+        }
+      },
+      "description": "A threat to one property of one asset",
+      "label": "threat scenario"
+    },
+    {
+      "body": {
+        "step ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "target": "${4}",
+          "potential": {
+            "time": "${5|ET0,ET1,ET2,ET3,ET4|}",
+            "expertise": "${6|SE0,SE1,SE2,SE3|}",
+            "knowledge": "${7|KoIC0,KoIC1,KoIC2,KoIC3|}",
+            "window": "${8|WoO0,WoO1,WoO2,WoO3|}",
+            "equipment": "${9|Eq0,Eq1,Eq2,Eq3|}"
+          },
+          "scalability": "${10|Single Vehicle,Limited Batch,Fleet-Wide|}"
+        }
+      },
+      "description": "A reusable attack step",
+      "label": "attack step"
+    },
+    {
+      "body": {
+        "control ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "target": "${4}",
+          "reduction": {
+            "time": "${5|ET0,ET1,ET2,ET3,ET4|}",
+            "expertise": "${6|SE0,SE1,SE2,SE3|}",
+            "knowledge": "${7|KoIC0,KoIC1,KoIC2,KoIC3|}",
+            "window": "${8|WoO0,WoO1,WoO2,WoO3|}",
+            "equipment": "${9|Eq0,Eq1,Eq2,Eq3|}"
+          }
+        }
+      },
+      "description": "A reusable cybersecurity control",
+      "label": "control"
+    },
+    {
+      "body": {
+        "risk ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "treatment": "${4|Avoid,Reduce,Share,Accept|}"
+        }
+      },
+      "description": "The risk of a threat scenario, written with its id",
+      "label": "risk"
+    },
+    {
+      "body": {
+        "rule ${1}": {
+          "name": "${2}",
+          "description": "${3}",
+          "on": "${4|item,assumption,function,component,interface,channel,data,asset,damage,threat,step,control,risk|}",
+          "severity": "${5|Error,Warning|}",
+          "check": "${6}"
+        }
+      },
+      "description": "A check on the records of one kind, written in CEL",
+      "label": "rule"
+    }
+  ],
+  "definitions": {
+    "asset": {
+      "additionalProperties": false,
+      "description": "An element of the architecture that matters for cybersecurity (ISO/SAE 21434 asset identification). It has the id of that element and the cybersecurity properties whose loss would do harm. An element with no asset record is only context. assess generate assets writes a record for every element with all the properties. You then remove what does not apply.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "properties": {
+          "description": "The cybersecurity properties that matter for this asset. These are the ones whose loss leads to a damage scenario. Remove the ones that do not apply. Delete the whole record if the element is only context.",
+          "items": {
+            "enum": [
+              "Confidentiality",
+              "Integrity",
+              "Availability",
+              "Authenticity",
+              "Non Repudiation"
+            ],
+            "enumDescriptions": [
+              "Information is available only to those authorised to see it.",
+              "Data, code and state are accurate and have not been altered without authorisation.",
+              "The asset can be used when it is needed.",
+              "The origin or identity of the asset, message or party is genuine.",
+              "An action or message cannot later be credibly denied by whoever performed it."
+            ],
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "name",
+        "properties"
+      ],
+      "type": "object"
+    },
+    "assumption": {
+      "additionalProperties": false,
+      "description": "A statement about the item or its environment that the analysis relies on, such as \"the owner keeps the phone locked\". You write it once. Threat scenarios, attack steps, controls and risks that hold only while it is true point to it with assumes. It is not part of any calculation.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "attackPotential": {
+      "additionalProperties": false,
+      "description": "Effort in the five ISO/SAE 21434 factors, using the rating keys. It is what an attack step takes, or what a control asks from the attacker. Lower numbers mean an easier attack and a weaker control.",
+      "properties": {
+        "equipment": {
+          "description": "Equipment, Eq0 to Eq3.",
+          "enum": [
+            "Eq0",
+            "Eq1",
+            "Eq2",
+            "Eq3"
+          ],
+          "type": "string"
+        },
+        "expertise": {
+          "description": "Specialist expertise, SE0 to SE3.",
+          "enum": [
+            "SE0",
+            "SE1",
+            "SE2",
+            "SE3"
+          ],
+          "type": "string"
+        },
+        "knowledge": {
+          "description": "Knowledge of the item or component, KoIC0 to KoIC3.",
+          "enum": [
+            "KoIC0",
+            "KoIC1",
+            "KoIC2",
+            "KoIC3"
+          ],
+          "type": "string"
+        },
+        "time": {
+          "description": "Elapsed time, ET0 to ET4.",
+          "enum": [
+            "ET0",
+            "ET1",
+            "ET2",
+            "ET3",
+            "ET4"
+          ],
+          "type": "string"
+        },
+        "window": {
+          "description": "Window of opportunity, WoO0 to WoO3.",
+          "enum": [
+            "WoO0",
+            "WoO1",
+            "WoO2",
+            "WoO3"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "time",
+        "expertise",
+        "knowledge",
+        "window",
+        "equipment"
+      ],
+      "type": "object"
+    },
+    "attackStep": {
+      "additionalProperties": false,
+      "description": "One action an attacker takes. You write it once and any number of threat scenarios can use it. It has the effort it takes, what must happen before it and the controls that mitigate it.",
+      "properties": {
+        "actors": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "Nation-State / State-Sponsored",
+                  "Organized Cybercrime",
+                  "Hacktivist",
+                  "Insider (Employee / Dealer / Supplier)",
+                  "Vehicle Owner / Authorized User"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Who would realistically carry out the step and why."
+        },
+        "assumes": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/assumption"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/assumption"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The assumptions this depends on. It holds only while they hold. One id or a list of ids."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "mitigatedby": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/control"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/control"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The controls that mitigate this step. One id or a list of ids. Each control is a layer the attacker has to get past."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "potential": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/attackPotential"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The effort the step takes, rated in the five factors. Write all five or none."
+        },
+        "preparedby": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/tree-step-threat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What must happen before this step. This is an attack step or a threat scenario, or and: / or: over them, nested as needed."
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why the attack potential was rated this way."
+        },
+        "scalability": {
+          "anyOf": [
+            {
+              "enum": [
+                "Single Vehicle",
+                "Limited Batch",
+                "Fleet-Wide"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How far one successful attack reaches: one vehicle, a batch or the whole fleet."
+        },
+        "target": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "ids.json#/definitions/component"
+                },
+                {
+                  "$ref": "ids.json#/definitions/interface"
+                },
+                {
+                  "$ref": "ids.json#/definitions/channel"
+                },
+                {
+                  "$ref": "ids.json#/definitions/data"
+                },
+                {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The architecture element the step is carried out on, typically an interface or a channel."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "channel": {
+      "additionalProperties": false,
+      "description": "A communication link between components or interfaces, such as a bus or a radio link. It is an asset when tara/assets.yaml has a record for it.",
+      "properties": {
+        "between": {
+          "description": "The two or more things this channel connects. Ids of components or interfaces.",
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "ids.json#/definitions/component"
+                },
+                {
+                  "$ref": "ids.json#/definitions/interface"
+                },
+                {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              ]
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "ids.json#/definitions/component"
+                  },
+                  {
+                    "$ref": "ids.json#/definitions/interface"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "entrypoint": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "True if an attacker can start an attack here."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name",
+        "between"
+      ],
+      "type": "object"
+    },
+    "component": {
+      "additionalProperties": false,
+      "defaultSnippets": [
+        {
+          "body": {
+            "component ${1}": {
+              "name": "${2}",
+              "description": "${3}"
+            }
+          },
+          "description": "A component of the item",
+          "label": "component"
+        },
+        {
+          "body": {
+            "interface ${1}": {
+              "name": "${2}",
+              "description": "${3}",
+              "exposure": "${4|Internal,External|}"
+            }
+          },
+          "description": "An interface of this component",
+          "label": "interface"
+        },
+        {
+          "body": {
+            "data ${1}": {
+              "name": "${2}",
+              "description": "${3}"
+            }
+          },
+          "description": "A data element",
+          "label": "data"
+        }
+      ],
+      "description": "A physical or logical building block that realizes functions. It is an asset when tara/assets.yaml has a record for it. Without one it is only context.",
+      "patternProperties": {
+        "^component\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "$ref": "#/definitions/component"
+        },
+        "^data\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "$ref": "#/definitions/data"
+        },
+        "^interface\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "$ref": "#/definitions/interface"
+        }
+      },
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "functions": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/function"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/function"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The functions this component realizes, only for functions that have no flow. One id or a list of ids. Do not repeat what a flow already names."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "control": {
+      "additionalProperties": false,
+      "description": "A cybersecurity control. You write it once and any number of threat scenarios can use it. It has the effort it asks from the attacker and what can bypass it.",
+      "properties": {
+        "assumes": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/assumption"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/assumption"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The assumptions this depends on. It holds only while they hold. One id or a list of ids."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why the reduction was rated this way."
+        },
+        "reduction": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/attackPotential"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How much effort the control asks from the attacker. Rate it in the same five factors and keys as the potential of an attack step. Lower numbers mean a weaker control. Write all five or none."
+        },
+        "target": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/component"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/interface"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/channel"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/data"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/component"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/interface"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/channel"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/data"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the control is deployed. One id or a list of ids of components, interfaces, channels or data."
+        },
+        "threatenedby": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/tree-step-threat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What can bypass the control. This is an attack step or a threat scenario, or and: / or: over them, nested as needed."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "damageScenario": {
+      "additionalProperties": false,
+      "description": "What goes wrong for stakeholders when the listed asset properties are lost, with its impact rating (ISO/SAE 21434 clauses 15.3 and 15.5).",
+      "properties": {
+        "compromises": {
+          "allOf": [
+            {
+              "$ref": "ids.json#/definitions/compromises"
+            }
+          ],
+          "description": "The asset properties whose loss causes this damage. Write them as asset-id: [Property, ...]."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "impact": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/impactSet"
+            }
+          ],
+          "description": "Impact rating per stakeholder. The road user is required."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name",
+        "compromises",
+        "impact"
+      ],
+      "type": "object"
+    },
+    "data": {
+      "additionalProperties": false,
+      "defaultSnippets": [
+        {
+          "body": {
+            "data ${1}": {
+              "name": "${2}",
+              "description": "${3}"
+            }
+          },
+          "description": "A data element",
+          "label": "data"
+        }
+      ],
+      "description": "Information or key material the item holds or moves. It is an asset when tara/assets.yaml has a record for it.",
+      "patternProperties": {
+        "^data\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "$ref": "#/definitions/data"
+        }
+      },
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "over": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/channel"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/channel"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The channels the data travels over, only for transport that no function flow describes. One id or a list of ids. Do not repeat what a flow already says."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "flowStep": {
+      "additionalProperties": false,
+      "description": "One step of a function's flow: what happens, where, with which data and over which channel.",
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/component"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/interface"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/component"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/interface"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the step happens. This is the component or interface that does it. With over, it is the sender. One id or a list of ids of components or interfaces. A component named here takes part in the function, so it does not need to list the function in functions."
+        },
+        "data": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/data"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/data"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The data it handles. One id or a list of ids of data elements."
+        },
+        "over": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/channel"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/channel"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The channel the result is sent over next. One id or a list of ids of channels. The data of this step travels over it, so the data does not need to list it in over. The next step is at the receiver, so assess reads the direction from the order of the steps. The sender and the receiver must be connected to the channel. A step with several channels has no single receiver."
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What happens in this step, in a sentence."
+        }
+      },
+      "type": "object"
+    },
+    "function": {
+      "additionalProperties": false,
+      "defaultSnippets": [
+        {
+          "body": {
+            "function ${1}": {
+              "name": "${2}",
+              "description": "${3}"
+            }
+          },
+          "description": "A function of the item",
+          "label": "function"
+        }
+      ],
+      "description": "Something the item does. Write sub-functions inside it. Its flow lists the steps it takes through the system.",
+      "patternProperties": {
+        "^function\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "$ref": "#/definitions/function"
+        }
+      },
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "flow": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/definitions/flowStep"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The route the function takes through the system, as a list of steps in order."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "impactSet": {
+      "additionalProperties": false,
+      "description": "Impact rating per stakeholder. The road user is required.",
+      "properties": {
+        "oem": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/stakeholderImpact"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Impact on the vehicle manufacturer."
+        },
+        "roaduser": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/stakeholderImpact"
+            }
+          ],
+          "description": "Impact on the road user. Required."
+        },
+        "supplier": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/stakeholderImpact"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Impact on suppliers and other third parties: tier-1, tier-2 and further manufacturers."
+        }
+      },
+      "required": [
+        "roaduser"
+      ],
+      "type": "object"
+    },
+    "interface": {
+      "additionalProperties": false,
+      "description": "An access point on a component, such as a port or a service. It is an asset when tara/assets.yaml has a record for it.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "entrypoint": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "True if an attacker can start an attack here. An external interface usually is an entry point, but you write it separately."
+        },
+        "exposure": {
+          "anyOf": [
+            {
+              "enum": [
+                "Internal",
+                "External"
+              ],
+              "enumDescriptions": [
+                "The interface connects parts of the item with each other.",
+                "The interface connects the item to something outside its boundary."
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "External if the interface connects the item to something outside its boundary. Internal if it connects parts of the item with each other. If you leave it out, the exposure is not stated, and assess does not treat it as Internal."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "item": {
+      "additionalProperties": false,
+      "description": "The item definition (ISO/SAE 21434 clause 9.3). It says what is assessed, where its boundary is and what is assumed about it. A project has exactly one.",
+      "properties": {
+        "boundary": {
+          "description": "What is inside the item and what is outside it. Name the external interfaces.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where and how the item is used (its operating environment)."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        }
+      },
+      "required": [
+        "name",
+        "boundary"
+      ],
+      "type": "object"
+    },
+    "rating": {
+      "additionalProperties": false,
+      "description": "An impact level and the reason it was chosen.",
+      "properties": {
+        "level": {
+          "description": "The impact level.",
+          "enum": [
+            "Severe",
+            "Major",
+            "Moderate",
+            "Negligible"
+          ],
+          "type": "string"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why you chose this level. Put the text in quotes if it contains ': ' or sits inside { }."
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "type": "object"
+    },
+    "risk": {
+      "additionalProperties": false,
+      "description": "The risk of one threat scenario (ISO/SAE 21434 clause 15.8). It has the id of that threat scenario. assess calculates its type (goal or claim) and its two values, one with every control ignored and one with the controls applied. The treatment is your decision.",
+      "properties": {
+        "assumes": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/assumption"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/assumption"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The assumptions this depends on. The treatment holds only while they hold. One id or a list of ids."
+        },
+        "base": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Calculated by assess: the risk value with every control ignored. assess generate risks writes it. Do not edit it."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why you chose this treatment. assess does not write it."
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                },
+                {
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean"
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the risk is tracked outside assess, such as the ids of its items in Jira. One text or a list. assess does not read them."
+        },
+        "residual": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Calculated by assess: the risk value with the controls applied, except the ones the policy excludes (controls.exclude). assess generate risks writes it. Do not edit it."
+        },
+        "treatment": {
+          "anyOf": [
+            {
+              "enum": [
+                "Avoid",
+                "Reduce",
+                "Share",
+                "Accept"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "How the risk is treated. This is your decision (ISO/SAE 21434 clause 15.9): Avoid, Reduce, Share or Accept. assess does not write it."
+        },
+        "type": {
+          "anyOf": [
+            {
+              "enum": [
+                "Goal",
+                "Claim"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Calculated by assess. It is Goal when the base risk, before any control, is above the risk affinity of the policy. It is Claim when the base risk is at or below it. assess generate risks writes it. Do not edit it."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "rule": {
+      "additionalProperties": false,
+      "description": "A check that the records of one kind must pass. You write it in CEL and assess lint runs it. The check sees one record at a time and the calculated results. A record that fails it is a finding at its own position.",
+      "properties": {
+        "check": {
+          "description": "A CEL expression that is true when the record passes, for example risk.type != 'Goal' || risk.treatment in ['Avoid', 'Reduce']. A value that is still open has no value, so ask with has(risk.residual) first. schema.yaml lists the fields a check can use.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What to say when the check fails. Write a field of the record in braces, such as {unjustified}, and assess puts its value there. If you leave it out, the finding says that the record does not satisfy the rule."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "on": {
+          "description": "The kind of record the rule checks: item, assumption, function, component, interface, channel, data, asset, damage, threat, step, control or risk. The check sees one record of that kind at a time, as a variable with the same name.",
+          "enum": [
+            "item",
+            "assumption",
+            "function",
+            "component",
+            "interface",
+            "channel",
+            "data",
+            "asset",
+            "damage",
+            "threat",
+            "step",
+            "control",
+            "risk"
+          ],
+          "type": "string"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "enum": [
+                "Error",
+                "Warning"
+              ],
+              "enumDescriptions": [
+                "A failed rule makes assess lint fail.",
+                "A failed rule is reported. It makes assess lint fail only with -strict."
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Error makes assess lint fail. Warning makes it fail only with -strict. If you leave it out, it is a Warning."
+        }
+      },
+      "required": [
+        "name",
+        "on",
+        "check"
+      ],
+      "type": "object"
+    },
+    "stakeholderImpact": {
+      "additionalProperties": false,
+      "description": "Impact ratings in the four categories: safety, financial, operational and privacy.",
+      "properties": {
+        "financial": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/rating"
+            }
+          ],
+          "description": "Financial impact."
+        },
+        "operational": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/rating"
+            }
+          ],
+          "description": "Impact on operation and availability of functions."
+        },
+        "privacy": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/rating"
+            }
+          ],
+          "description": "Impact on privacy."
+        },
+        "safety": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/rating"
+            }
+          ],
+          "description": "Impact on safety."
+        }
+      },
+      "required": [
+        "safety",
+        "financial",
+        "operational",
+        "privacy"
+      ],
+      "type": "object"
+    },
+    "threat": {
+      "additionalProperties": false,
+      "description": "A threat scenario. It is a possible cause for losing one cybersecurity property of one asset. It lists the damage it can cause and its attack path.",
+      "properties": {
+        "assumes": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/assumption"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/assumption"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The assumptions this depends on. It holds only while they hold. One id or a list of ids."
+        },
+        "damages": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/damage"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/damage"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The damage scenarios this threat can cause. One id or a list of ids."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/tree-step-threat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The attack path of the threat scenario. It is boolean logic over attack steps and other threat scenarios. Write an id, or and: / or: followed by a list of ids and more and: / or: blocks."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "tree-step-threat": {
+      "description": "Boolean logic. Write a single leaf, or and: / or: followed by a list of leaves and more and: / or: blocks.",
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "$ref": "ids.json#/definitions/step"
+            },
+            {
+              "$ref": "ids.json#/definitions/threat"
+            },
+            {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "maxProperties": 1,
+          "minProperties": 1,
+          "properties": {
+            "and": {
+              "items": {
+                "$ref": "#/definitions/tree-step-threat"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "or": {
+              "items": {
+                "$ref": "#/definitions/tree-step-threat"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "description": "A YAML file in an assess project folder (item, tara or concept). It is a list of records. Each record is a heading `kind id:` followed by an indented block of attributes and child records. assess schema writes this file. Do not edit it.",
+  "patternProperties": {
+    "^asset\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/asset"
+    },
+    "^assumption\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/assumption"
+    },
+    "^channel\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/channel"
+    },
+    "^component\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/component"
+    },
+    "^control\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/control"
+    },
+    "^damage\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/damageScenario"
+    },
+    "^data\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/data"
+    },
+    "^function\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/function"
+    },
+    "^item\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/item"
+    },
+    "^risk\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/risk"
+    },
+    "^rule\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/rule"
+    },
+    "^step\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/attackStep"
+    },
+    "^threat\\s+[A-Za-z0-9][A-Za-z0-9._-]*-(spoofing|tampering|repudiation|disclosure|denial)$": {
+      "$ref": "#/definitions/threat"
+    }
+  },
+  "title": "assess project file",
+  "type": "object",
+  "x-assess-api-version": "assess/v1beta1"
+}

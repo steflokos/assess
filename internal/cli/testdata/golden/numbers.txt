@@ -1,0 +1,213 @@
+item base 5 by supplier-delivery-tampering, residual 4 by supplier-delivery-tampering
+supplier-delivery-tampering
+  base Low (23) in 3 paths, residual Very Low (37) in 3 paths
+  malicious-software-installed Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+release-candidate-tampering
+  base Medium (17) in 2 paths, residual Very Low (38) in 2 paths
+  malicious-software-installed Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+approval-record-tampering
+  base High (11) in 4 paths, residual Low (24) in 7 paths
+  wrong-software-installed Major: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  evidence-lost Major: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+backoffice-portal-spoofing
+  base High (11) in 3 paths, residual Very Low (32) in 3 paths
+  vehicle-bricked Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  wrong-software-installed Major: base 5 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+signing-service-tampering
+  base Very Low (28) in 2 paths, residual Very Low (45) in 2 paths
+  malicious-software-installed Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+software-signing-private-key-disclosure
+  base Very Low (32) in 3 paths, residual Very Low (59) in 3 paths
+  malicious-software-installed Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+software-signing-private-key-denial
+  base Very Low (25) in 1 paths, residual Very Low (55) in 1 paths
+  fleet-cannot-be-updated Major: base 3 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 3 -> 3 Goal
+software-signing-certificate-spoofing
+  base Medium (19) in 5 paths, residual Very Low (48) in 9 paths
+  malicious-software-installed Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  trust-chain-broken Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+secure-boot-private-key-disclosure
+  base Very Low (32) in 2 paths, residual Very Low (59) in 2 paths
+  malicious-software-installed Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+campaign-definition-tampering
+  base High (11) in 3 paths, residual Very Low (62) in 9 paths
+  vehicle-bricked Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  wrong-software-installed Major: base 5 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+update-director-tampering
+  base Low (20) in 2 paths, residual Very Low (33) in 2 paths
+  vehicle-bricked Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  wrong-software-installed Major: base 4 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+authorisation-signing-private-key-disclosure
+  base Low (22) in 2 paths, residual Very Low (49) in 2 paths
+  wrong-software-installed Major: base 4 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 4 -> 3 Goal
+vehicle-configuration-tampering
+  base Medium (15) in 5 paths, residual Very Low (28) in 7 paths
+  wrong-software-installed Major: base 5 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 3 Goal
+vehicle-configuration-disclosure
+  base High (12) in 2 paths, residual Very Low (25) in 2 paths
+  fleet-data-disclosed Major: base 5 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 3 Goal
+update-package-tampering
+  base Medium (14) in 2 paths, residual Very Low (59) in 40 paths
+  malicious-software-installed Severe: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+update-package-disclosure
+  base High (9) in 2 paths, residual Low (24) in 4 paths
+  software-ip-lost Moderate: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+vehicle-api-gateway-denial
+  base High (8) in 1 paths, residual Very Low (26) in 1 paths
+  fleet-cannot-be-updated Major: base 5 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 3 Goal
+vehicle-api-gateway-spoofing
+  base Low (22) in 1 paths, residual Very Low (47) in 7 paths
+  fleet-data-disclosed Major: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  update-delayed Moderate: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  risk 3 -> 2 Goal
+backend-tls-private-key-disclosure
+  base Low (22) in 1 paths, residual Very Low (39) in 1 paths
+  fleet-data-disclosed Major: base 4 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 4 -> 3 Goal
+workshop-interface-spoofing
+  base High (8) in 2 paths, residual Medium (18) in 2 paths
+  software-ip-lost Moderate: base 5 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 5 -> 4 Goal
+audit-log-tampering
+  base Low (21) in 1 paths, residual Very Low (59) in 1 paths
+  evidence-lost Major: base 4 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 4 -> 3 Goal
+audit-log-repudiation
+  base High (11) in 2 paths, residual Very Low (35) in 2 paths
+  evidence-lost Major: base 5 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 5 -> 3 Goal
+root-ca-private-key-disclosure
+  base Very Low (41) in 2 paths, residual Very Low (68) in 3 paths
+  trust-chain-broken Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+root-ca-private-key-denial
+  base Very Low (29) in 1 paths, residual Very Low (72) in 1 paths
+  trust-chain-broken Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+registration-authority-tampering
+  base Very Low (27) in 1 paths, residual Very Low (48) in 1 paths
+  trust-chain-broken Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  vehicle-identity-forged Moderate: base 3 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+vehicle-ca-tampering
+  base Very Low (26) in 1 paths, residual Very Low (47) in 1 paths
+  vehicle-identity-forged Moderate: base 3 (path 1, Fleet-Wide), residual 3 (path 1, Fleet-Wide)
+  risk 3 -> 3 Goal
+certificate-revocation-list-denial
+  base Very Low (39) in 3 paths, residual Very Low (84) in 3 paths
+  trust-chain-broken Severe: base 3 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  risk 3 -> 3 Goal
+provisioning-server-tampering
+  base Very Low (30) in 1 paths, residual Very Low (51) in 2 paths
+  vehicles-built-untrusted Severe: base 3 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  vehicle-identity-forged Moderate: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  risk 3 -> 3 Goal
+provisioning-server-denial
+  base Very Low (27) in 1 paths, residual Very Low (31) in 2 paths
+  production-halted Severe: base 3 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  risk 3 -> 3 Goal
+trust-anchor-bundle-tampering
+  base Low (21) in 2 paths, residual Very Low (45) in 3 paths
+  vehicles-built-untrusted Severe: base 4 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  trust-chain-broken Severe: base 4 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  risk 4 -> 3 Goal
+secure-boot-public-key-tampering
+  base Very Low (33) in 2 paths, residual Very Low (54) in 2 paths
+  vehicles-built-untrusted Severe: base 3 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  malicious-software-installed Severe: base 3 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  risk 3 -> 3 Goal
+lifecycle-state-tampering
+  base Very Low (26) in 2 paths, residual Very Low (42) in 2 paths
+  malicious-software-installed Severe: base 2 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  risk 2 -> 2 Claim
+cellular-interface-spoofing
+  base Low (21) in 1 paths, residual Low (21) in 1 paths
+  update-delayed Moderate: base 3 (path 1, Limited Batch), residual 3 (path 1, Limited Batch)
+  risk 3 -> 3 Goal
+ota-client-tampering
+  base Very Low (42) in 4 paths, residual Very Low (68) in 6 paths
+  malicious-software-installed Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 2, Fleet-Wide)
+  fleet-data-disclosed Major: base 3 (path 1, Fleet-Wide), residual 3 (path 2, Fleet-Wide)
+  risk 4 -> 4 Goal
+package-verifier-tampering
+  base Very Low (38) in 3 paths, residual Very Low (65) in 5 paths
+  malicious-software-installed Severe: base 4 (path 1, Fleet-Wide), residual 4 (path 1, Fleet-Wide)
+  risk 4 -> 4 Goal
+secure-time-tampering
+  base Low (24) in 2 paths, residual Very Low (42) in 2 paths
+  wrong-software-installed Major: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  risk 3 -> 2 Goal
+consent-ui-tampering
+  base Low (20) in 1 paths, residual Very Low (36) in 1 paths
+  consent-bypassed Moderate: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  risk 3 -> 2 Goal
+download-link-denial
+  base High (8) in 1 paths, residual High (8) in 1 paths
+  update-delayed Moderate: base 3 (path 1, Single Vehicle), residual 3 (path 1, Single Vehicle)
+  risk 3 -> 3 Goal
+update-orchestrator-tampering
+  base Very Low (26) in 5 paths, residual Very Low (47) in 13 paths
+  update-during-driving Severe: base 4 (path 2, Fleet-Wide), residual 4 (path 4, Fleet-Wide)
+  vehicle-bricked Severe: base 4 (path 2, Fleet-Wide), residual 4 (path 4, Fleet-Wide)
+  risk 4 -> 4 Goal
+central-gateway-tampering
+  base Medium (19) in 1 paths, residual Low (23) in 3 paths
+  vehicle-bricked Severe: base 4 (path 1, Single Vehicle), residual 3 (path 1, Single Vehicle)
+  risk 4 -> 3 Goal
+powertrain-can-tampering
+  base Medium (15) in 1 paths, residual Medium (15) in 1 paths
+  update-during-driving Severe: base 4 (path 1, Single Vehicle), residual 4 (path 1, Single Vehicle)
+  vehicle-bricked Severe: base 4 (path 1, Single Vehicle), residual 4 (path 1, Single Vehicle)
+  risk 4 -> 4 Goal
+vcu-bootloader-tampering
+  base Low (23) in 1 paths, residual Very Low (67) in 12 paths
+  malicious-software-installed Severe: base 3 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  risk 3 -> 2 Goal
+bms-bootloader-tampering
+  base Very Low (28) in 1 paths, residual Very Low (49) in 6 paths
+  malicious-software-installed Severe: base 2 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  risk 2 -> 2 Claim
+telematics-unit-tampering
+  base Low (23) in 2 paths, residual Very Low (45) in 6 paths
+  malicious-software-installed Severe: base 3 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  risk 3 -> 2 Goal
+tcu-debug-port-spoofing
+  base Medium (16) in 2 paths, residual Very Low (42) in 2 paths
+  malicious-software-installed Severe: base 4 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  software-ip-lost Moderate: base 2 (path 1, Single Vehicle), residual 1 (path 1, Single Vehicle)
+  risk 4 -> 2 Goal
+tcu-hsm-tampering
+  base Low (23) in 3 paths, residual Very Low (57) in 7 paths
+  vehicle-identity-forged Moderate: base 2 (path 1, Single Vehicle), residual 1 (path 1, Single Vehicle)
+  malicious-software-installed Severe: base 3 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  risk 3 -> 2 Goal
+vehicle-private-key-disclosure
+  base Very Low (48) in 2 paths, residual Very Low (82) in 2 paths
+  vehicle-identity-forged Moderate: base 1 (path 1, Single Vehicle), residual 1 (path 1, Single Vehicle)
+  risk 1 -> 1 Claim
+installed-root-certificate-tampering
+  base Very Low (27) in 2 paths, residual Very Low (69) in 16 paths
+  malicious-software-installed Severe: base 2 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  trust-chain-broken Severe: base 2 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  risk 2 -> 2 Claim
+vcu-rollback-counter-tampering
+  base Very Low (29) in 2 paths, residual Very Low (50) in 4 paths
+  wrong-software-installed Major: base 1 (path 1, Single Vehicle), residual 1 (path 1, Single Vehicle)
+  risk 1 -> 1 Claim

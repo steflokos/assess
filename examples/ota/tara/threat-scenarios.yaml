@@ -1,0 +1,407 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Threat scenarios: one threat to one property of one asset, written threat <asset>-<stride>:
+#   spoofing = Authenticity, tampering = Integrity, repudiation = Non Repudiation,
+#   disclosure = Confidentiality, denial = Availability
+# The attack path is a tree of attack steps and of other threat scenarios: under or the attacker needs one branch,
+# under and every branch. A step that is prepared by another step (or by a threat scenario) brings it along.
+# A threat scenario named inside another is used as a path: the key that is stolen in one is the key that signs in the next.
+
+# ---- release and signing -------------------------------------------------------------------------------
+
+threat supplier-delivery-tampering:
+  name: Tampering with Supplier delivery
+  description: Malicious code gets into a delivery from a supplier, from the supplier's own build, through a taken-over account, or on the way to the intake. It is then built, signed and installed like any other code.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - hide-malicious-code-in-delivery
+      - alter-supplier-delivery-in-transit
+
+threat release-candidate-tampering:
+  name: Tampering with Release candidate
+  description: The images that are signed are not the ones that were reviewed. A library poisons the build, or the attacker changes an image after the approval.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - compromise-build-dependency
+      - modify-candidate-after-approval
+
+threat approval-record-tampering:
+  name: Tampering with Approval record
+  description: A release or a campaign is approved by someone who is not entitled to approve it, or by an approver who is a second identity of the same attacker. The signing service and the planner then act on a forged approval.
+  damages: [wrong-software-installed, evidence-lost]
+  steps:
+    or:
+      - approve-release-with-stolen-identity
+      - collude-second-approver
+
+threat backoffice-portal-spoofing:
+  name: Spoofing of Back-office portal
+  description: The attacker signs in to the portal as a release manager or campaign manager, through a phished session, a reset token or malware on the workstation.
+  damages: [vehicle-bricked, wrong-software-installed]
+  steps:
+    or:
+      - aitm-phish-staff
+      - social-engineer-helpdesk-mfa-reset
+      - steal-session-token-with-infostealer
+
+threat signing-service-tampering:
+  name: Tampering with Software signing service
+  description: The signing service signs something that was not approved, without the key ever leaving the HSM. The attacker comes from the build network, or is an insider who has the tokens.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - forge-signing-request
+      - insider-sign-with-two-tokens
+
+threat software-signing-private-key-disclosure:
+  name: Information disclosure of Software signing private key
+  description: The attacker gets the key that all vehicles accept for software, from its backup, from the chip of the HSM, or through a flaw in the firmware of the HSM.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - steal-hsm-backup-tokens
+      - probe-hsm-with-invasive-attack
+      - exploit-hsm-firmware-vulnerability
+
+threat software-signing-private-key-denial:
+  name: Denial of service of Software signing private key
+  description: The key and all its backups are destroyed. No release can be signed, security fixes included, until a new key is in all vehicles.
+  damages: fleet-cannot-be-updated
+  steps:
+    and:
+      - wipe-hsm-keys-by-insider
+      - destroy-key-backups
+
+threat software-signing-certificate-spoofing:
+  name: Spoofing of Software signing certificate
+  description: The attacker gets a software signing certificate for their own key, through the registration authority or through the issuing CA, and signs with it as if they were the OEM.
+  damages: [malicious-software-installed, trust-chain-broken]
+  steps:
+    or:
+      - submit-fraudulent-signing-certificate-request
+      - issue-signing-certificate-with-stolen-credentials
+
+threat secure-boot-private-key-disclosure:
+  name: Information disclosure of Secure boot private key
+  description: The key that signs the bootloaders is taken from its backup or from a ceremony. A bootloader that the attacker signs is accepted by the ROM of every ECU.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - steal-boot-hsm-backup
+      - collude-in-boot-ceremony
+
+# ---- campaigns and distribution --------------------------------------------------------------------------------
+
+threat campaign-definition-tampering:
+  name: Tampering with Campaign definition
+  description: A campaign is started that sends valid software to vehicles that it does not fit, with no waves and no stop criteria.
+  damages: [vehicle-bricked, wrong-software-installed]
+  steps: create-malicious-campaign
+
+threat update-director-tampering:
+  name: Tampering with Update director
+  description: The director authorises installations that no campaign asked for, either because the attacker uses its HSM from outside, or because a crafted check-in takes over the service.
+  damages: [vehicle-bricked, wrong-software-installed]
+  steps:
+    or:
+      - use-director-hsm-as-oracle
+      - exploit-director-api
+
+threat authorisation-signing-private-key-disclosure:
+  name: Information disclosure of Authorisation signing private key
+  description: The key that signs install authorisations is taken from its backup or from the HSM. The attacker can then tell any vehicle to install any valid package.
+  damages: wrong-software-installed
+  steps:
+    or:
+      - steal-director-hsm-backup
+      - exploit-hsm-firmware-vulnerability
+
+threat vehicle-configuration-tampering:
+  name: Tampering with Vehicle configuration
+  description: The registry holds a wrong inventory for a vehicle, so the director sends it a package for another hardware variant or holds back the fix it needs.
+  damages: wrong-software-installed
+  steps:
+    or:
+      - exploit-registry-api-idor
+      - submit-false-inventory-from-compromised-tcu
+
+threat vehicle-configuration-disclosure:
+  name: Information disclosure of Vehicle configuration
+  description: The inventory of the fleet is read by going through VINs through the API, or from the database with an administrator's rights.
+  damages: fleet-data-disclosed
+  steps:
+    or:
+      - enumerate-vins-via-api
+      - breach-registry-database
+
+threat update-package-tampering:
+  name: Tampering with Update package
+  description: A package that the attacker changed is served to vehicles, at the content delivery network or at the origin. The vehicle accepts it only if it can be made to pass the verification.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - replace-package-at-cdn-edge
+      - replace-package-in-repository
+
+threat update-package-disclosure:
+  name: Information disclosure of Update package
+  description: The images of a package are read by someone who has no right to them. They are signed but not encrypted, so any download gives away the software.
+  damages: software-ip-lost
+  steps:
+    or:
+      - capture-own-download-and-extract-firmware
+      - abuse-workshop-account-to-download-packages
+
+threat vehicle-api-gateway-denial:
+  name: Denial of service of Vehicle API gateway
+  description: The vehicle interface is flooded, so vehicles cannot check in, and no update or fix is delivered.
+  damages: fleet-cannot-be-updated
+  steps: volumetric-ddos-on-gateway
+
+threat vehicle-api-gateway-spoofing:
+  name: Spoofing of Vehicle API gateway
+  description: A vehicle talks to a false backend that the attacker puts between them with a rogue base station. The vehicle gives away its identity and inventory, or is cut off.
+  damages: [fleet-data-disclosed, update-delayed]
+  steps: mitm-vehicle-tls-session
+
+threat backend-tls-private-key-disclosure:
+  name: Information disclosure of Backend TLS private key
+  description: The key of the gateway's certificate is exported from the key store after a takeover of a cloud account.
+  damages: fleet-data-disclosed
+  steps: abuse-kms-export-after-cloud-takeover
+
+threat workshop-interface-spoofing:
+  name: Spoofing of Workshop interface
+  description: The attacker passes as a workshop, with a leaked workshop credential or a stolen tester certificate, and gets packages without a vehicle.
+  damages: software-ip-lost
+  steps:
+    or:
+      - credential-stuffing-workshop-account
+      - steal-workshop-tester-certificate
+
+threat audit-log-tampering:
+  name: Tampering with Audit log
+  description: Entries that would show a malicious signing or campaign are deleted or changed.
+  damages: evidence-lost
+  steps: delete-or-alter-audit-entries
+
+threat audit-log-repudiation:
+  name: Repudiation of Audit log
+  description: A person who acted denies it, because the log cannot tell who used a shared account or because the entry is gone.
+  damages: evidence-lost
+  steps:
+    or:
+      - use-shared-break-glass-account
+      - delete-or-alter-audit-entries
+
+# ---- the PKI -----------------------------------------------------------------------------------------------------
+
+threat root-ca-private-key-disclosure:
+  name: Information disclosure of Root CA private key
+  description: The root key is taken, by winning over the custodians or by breaking into the safe room and the HSM. The attacker can then certify any CA.
+  damages: trust-chain-broken
+  steps:
+    or:
+      - collude-custodians
+      - probe-root-hsm
+
+threat root-ca-private-key-denial:
+  name: Denial of service of Root CA private key
+  description: The root HSM, its backup and the cards are destroyed. No CA can be certified or revoked until a new root is in every vehicle.
+  damages: trust-chain-broken
+  steps: destroy-root-hsm-and-backups
+
+threat registration-authority-tampering:
+  name: Tampering with Registration authority
+  description: The registration authority is taken over through a flaw in its API, so it approves what the attacker asks for.
+  damages: [trust-chain-broken, vehicle-identity-forged]
+  steps: compromise-ra-service
+
+threat vehicle-ca-tampering:
+  name: Tampering with Vehicle CA (intermediate)
+  description: The attacker uses the credentials of the vehicle CA's partition to issue vehicle certificates for vehicles that do not exist.
+  damages: vehicle-identity-forged
+  steps: issue-rogue-vehicle-certificates
+
+threat certificate-revocation-list-denial:
+  name: Denial of service of Certificate revocation list
+  description: After a signing key is stolen, the attacker keeps the revocation from reaching a vehicle, so the vehicle still trusts the stolen key. It needs the stolen key as well.
+  damages: trust-chain-broken
+  steps:
+    and:
+      - block-crl-delivery
+      - software-signing-private-key-disclosure
+
+# ---- the production plant ------------------------------------------------------------------------------------------
+
+threat provisioning-server-tampering:
+  name: Tampering with Plant provisioning server
+  description: The attacker takes over the provisioning server and uses its credential to get certificates for vehicles that were not built, or for keys that the vehicle did not generate.
+  damages: [vehicles-built-untrusted, vehicle-identity-forged]
+  steps: request-certificates-through-plant-hsm
+
+threat provisioning-server-denial:
+  name: Denial of service of Plant provisioning server
+  description: Ransomware encrypts the provisioning server and the stations, and no vehicle can leave the line.
+  damages: production-halted
+  steps: deploy-ransomware-in-plant
+
+threat trust-anchor-bundle-tampering:
+  name: Tampering with Trust anchor bundle
+  description: The bundle that is written into new vehicles is replaced with one that holds the attacker's root, from the plant network or by an employee.
+  damages: [vehicles-built-untrusted, trust-chain-broken]
+  steps:
+    or:
+      - replace-bundle-in-plant-store
+      - insider-swaps-trust-anchor-bundle
+
+threat secure-boot-public-key-tampering:
+  name: Tampering with Secure boot public key
+  description: The ECU manufacturer fixes another key into the hardware of a batch of ECUs, by a bribed employee or on the connection with the plant.
+  damages: [vehicles-built-untrusted, malicious-software-installed]
+  steps:
+    or:
+      - bribe-ecu-manufacturer-insider
+      - intercept-and-substitute-key-on-supply-link
+
+threat lifecycle-state-tampering:
+  name: Tampering with Lifecycle state
+  description: A delivered vehicle is set back to the production state, in the flash of the gateway or through a diagnostic exploit. Production functions that write keys and roots are open again.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - rewrite-lifecycle-flag-in-flash
+      - reset-lifecycle-state-via-diagnostic-exploit
+
+# ---- the vehicle from a distance ------------------------------------------------------------------------------------
+
+threat cellular-interface-spoofing:
+  name: Spoofing of Cellular interface
+  description: A rogue base station takes the vehicle's connection. It can drop or delay what passes, but it cannot make the vehicle accept software.
+  damages: update-delayed
+  steps: deploy-rogue-base-station
+
+threat ota-client-tampering:
+  name: Tampering with OTA client
+  description: Code of the attacker runs in the OTA client of the telematics unit. It comes either through a package that exploits the parser, delivered from a taken-over content delivery network, or through a flaw in the modem.
+  damages: [malicious-software-installed, fleet-data-disclosed]
+  steps:
+    or:
+      - and: [compromise-cdn-account, exploit-verifier-parsing-bug]
+      - escalate-from-modem-to-linux
+
+threat package-verifier-tampering:
+  name: Tampering with Package verifier
+  description: The verifier accepts a package that it should refuse, because a crafted package exploits a flaw in how it parses.
+  damages: malicious-software-installed
+  steps: exploit-verifier-parsing-bug
+
+threat secure-time-tampering:
+  name: Tampering with Secure time
+  description: The clock of the secure element is set back with an old time stamp or false satellite time, so that expired authorisations and certificates are valid again.
+  damages: wrong-software-installed
+  steps:
+    or:
+      - replay-old-time-stamp
+      - spoof-gnss-time
+
+threat consent-ui-tampering:
+  name: Tampering with Update consent screen
+  description: Code on the infotainment unit sends the driver's decision in the driver's place, so an update starts without consent.
+  damages: consent-bypassed
+  steps: send-forged-consent-to-orchestrator
+
+threat download-link-denial:
+  name: Denial of service of Download link
+  description: The download is jammed or blocked, so a vehicle cannot fetch the package. It delays the update.
+  damages: update-delayed
+  steps: jam-cellular-connection
+
+# ---- inside the vehicle -----------------------------------------------------------------------------------------------
+
+threat update-orchestrator-tampering:
+  name: Tampering with Update orchestrator
+  description: The orchestrator is made to start an update while the vehicle drives, either by an attacker who has code in the telematics unit, or through false signals on the CAN bus.
+  damages: [update-during-driving, vehicle-bricked]
+  steps:
+    or:
+      - escalate-from-ota-client-to-orchestrator
+      - spoof-vehicle-state-signals
+
+threat central-gateway-tampering:
+  name: Tampering with Central gateway
+  description: A dongle on the diagnostic connector opens a programming session through the gateway, and the attacker erases the application of a controller.
+  damages: vehicle-bricked
+  steps: erase-controller-application
+
+threat powertrain-can-tampering:
+  name: Tampering with Powertrain CAN
+  description: A device on the wiring sends frames that interrupt a flashing session or say that the vehicle is parked.
+  damages: [update-during-driving, vehicle-bricked]
+  steps: tap-can-harness
+
+threat vcu-bootloader-tampering:
+  name: Tampering with VCU bootloader
+  description: An image without a valid signature is flashed to the vehicle control unit, because the signature check was bypassed with a fault attack on the controller.
+  damages: malicious-software-installed
+  steps: flash-unsigned-image-via-uds
+
+threat bms-bootloader-tampering:
+  name: Tampering with BMS bootloader
+  description: The attacker loads a flash driver of their own into the battery management system. The bootloader of this older design runs it, and the driver writes what it is told to.
+  damages: malicious-software-installed
+  steps: load-unsigned-flash-driver-via-uds
+
+# ---- hardware ---------------------------------------------------------------------------------------------------------------
+
+threat telematics-unit-tampering:
+  name: Tampering with Telematics unit (TCU)
+  description: With the housing open, the attacker installs an implant from the console, or writes a system image of their own to the inactive slot and has it booted.
+  damages: malicious-software-installed
+  steps:
+    or:
+      - install-implant-via-uart-root-shell
+      - write-malicious-system-image-to-inactive-slot
+
+threat tcu-debug-port-spoofing:
+  name: Spoofing of TCU debug port
+  description: The attacker gets debug access to the telematics unit as if they were an authorised engineer, through the console that was left on the board or by glitching the lock of the JTAG port.
+  damages: [malicious-software-installed, software-ip-lost]
+  steps:
+    or:
+      - connect-uart-console
+      - bypass-jtag-lock-with-voltage-glitch
+
+threat tcu-hsm-tampering:
+  name: Tampering with TCU secure element
+  description: The secure element is made to act for the attacker, through a device on its bus or through code in the telematics unit that calls it as the OTA client does.
+  damages: [vehicle-identity-forged, malicious-software-installed]
+  steps:
+    or:
+      - attach-bus-interposer-to-secure-element
+      - use-secure-element-as-signing-oracle
+
+threat vehicle-private-key-disclosure:
+  name: Information disclosure of Vehicle private key
+  description: The identity key of a vehicle is recovered from its secure element in a laboratory, by side channels or by fault injection.
+  damages: vehicle-identity-forged
+  steps:
+    or:
+      - side-channel-key-extraction
+      - fault-inject-secure-element
+
+threat installed-root-certificate-tampering:
+  name: Tampering with Installed root certificate
+  description: The root in a delivered vehicle is replaced with the attacker's, using the production function of the secure element after the vehicle was set back to the production state.
+  damages: [malicious-software-installed, trust-chain-broken]
+  steps: reflash-installed-root-with-production-function
+
+threat vcu-rollback-counter-tampering:
+  name: Tampering with VCU rollback counter
+  description: The counter of the vehicle control unit is set back, so that an old, validly signed image with a known flaw is accepted.
+  damages: wrong-software-installed
+  steps:
+    or:
+      - reset-vcu-rollback-counter
+      - chip-off-data-flash

@@ -1,0 +1,101 @@
+A placeholder is written in double braces: {{name}}, {{name:argument}} or {{name:argument option=value}}.
+A note for the editor of the template is written {{# like this }}. It is not written to the page.
+
+  meta                  the character set, the viewport and the generator tags, for the head
+  csp                   the security policy of the page. It allows the one script of the report and
+                        loads nothing from the network. Leave it out only if your template needs its
+                        own scripts or files
+  style                 the style sheet of the report, written into the page. Add your own style
+                        after it to change colours or fonts
+  script                the small script of the report: the filter, the theme switch and the
+                        contents highlight
+  bar                   the bar at the top with the project name, the filter and the theme switch
+  toc                   the contents list, made from the parts that you place
+  footer                a last line with the tool and the fingerprint. The standard template leaves
+                        it out, because the appendix lists both
+  cover                 the whole cover: title, facts, figures, counts and statement
+  cover.title           the title and the description of the project
+  cover.facts           the item, the standards, the assessors and the date
+  cover.stats           the headline figures: how many risks there are at each level before and with
+                        the controls, the goals, the open items and the rules
+  cover.counts          how many assets, damage scenarios, threat scenarios, attack steps and
+                        controls there are
+  cover.statement       the sentence that says the report is material for a review
+  title                 the name of the project (text)
+  description           what the project assesses and why (text)
+  date                  the date of the assessment (text)
+  standards             the standards, separated by commas (text)
+  assessors             the assessors, separated by commas (text)
+  item                  the name of the item (text)
+  tool                  the name and version of assess (text)
+  fingerprint           the SHA-256 fingerprint of the files the report was made from (text)
+  risk.base             the risk of the item before any control (text)
+  risk.residual         the risk of the item with the controls (text)
+  open                  the number of open items (text)
+  iteration             the iteration your treatment decisions are at, for example 2, finalized on a
+                        date and time, or 3 in progress. It is none until you finalize one (text)
+  iteration.hash        the hash of the last finalized iteration, or none (text)
+  section:<id>          a part of the report with its heading, text, tables and sub-parts, for
+                        example section:risk. omit=a,b leaves some of its sub-parts out. hide=a,b
+                        leaves columns out of its tables. A name is left out of every table that has
+                        it. part.name is left out only of the tables of that part. assess template
+                        -list <project> shows the columns
+
+The parts that section:<id> can place in this project (a part brings its sub-parts):
+  project                        Project information
+    project-sources              Sources
+    project-extra-1              Disclaimer
+    project-extra-2              Scope
+    project-extra-3              Responsibilities
+    project-extra-4              Status of this model
+  item                           Item definition
+    functions                    Functions
+      columns: name, inside, description, flow
+    architecture                 Architecture
+      components                 Components
+        columns: name, inside, properties, description
+      interfaces                 Interfaces
+        columns: name, inside, exposure, entrypoint, properties, description
+      channels                   Channels
+        columns: name, between, entrypoint, properties, description
+      data                       Data
+        columns: name, inside, over, properties, description
+      transfers                  What travels over the channels
+        columns: from, to, data, statedin
+    assumptions                  Assumptions
+      columns: statement, why, reliedon
+  method                         Method and rules in force
+    method-feasibility           Feasibility: points, levels and combination
+    method-impact                Impact: how it is combined
+    method-risk                  Risk: matrix and scalability
+  tara                           Threat analysis and risk assessment
+    assets                       Assets and cybersecurity properties
+      columns: name, type, properties
+    damage                       Damage scenarios and impact ratings
+      columns: name, description, compromises, impact, causedby, decides
+    threats                      Threat scenarios
+      columns: name, description, asset, property, damages, steps
+    steps                        Attack steps
+      columns: name, description, target, scalability, actors, preparedby, mitigatedby, rationale,
+               time, expertise, knowledge, window, equipment, total, level
+    attacktrees                  Attack trees
+    feasibility                  Attack feasibility
+      columns: basefeasibility, basepath, residualfeasibility, residualpath
+    risk                         Risk values
+      columns: baserisk, basedecidedby, residualrisk, residualdecidedby, type, damage, impact,
+               basefeasibility, residualfeasibility
+    treatment                    Risk treatment decisions
+      columns: name, type, baserisk, residualrisk, treatment, rationale, reference, description,
+               status
+  goals                          Cybersecurity goals and claims
+    columns: name, baserisk, residualrisk, treatment, rationale, reference, description
+  concept                        Cybersecurity concept: controls
+    columns: name, description, target, mitigates, threatenedby, rationale, counted, time,
+             expertise, knowledge, window, equipment, total, level
+  appendix                       Appendices
+    trace                        Traceability
+      columns: threat, damages, steps, controls, risk, treatment
+    worksheets                   Derivation worksheets
+    open                         Open items
+    iterations                   Iterations
+    files                        Files read

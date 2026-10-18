@@ -1,0 +1,54 @@
+step modify-package-in-transit:
+  name: Change the package on the network
+  description: The attacker sits between the gateway and the backend and changes the package.
+  target: update-package
+  potential: {time: ET1, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: Tools for this exist and a day is enough.
+  scalability: Single Vehicle
+  mitigatedby: signed-packages
+
+step compromise-build-server:
+  name: Take over the build server of the backend
+  target: backend
+  potential: {time: ET3, expertise: SE2, knowledge: KoIC2, window: WoO2, equipment: Eq1}
+  rationale: It takes weeks and knowledge of the build setup.
+  scalability: Fleet-Wide
+
+step sign-malicious-package:
+  name: Sign a malicious package with the key of the build server
+  target: backend
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: With the build server taken over, the signing is a script.
+  scalability: Fleet-Wide
+  preparedby: compromise-build-server
+
+step steal-signing-key:
+  name: Steal the signing key from the backend
+  target: backend
+  potential: {time: ET3, expertise: SE3, knowledge: KoIC2, window: WoO2, equipment: Eq2}
+  rationale: The key is in a protected module, so this is the hardest way.
+  scalability: Fleet-Wide
+
+step reflash-over-debug-port:
+  name: Write new firmware through the debug port
+  target: debug-port
+  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq1}
+  rationale: The port is on the board and the tools are cheap.
+  scalability: Single Vehicle
+  mitigatedby: debug-port-lock
+
+step extract-key-from-flash:
+  name: Read the device key from the flash memory
+  target: device-key
+  potential: {time: ET2, expertise: SE2, knowledge: KoIC2, window: WoO1, equipment: Eq2}
+  rationale: A chip reader and some days of work.
+  scalability: Single Vehicle
+  mitigatedby: key-in-secure-element
+
+step impersonate-gateway:
+  name: Act as a gateway with a stolen device key
+  target: api-interface
+  potential: {time: ET0, expertise: SE1, knowledge: KoIC1, window: WoO1, equipment: Eq0}
+  rationale: With the key, the backend cannot tell the attacker from the gateway.
+  scalability: Limited Batch
+  preparedby: device-key-disclosure

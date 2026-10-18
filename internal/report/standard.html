@@ -1,0 +1,27 @@
+{{# This is the standard report template. A placeholder is a name in double braces. You can change the HTML around the placeholders. Add a logo, your own text, or a different order. A part that you do not place is left out of the report. Run "assess template -list" to see every placeholder. A note like this one is not written into the report. }}
+<!doctype html>
+<html lang="en">
+<head>
+{{meta}}
+{{csp}}
+<title>{{title}} - threat analysis and risk assessment</title>
+{{style}}
+{{script}}
+</head>
+<body>
+{{bar}}
+<div class="shell">
+{{toc}}
+<main id="top">
+{{cover}}
+{{section:project}}
+{{section:item}}
+{{section:method}}
+{{section:tara}}
+{{section:goals}}
+{{section:concept}}
+{{section:appendix}}
+</main>
+</div>
+</body>
+</html>
