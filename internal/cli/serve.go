@@ -37,10 +37,11 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	if _, err := os.Stat(filepath.Join(dir, load.ConfigFile)); err != nil {
-		fmt.Fprintf(stderr, "assess serve: %s has no %s. Run assess init to create a project\n", dir, load.ConfigFile)
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		fmt.Fprintf(stderr, "assess serve: %s is not a folder\n", dir)
 		return exitUsage
 	}
+	_, noProject := os.Stat(filepath.Join(dir, load.ConfigFile))
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		abs = dir
@@ -56,6 +57,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return exitUsage
 	}
 	fmt.Fprintf(stderr, "assess: serving %s at\n  %s\nPress Ctrl+C to stop.\n", abs, srv.URL())
+	if noProject != nil {
+		fmt.Fprintf(stderr, "There is no project in it yet. The page offers to create one.\n")
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

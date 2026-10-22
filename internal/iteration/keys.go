@@ -75,6 +75,26 @@ func ReadPrivate(path string) (ed25519.PrivateKey, error) {
 	return priv, nil
 }
 
+// ParsePublic reads one ed25519 public key from PEM text in PKIX form. what names where the text came from, for messages.
+func ParsePublic(data []byte, what string) (ed25519.PublicKey, error) {
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil, fmt.Errorf("%s has no PEM block. Use a public key in PKIX form. `openssl pkey -pubout` makes one", what)
+	}
+	if strings.HasSuffix(block.Type, "PRIVATE KEY") {
+		return nil, fmt.Errorf("%s is a private key. Give assess the public key only, and keep the private key to yourself", what)
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("%s is not a public key in PKIX form. The PEM block must start with BEGIN PUBLIC KEY", what)
+	}
+	ed, ok := pub.(ed25519.PublicKey)
+	if !ok {
+		return nil, errors.New(what + " is not an ed25519 key. Only ed25519 keys can check an iteration")
+	}
+	return ed, nil
+}
+
 // ReadPublic reads the public keys at a path. The path is a PEM file in PKIX form, or a folder of files that end in
 // .pub or .pem.
 func ReadPublic(path string) ([]Key, error) {

@@ -90,7 +90,7 @@ func TestParseSetSaysWhatIsWrongAndWhere(t *testing.T) {
 		{"no changes", "apiVersion: assess/v1beta1\n", "needs a list called changes", 1},
 		{"another key", "apiVersion: assess/v1beta1\nchanges: []\nextra: 1\n", "extra is not allowed here", 3},
 		{"a change that is not a mapping", "changes: [1]\n", "a change is a mapping with op, kind, id and, for put, attributes", 1},
-		{"an op that is not known", `{"changes": [{"op": "move", "kind": "component", "id": "a"}]}`, `op must be put or delete, got "move"`, 1},
+		{"an op that is not known", `{"changes": [{"op": "move", "kind": "component", "id": "a"}]}`, `op must be put, delete or write, got "move"`, 1},
 		{"a kind that does not exist", `{"changes": [{"op": "put", "kind": "nothing", "id": "a"}]}`, `kind "nothing" is not a kind of record`, 1},
 		{"an id that is not one word", `{"changes": [{"op": "put", "kind": "component", "id": "a b"}]}`, `id must be one word, got "a b"`, 1},
 		{"no id", `{"changes": [{"op": "put", "kind": "component"}]}`, "id must be one word", 1},

@@ -24,6 +24,15 @@ type Description struct {
 	// of the enum, then the value.
 	ValueDocs map[string]map[string]string `json:"valueDocs,omitempty"`
 	Rules     RulesInfo                    `json:"rules"`
+	// Signing says how an iteration is signed, for a program that makes the signature itself and gives it to assess sign.
+	Signing SigningInfo `json:"signing"`
+}
+
+// SigningInfo is what a program needs to sign an iteration without assess: the algorithm, and the text that is signed, which is the
+// prefix, a line break and the hash of the iteration.
+type SigningInfo struct {
+	Algorithm     string `json:"algorithm"`
+	MessagePrefix string `json:"messagePrefix"`
 }
 
 // FolderInfo is a folder of a project and the kinds written in it.
@@ -137,6 +146,7 @@ func Describe() Description {
 		d.ValueDocs[name] = docs
 	}
 	d.Rules = describeRules()
+	d.Signing = SigningInfo{Algorithm: "ed25519", MessagePrefix: model.IterationVersion}
 	return d
 }
 

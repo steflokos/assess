@@ -436,3 +436,139 @@ func TestADeleteListsTheThreatScenariosThatGo(t *testing.T) {
 		t.Errorf("the threat scenario of the deleted asset goes: %+v", fx.Effects)
 	}
 }
+
+// ---- what a change expects to find ---------------------------------------------------------------------------------------
+
+type conflictsDoc struct {
+	Conflicts []struct {
+		Kind, ID, Attribute, Reason string
+		Was, Now                    any
+	}
+	Files   []string
+	Diff    string
+	Effects []struct{ Kind, ID string }
+}
+
+func applyJSON(t *testing.T, dir, set string, flags ...string) (envelope, conflictsDoc) {
+	t.Helper()
+	args := append([]string{"apply", "-format", "json"}, flags...)
+	r := run(t, append(args, changeSet(t, "set.json", set), dir)...)
+	var env envelope
+	if err := json.Unmarshal([]byte(r.out), &env); err != nil {
+		t.Fatalf("%v\n%s\n%s", err, r.out, r.err)
+	}
+	var doc conflictsDoc
+	json.Unmarshal(env.Result, &doc)
+	return env, doc
+}
+
+func TestAChangeThatSaysWhatItReadIsAppliedWhileItIsTrue(t *testing.T) {
+	dir := testproject.Copy(t)
+	set := func(was string) string {
+		return `{"apiVersion": "assess/v1beta1", "changes": [{"op": "put", "kind": "risk", "id": "update-package-tampering", "attributes": {"treatment": "Accept"}, "was": {"treatment": ` + was + `}}]}`
+	}
+	env, _ := applyJSON(t, dir, set(`"Reduce"`), "-dry-run")
+	if !env.OK {
+		t.Fatalf("the value is what the change says it read: %s", env.Result)
+	}
+	before := testproject.Read(t, dir, "concept/risks.yaml")
+
+	// somebody else decides in between
+	testproject.Replace(t, dir, "concept/risks.yaml", "treatment: Reduce", "treatment: Avoid")
+	changed := testproject.Read(t, dir, "concept/risks.yaml")
+	env, doc := applyJSON(t, dir, set(`"Reduce"`))
+	if env.OK || len(doc.Conflicts) != 1 || doc.Conflicts[0].Attribute != "treatment" || doc.Conflicts[0].Reason != "changed" ||
+		doc.Conflicts[0].Was != "Reduce" || doc.Conflicts[0].Now != "Avoid" {
+		t.Fatalf("a changed attribute is a conflict that says what it was and what it is: %+v", doc)
+	}
+	if len(env.Diagnostics) != 1 || env.Diagnostics[0].Code != "conflict" || !strings.Contains(env.Diagnostics[0].Message, "was \"Reduce\" when you read it and is \"Avoid\" now") {
+		t.Errorf("%+v", env.Diagnostics)
+	}
+	if testproject.Read(t, dir, "concept/risks.yaml") != changed || changed == before {
+		t.Error("nothing is written when there is a conflict")
+	}
+	// the person looks at it and decides to overwrite: the change says it read Avoid
+	if env, _ := applyJSON(t, dir, set(`"Avoid"`)); !env.OK || !strings.Contains(testproject.Read(t, dir, "concept/risks.yaml"), "treatment: Accept") {
+		t.Errorf("the change that read the current value is applied: %s", env.Result)
+	}
+}
+
+func TestANullSaysThatTheAttributeWasNotThere(t *testing.T) {
+	dir := testproject.Copy(t)
+	set := `{"apiVersion": "assess/v1beta1", "changes": [{"op": "put", "kind": "component", "id": "backend", "attributes": {"notes": {"ticket": "A-1"}}, "was": {"notes": null}}]}`
+	if env, _ := applyJSON(t, dir, set, "-dry-run"); !env.OK {
+		t.Fatalf("an attribute that is not there matches a null: %s", env.Result)
+	}
+	testproject.Replace(t, dir, "item/architecture.yaml", "  name: Backend\n", "  name: Backend\n  notes: {ticket: B-2}\n")
+	if env, doc := applyJSON(t, dir, set, "-dry-run"); env.OK || len(doc.Conflicts) != 1 || doc.Conflicts[0].Attribute != "notes" {
+		t.Errorf("an attribute that was written since is a conflict: %s", env.Result)
+	}
+}
+
+func TestARecordThatShouldBeNewAndExistsOrIsGoneIsAConflict(t *testing.T) {
+	dir := testproject.Copy(t)
+	create := `{"apiVersion": "assess/v1beta1", "changes": [{"op": "put", "kind": "component", "id": "backend", "new": true, "attributes": {"name": "Another"}}]}`
+	if env, doc := applyJSON(t, dir, create); env.OK || len(doc.Conflicts) != 1 || doc.Conflicts[0].Reason != "exists" {
+		t.Errorf("a new record that exists: %s", env.Result)
+	}
+	if env, _ := applyJSON(t, dir, `{"apiVersion": "assess/v1beta1", "changes": [{"op": "put", "kind": "component", "id": "fresh-one", "new": true, "attributes": {"name": "Fresh"}}]}`); !env.OK {
+		t.Errorf("a new record that does not exist: %s", env.Result)
+	}
+	gone := `{"apiVersion": "assess/v1beta1", "changes": [{"op": "put", "kind": "component", "id": "nobody", "attributes": {"name": "X"}, "was": {"name": "Old"}}]}`
+	if env, doc := applyJSON(t, dir, gone); env.OK || len(doc.Conflicts) != 1 || doc.Conflicts[0].Reason != "gone" {
+		t.Errorf("a record that was deleted since: %s", env.Result)
+	}
+}
+
+// ---- the plain files ---------------------------------------------------------------------------------------------------------
+
+func write(file, text, was string) string {
+	body, _ := json.Marshal(map[string]any{"op": "write", "file": file, "text": text, "was": was})
+	return `{"apiVersion": "assess/v1beta1", "changes": [` + string(body) + `]}`
+}
+
+func TestAPlainFileIsWrittenAsAWholeAndTheDiffShowsOnlyWhatChanged(t *testing.T) {
+	dir := testproject.Copy(t)
+	old := testproject.Read(t, dir, "policy.yaml")
+	text := strings.Replace(old, "upto: 13", "upto: 5", 1)
+	if text == old {
+		t.Fatal("the policy of the test project has a band that ends at 13")
+	}
+	env, doc := applyJSON(t, dir, write("policy.yaml", text, ""), "-dry-run")
+	if !env.OK || len(doc.Files) != 1 || doc.Files[0] != "policy.yaml" || !strings.Contains(doc.Diff, "upto: 13") {
+		t.Fatalf("the policy is the one file that changes: %s", env.Result)
+	}
+	if strings.Count(doc.Diff, "\n-") != 1 { // the one line that goes
+		t.Errorf("only the line that changed is in the diff:\n%s", doc.Diff)
+	}
+	if len(doc.Effects) == 0 {
+		t.Errorf("a band that ends earlier moves the feasibility of a threat scenario: %s", env.Result)
+	}
+	if testproject.Read(t, dir, "policy.yaml") != old {
+		t.Error("a dry run writes nothing")
+	}
+	if env, _ := applyJSON(t, dir, write("policy.yaml", text, "")); !env.OK || testproject.Read(t, dir, "policy.yaml") != text {
+		t.Errorf("the file is written: %s", env.Result)
+	}
+}
+
+func TestAPlainFileThatChangedSinceItWasReadIsAConflictAndABadOneIsRefused(t *testing.T) {
+	dir := testproject.Copy(t)
+	old := testproject.Read(t, dir, "project.yaml")
+	if env, doc := applyJSON(t, dir, write("project.yaml", old+"# a note\n", "sha256:0000"), "-dry-run"); env.OK || len(doc.Conflicts) != 1 || doc.Conflicts[0].Kind != "file" || doc.Conflicts[0].ID != "project.yaml" {
+		t.Errorf("a file that holds another text: %s", env.Result)
+	}
+	if r := run(t, "apply", "-format", "json", "-dry-run", changeSet(t, "x.json", write("iterations.yaml", "x: 1\n", "")), dir); r.code != 2 || !strings.Contains(r.err, "can write") {
+		t.Errorf("iterations.yaml is not for a change set: %+v", r)
+	}
+	env, _ := applyJSON(t, dir, write("policy.yaml", "feasibility: [unclosed\n", ""), "-dry-run")
+	if env.OK || len(env.Diagnostics) == 0 || env.Diagnostics[0].File != "policy.yaml" {
+		t.Errorf("a text that is not valid is refused with its place: %+v", env.Diagnostics)
+	}
+	if testproject.Read(t, dir, "policy.yaml") == "feasibility: [unclosed\n" {
+		t.Error("nothing is written")
+	}
+	if env, _ := applyJSON(t, dir, write("project.yaml", old, ""), "-dry-run"); !env.OK {
+		t.Errorf("the same text is no change: %s", env.Result)
+	}
+}

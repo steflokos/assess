@@ -12,6 +12,7 @@ import (
 
 	"github.com/steflokos/assess/internal/atomic"
 	"github.com/steflokos/assess/internal/diag"
+	"github.com/steflokos/assess/internal/edit"
 	"github.com/steflokos/assess/internal/engine"
 	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/model"
@@ -64,6 +65,16 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		out.PolicyFile = ws.PolicyFile
 		out.Policy, _ = load.Plain(read(ws.PolicyFile))
 	}
+	// The plain files as text, with the hash that a change set gives to say which text it read.
+	out.Texts = map[string]plainText{}
+	policy := ws.PolicyFile
+	if policy == "" {
+		policy = load.DefaultPolicyFile
+	}
+	for _, name := range []string{load.ConfigFile, load.ProjectFile, policy} {
+		data := read(name)
+		out.Texts[name] = plainText{Text: string(data), Hash: edit.Hash(data)}
+	}
 	out.Iterations = ws.Iterations.Iterations
 	for _, rel := range res.Files {
 		recs, err := load.Raw(rel, read(rel))
@@ -99,6 +110,12 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	return o.finish(code, diags, out)
 }
 
+// plainText is the text of a plain file and its hash.
+type plainText struct {
+	Text string `json:"text"`
+	Hash string `json:"hash"`
+}
+
 // exported is the result of assess export.
 type exported struct {
 	Fingerprint string         `json:"fingerprint,omitempty"` // of the files the results come from
@@ -106,6 +123,9 @@ type exported struct {
 	Project     map[string]any `json:"project,omitempty"`     // project.yaml
 	PolicyFile  string         `json:"policyFile,omitempty"`
 	Policy      map[string]any `json:"policy,omitempty"`
+	// Texts are assess.yaml, project.yaml and the policy as they are written, with a hash of each. A change set that writes one of
+	// them gives the hash of the text it read, and assess refuses to overwrite a text that has changed since.
+	Texts map[string]plainText `json:"texts,omitempty"`
 	// Iterations are the closed iterations, as iterations.yaml has them. The last one holds the fingerprint that the
 	// files had when it was closed, so a program can tell whether anything changed since.
 	Iterations []model.Iteration `json:"iterations,omitempty"`

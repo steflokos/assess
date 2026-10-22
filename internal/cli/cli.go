@@ -78,11 +78,16 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	return exitUsage
 }
 
-// RunWith is Run for a program that has the standard input of the command in hand. Only apply reads it, and it reads the
-// change set from in. Every other command is run as Run runs it.
+// RunWith is Run for a program that has the standard input of the command in hand. Apply reads the change set from it, and sign
+// reads a public key from it. Every other command is run as Run runs it.
 func RunWith(in io.Reader, args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && args[0] == "apply" {
-		return runApplyFrom(in, args[1:], stdout, stderr)
+	if len(args) > 0 {
+		switch args[0] {
+		case "apply":
+			return runApplyFrom(in, args[1:], stdout, stderr)
+		case "sign":
+			return runSignFrom(in, args[1:], stdout, stderr)
+		}
 	}
 	return Run(args, stdout, stderr)
 }

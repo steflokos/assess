@@ -24,6 +24,29 @@
 // The attributes use the names and values of the files. A null removes an attribute. Putting what is already
 // there changes nothing. The files are edited as text, so every line that is not changed stays exactly as it
 // was, comments and blank lines included.
+//
+// A change can say what it expects to find, so that it does not overwrite a change that someone else made after the
+// change set was written:
+//
+//   - op: put
+//     kind: risk
+//     id: update-package-tampering
+//     attributes: {treatment: Accept}
+//     was: {treatment: Reduce}  # the value that the attribute had when you read it. null means it was not there
+//   - op: put
+//     kind: step
+//     id: new-step
+//     new: true                 # the record must not exist yet
+//     attributes: {name: A new step}
+//
+// If a record does not match, nothing is written and the outcome lists the conflicts.
+//
+// The plain files of a project, which are not records, are written as a whole:
+//
+//   - op: write
+//     file: policy.yaml
+//     text: "..."               # the new text of the file
+//     was: "sha256:..."         # the hash of the text that you read, as export gives it
 package edit
 
 import (
@@ -41,7 +64,7 @@ import (
 
 // Change is one change of a change set.
 type Change struct {
-	Op     string // put or delete
+	Op     string // put, delete or write
 	Kind   string
 	ID     string
 	Parent string
@@ -50,13 +73,30 @@ type Change struct {
 	// Cascade, on a delete, takes the records that cannot stay without this one with it, and removes its id from the
 	// places that only mention it (see cascade.go). Without it, a record that something still refers to cannot be deleted.
 	Cascade bool
-	Line    int // where the change is written in the change set, for messages
-	Col     int
-	why     string // a delete that the cascade added: why the record goes
+	// Was, on a put, is a mapping of what the attributes held when the person read them, and on a write the hash of the file.
+	Was *yaml.Node
+	// New, on a put, says that the record must not exist yet.
+	New bool
+	// Text, on a write, is the new text of the file.
+	Text string
+	Line int // where the change is written in the change set, for messages
+	Col  int
+	why  string // a delete that the cascade added: why the record goes
 }
 
 // Set is a list of changes.
 type Set struct{ Changes []Change }
+
+// Writes are the changes that write a plain file. Apply leaves them to the caller, which knows where the files are.
+func (s *Set) Writes() []Change {
+	var out []Change
+	for _, c := range s.Changes {
+		if c.Op == "write" {
+			out = append(out, c)
+		}
+	}
+	return out
+}
 
 // Problem is something wrong with a change set, at a line and a column of it.
 type Problem struct {
@@ -128,6 +168,7 @@ func parseChange(n *yaml.Node) (Change, []Problem) {
 		return c, probs
 	}
 	var attrs *yaml.Node
+	hasText := false
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		k, v := n.Content[i], n.Content[i+1]
 		switch k.Value {
@@ -148,12 +189,31 @@ func parseChange(n *yaml.Node) (Change, []Problem) {
 				bad(v, "cascade is true or false")
 			}
 			c.Cascade = v.Value == "true"
+		case "was":
+			c.Was = v
+		case "new":
+			if v.Kind != yaml.ScalarNode || (v.Value != "true" && v.Value != "false") {
+				bad(v, "new is true or false")
+			}
+			c.New = v.Value == "true"
+		case "text":
+			c.Text = v.Value
+			hasText = v.Kind == yaml.ScalarNode
 		default:
-			bad(k, "%s is not allowed in a change. A change has op, kind, id, parent, file, attributes and, on a delete, cascade", k.Value)
+			bad(k, "%s is not allowed in a change. A change has op, kind, id, parent, file, attributes, was, new and, on a delete, cascade. A write has op, file, text and was", k.Value)
 		}
 	}
+	if c.Op == "write" {
+		if c.File == "" || !hasText {
+			bad(n, "a write needs the file and its text")
+		}
+		if c.Was != nil && c.Was.Kind != yaml.ScalarNode {
+			bad(c.Was, "was is the hash of the file, as export gives it")
+		}
+		return c, probs
+	}
 	if c.Op != "put" && c.Op != "delete" {
-		bad(n, "op must be put or delete, got %q", c.Op)
+		bad(n, "op must be put, delete or write, got %q", c.Op)
 	}
 	kind, known := iso21434.KindByWord(c.Kind)
 	if !known {
@@ -171,8 +231,12 @@ func parseChange(n *yaml.Node) (Change, []Problem) {
 	switch {
 	case c.Cascade && c.Op != "delete":
 		bad(n, "cascade belongs to a delete")
-	case c.Op == "delete" && attrs != nil:
-		bad(attrs, "a delete has no attributes")
+	case c.Op == "delete" && (attrs != nil || c.Was != nil || c.New):
+		bad(n, "a delete has no attributes, was or new")
+	case c.Was != nil && c.Was.Kind != yaml.MappingNode:
+		bad(c.Was, "was is a mapping of attribute names to the values that you read")
+	case c.New && c.Was != nil:
+		bad(n, "a record that is new has nothing that it was")
 	case attrs != nil && attrs.Kind != yaml.MappingNode:
 		bad(attrs, "attributes is a mapping of attribute names to values")
 	case attrs != nil && attrs.Kind == yaml.MappingNode:

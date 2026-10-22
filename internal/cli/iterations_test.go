@@ -4,6 +4,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
@@ -18,6 +19,8 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
+	"github.com/steflokos/assess/internal/cli"
+	"github.com/steflokos/assess/internal/iteration"
 	"github.com/steflokos/assess/internal/testproject"
 )
 
@@ -649,5 +652,53 @@ func TestIterationValuesCanBePlacedInATemplate(t *testing.T) {
 	i := strings.Index(page, `<p id="it">`)
 	if i < 0 || !strings.Contains(page[i:i+200], "2026-10-20 09:30:00Z") || !strings.Contains(page[i:i+200], "sha256:") {
 		t.Errorf("the placeholders %q", page[max(i, 0):min(len(page), i+200)])
+	}
+}
+
+// A signature that was made somewhere else, such as in a browser that holds the key, is checked and written. The private key never
+// reaches assess.
+func TestASignatureMadeElsewhereIsCheckedAndWritten(t *testing.T) {
+	dir := twoIterations(t)
+	kdir := t.TempDir()
+	jane := newKeys(t, kdir, "jane")
+	priv, err := iteration.ReadPrivate(jane.priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := iteration.Sign(priv, lastHash(t, dir))
+
+	// the public key comes on standard input, as the web interface gives it
+	pubPEM, _ := os.ReadFile(jane.pub)
+	var out, errb bytes.Buffer
+	code := cli.RunWith(bytes.NewReader(pubPEM), []string{"sign", "-signature", sig, "-public", "-", "-by", "Jane Doe", dir}, &out, &errb)
+	if code != 0 || !strings.Contains(out.String(), "signed iteration 2 as Jane Doe") {
+		t.Fatalf("exit %d\n%s%s", code, out.String(), errb.String())
+	}
+	if r := run(t, "verify", "-keys", jane.pub, "-strict", dir); r.code != 0 || !strings.Contains(r.out, "signed by Jane Doe: valid") {
+		t.Errorf("verify reads the signature that was made elsewhere: %+v", r)
+	}
+}
+
+func TestASignatureThatDoesNotFitIsRefusedAndNothingIsWritten(t *testing.T) {
+	dir := twoIterations(t)
+	kdir := t.TempDir()
+	jane, ops := newKeys(t, kdir, "jane"), newKeys(t, kdir, "ops")
+	priv, _ := iteration.ReadPrivate(jane.priv)
+	before := iterationsFile(t, dir)
+	for name, args := range map[string][]string{
+		"a signature of another hash": {"-signature", iteration.Sign(priv, "sha256:not-the-hash"), "-public", jane.pub, "-by", "Jane"},
+		"another key than the signer": {"-signature", iteration.Sign(priv, lastHash(t, dir)), "-public", ops.pub, "-by", "Jane"},
+		"not base64":                  {"-signature", "!!!", "-public", jane.pub, "-by", "Jane"},
+		"no public key":               {"-signature", "AAAA", "-by", "Jane"},
+		"a key and a signature":       {"-signature", "AAAA", "-key", jane.priv, "-public", jane.pub, "-by", "Jane"},
+		"a private key as public":     {"-signature", "AAAA", "-public", jane.priv, "-by", "Jane"},
+	} {
+		r := run(t, append(append([]string{"sign"}, args...), dir)...)
+		if r.code != 2 {
+			t.Errorf("%s: exit %d\n%s%s", name, r.code, r.out, r.err)
+		}
+		if iterationsFile(t, dir) != before {
+			t.Errorf("%s: a refused signature writes nothing", name)
+		}
 	}
 }

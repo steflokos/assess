@@ -5,12 +5,14 @@ package edit
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
 
 	"github.com/steflokos/assess/internal/generate"
+	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/schema"
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 )
@@ -37,6 +39,20 @@ type Outcome struct {
 	// Brought is how many records a cascade deletes or changes besides the ones that were asked for and what is
 	// written inside them.
 	Brought int
+	// Conflicts are the places where what a change expected is not what the files hold. When there are any, nothing else is
+	// worked out and nothing may be written.
+	Conflicts []Conflict
+}
+
+// Conflict says that a change expected something that the files do not hold: a record that is new and exists, a record that is
+// gone, or an attribute that is not what the person read. Someone else changed it in between.
+type Conflict struct {
+	Kind      string `json:"kind"`
+	ID        string `json:"id"`
+	Attribute string `json:"attribute,omitempty"` // empty when the whole record or file is meant
+	Reason    string `json:"reason"`              // changed, exists or gone
+	Was       any    `json:"was,omitempty"`       // what the change expected
+	Now       any    `json:"now,omitempty"`       // what is there. Left out when the attribute is not there
 }
 
 // DefaultFile is the file where a new top-level record of a kind goes when the change does not name one.
@@ -124,6 +140,10 @@ func Apply(files map[string][]byte, set *Set, source string) (*Outcome, []Proble
 		walk(ft.roots)
 	}
 
+	if cs := a.conflicts(set); len(cs) > 0 {
+		a.out.Conflicts = cs
+		return a.out, nil
+	}
 	puts, deletes := a.reduce(set)
 	if len(a.probs) > 0 {
 		return nil, sortedProblems(a.probs)
@@ -190,6 +210,9 @@ func (a *applier) reduce(set *Set) (puts []*put, deletes []Change) {
 		a.probs = append(a.probs, Problem{c.Line, c.Col, fmt.Sprintf(format, args...)})
 	}
 	for _, c := range set.Changes {
+		if c.Op == "write" {
+			continue // a plain file, which the caller writes
+		}
 		key := [2]string{c.Kind, c.ID}
 		if c.Op == "delete" {
 			if _, again := deleting[key]; !again {
@@ -636,4 +659,32 @@ func unified(f *fileText, es []edit) string {
 		i = j + 1
 	}
 	return b.String()
+}
+
+// conflicts compares what the changes expected to find with what the files hold.
+func (a *applier) conflicts(set *Set) []Conflict {
+	var out []Conflict
+	for _, c := range set.Changes {
+		if c.Op != "put" {
+			continue
+		}
+		r := a.index[[2]string{c.Kind, c.ID}]
+		switch {
+		case c.New && r != nil:
+			out = append(out, Conflict{Kind: c.Kind, ID: c.ID, Reason: "exists"})
+		case c.Was != nil && r == nil:
+			out = append(out, Conflict{Kind: c.Kind, ID: c.ID, Reason: "gone"})
+		case c.Was != nil:
+			for _, p := range pairsOf(c.Was) {
+				var now any
+				if at := r.attr(p.name); at != nil {
+					now = load.PlainNode(at.val)
+				}
+				if was := load.PlainNode(p.val); !reflect.DeepEqual(was, now) {
+					out = append(out, Conflict{Kind: c.Kind, ID: c.ID, Attribute: p.name, Reason: "changed", Was: was, Now: now})
+				}
+			}
+		}
+	}
+	return out
 }

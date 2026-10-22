@@ -11,7 +11,9 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
@@ -146,6 +148,37 @@ func (s *Server) Handler() http.Handler {
 		s.jsonCommand(w, r, nil, append(args, s.dir)...)
 	}))
 
+	// An iteration is signed with a signature that the page made in the browser with the key of the person. The private key never reaches
+	// the server: the server gets the signature and the public key, and assess checks the one against the other before it writes.
+	mux.Handle("POST /api/sign", s.api(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := readBody(w, r)
+		if !ok {
+			return
+		}
+		var in struct {
+			Iteration int    `json:"iteration"`
+			By        string `json:"by"`
+			Public    string `json:"public"`
+			Signature string `json:"signature"`
+		}
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil || in.Iteration < 1 || in.Iteration > 9999 || !signatureText.MatchString(in.Signature) ||
+			len(in.Public) == 0 || len(in.Public) > 4096 || len(in.By) > 200 || strings.ContainsAny(in.By, "\r\n") {
+			writeError(w, http.StatusBadRequest, "body", "the body is {\"iteration\": 1, \"by\": \"…\", \"public\": \"-----BEGIN PUBLIC KEY-----…\", \"signature\": \"…\"}")
+			return
+		}
+		args := []string{"sign", "-format", "json", "-iteration=" + strconv.Itoa(in.Iteration)}
+		if in.By != "" {
+			args = append(args, "-by="+in.By)
+		}
+		s.jsonCommand(w, r, strings.NewReader(in.Public), append(args, "-signature="+in.Signature, "-public", "-", s.dir)...)
+	}))
+	// a project is made in an empty folder. init refuses when there is one already.
+	mux.Handle("POST /api/init", s.api(func(w http.ResponseWriter, r *http.Request) {
+		s.plainCommand(w, r, "init", s.dir)
+	}))
+
 	// a cheap way to see that the files changed
 	mux.Handle("GET /api/stamp", s.api(func(w http.ResponseWriter, r *http.Request) {
 		stamp, err := stampOf(s.dir)
@@ -235,6 +268,9 @@ func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, o
 	return code, o.Bytes(), e.Bytes(), nil
 }
 
+// signatureText is the base64 of an ed25519 signature: 64 bytes.
+var signatureText = regexp.MustCompile(`^[A-Za-z0-9+/]{86}==$`)
+
 // maxText is how much of what a command said for a person is added to its document.
 const maxText = 20 << 10
 
@@ -267,6 +303,8 @@ func writes(args []string) bool {
 	switch args[0] {
 	case "apply", "generate", "finalize":
 		return !slices.Contains(args, "-dry-run")
+	case "sign", "init":
+		return true
 	}
 	return false
 }
@@ -290,6 +328,28 @@ func (s *Server) jsonCommand(w http.ResponseWriter, r *http.Request, in io.Reade
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(errorDocument(args[0], "failed", msg))
+}
+
+// plainCommand runs a command that has no JSON form, such as init, and answers with a document of the same shape: ok when it
+// succeeded, with what it said as text.
+func (s *Server) plainCommand(w http.ResponseWriter, r *http.Request, args ...string) {
+	code, out, errb, err := s.exec(r, nil, args)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed", err.Error())
+		return
+	}
+	env := errorDocument(args[0], "", "")
+	env.Diagnostics = []diagnostic{}
+	env.OK = code == 0
+	text := strings.TrimSpace(string(out) + "\n" + string(errb))
+	if code != 0 {
+		env.Diagnostics = []diagnostic{{Severity: "error", Code: "failed", Message: text}}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		envelope
+		Text string `json:"text,omitempty"`
+	}{env, text})
 }
 
 // textCommand runs a command and writes what it printed, with the content type of that. A command that did not succeed has

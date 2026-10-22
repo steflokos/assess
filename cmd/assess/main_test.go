@@ -259,7 +259,7 @@ func TestTheWebInterfaceListensOnThisComputerOnly(t *testing.T) {
 	if r.code != 2 || !strings.Contains(r.err, "only listens on this computer") {
 		t.Errorf("%+v", r)
 	}
-	if r := assess(t, "serve", t.TempDir()); r.code != 2 || !strings.Contains(r.err, "has no assess.yaml") {
-		t.Errorf("a folder that is not a project: %+v", r)
+	if r := assess(t, "serve", filepath.Join(t.TempDir(), "nothing-here")); r.code != 2 || !strings.Contains(r.err, "is not a folder") {
+		t.Errorf("a place that is not a folder: %+v", r)
 	}
 }

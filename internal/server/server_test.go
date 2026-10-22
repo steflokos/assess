@@ -57,6 +57,9 @@ func (f *fake) count() int {
 
 const doc = `{"command":"x","ok":true,"diagnostics":[]}`
 
+// sig has the shape of the base64 of a 64 byte signature
+var sig = strings.Repeat("A", 86) + "=="
+
 // start runs a server on a free port, with the fake runner and a known token.
 func start(t *testing.T, f *fake, dir string) *httptest.Server {
 	t.Helper()
@@ -233,6 +236,9 @@ func TestEveryRouteRunsTheCommandItShould(t *testing.T) {
 		{"generate assets again", request{method: "POST", path: "/api/generate?what=assets&force=1"}, []string{"generate", "-format", "json", "-force", "assets", "D"}, ""},
 		{"finalize", request{method: "POST", path: "/api/finalize?dry=1", body: `{"note":"first round","by":["Jane Doe","Ops"]}`},
 			[]string{"finalize", "-format", "json", "-dry-run", "-note=first round", "-by=Jane Doe", "-by=Ops", "D"}, ""},
+		{"sign", request{method: "POST", path: "/api/sign", body: `{"iteration": 2, "by": "Jane Doe", "public": "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n", "signature": "` + sig + `"}`},
+			[]string{"sign", "-format", "json", "-iteration=2", "-by=Jane Doe", "-signature=" + sig, "-public", "-", "D"}, "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n"},
+		{"init", request{method: "POST", path: "/api/init", body: "{}"}, []string{"init", "D"}, ""},
 		{"report", request{path: "/report?t=" + token, noToken: true}, []string{"report", "-o", "-", "D"}, ""},
 		{"diagram", request{path: "/diagram.svg?t=" + token + "&threat=a-b", noToken: true}, []string{"diagram", "-o", "-", "-threat", "a-b", "D"}, ""},
 	}
@@ -264,6 +270,11 @@ func TestBadInputNeverReachesACommand(t *testing.T) {
 		{method: "POST", path: "/api/generate?what=threats&force=1"},
 		{method: "POST", path: "/api/finalize", body: `{"note": 3}`},
 		{method: "POST", path: "/api/finalize", body: `{"surprise": true}`},
+		{method: "POST", path: "/api/sign", body: `{"iteration": 0, "public": "x", "signature": "` + sig + `"}`},
+		{method: "POST", path: "/api/sign", body: `{"iteration": 1, "public": "x", "signature": "not a signature"}`},
+		{method: "POST", path: "/api/sign", body: `{"iteration": 1, "public": "", "signature": "` + sig + `"}`},
+		{method: "POST", path: "/api/sign", body: `{"iteration": 1, "by": "a\nb", "public": "x", "signature": "` + sig + `"}`},
+		{method: "POST", path: "/api/sign", body: `{"iteration": 1, "public": "x", "signature": "` + sig + `", "key": "private"}`},
 	} {
 		if code, _, _ := do(t, ts, r); code != 400 {
 			t.Errorf("%s %s: %d, want 400", r.method, r.path, code)

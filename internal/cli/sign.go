@@ -25,9 +25,23 @@ import (
 //
 // assess reads the key file only while it signs, and it never writes or prints the key. The signature is made over
 // the hash of the iteration, so it also covers every iteration before it.
+//
+// A signature can also be made somewhere else, such as in a web browser that holds the key, and given to assess:
+//
+//	assess sign -signature <base64> -public <public key file, or - for standard input> [-by name] [-iteration n] [dir]
+//
+// assess checks the signature against the hash of the iteration and the public key before it writes it, so a wrong signature is
+// refused. The private key never reaches assess then.
 func runSign(args []string, stdout, stderr io.Writer) int {
+	return runSignFrom(os.Stdin, args, stdout, stderr)
+}
+
+// runSignFrom is runSign with the standard input given, for a public key that comes with -public -.
+func runSignFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("sign", stderr)
 	keyFile := fl.String("key", "", "private key file: an ed25519 key in PKCS#8 PEM form, without a passphrase")
+	signature := fl.String("signature", "", "a signature made elsewhere, in base64, instead of -key. It needs -public")
+	public := fl.String("public", "", "with -signature: the public key file that checks it, or - to read it from standard input")
 	by := fl.String("by", "", "who signs (default: the one name that finalized the iteration)")
 	number := fl.Int("iteration", 0, "the iteration to sign (default: the last one)")
 	format := fl.String("format", "text", "output format: text or json")
@@ -45,12 +59,38 @@ func runSign(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	if *keyFile == "" {
+	var priv ed25519.PrivateKey
+	var pub ed25519.PublicKey
+	switch {
+	case *signature != "" && *keyFile != "":
+		return o.fail("give a private key with -key, or a signature with -signature, and not both")
+	case *signature != "":
+		if *public == "" {
+			return o.fail("a signature needs the public key that checks it: -public <file>, or - for standard input")
+		}
+		var data []byte
+		var err error
+		what := *public
+		if *public == "-" {
+			data, err = io.ReadAll(in)
+			what = "the public key"
+		} else {
+			data, err = os.ReadFile(*public)
+		}
+		if err != nil {
+			return o.fail("%v", err)
+		}
+		if pub, err = iteration.ParsePublic(data, what); err != nil {
+			return o.fail("%v", err)
+		}
+	case *keyFile == "":
 		return o.fail("give the private key with -key <file>")
-	}
-	priv, err := iteration.ReadPrivate(*keyFile)
-	if err != nil {
-		return o.fail("%v", err)
+	default:
+		var err error
+		if priv, err = iteration.ReadPrivate(*keyFile); err != nil {
+			return o.fail("%v", err)
+		}
+		pub = priv.Public().(ed25519.PublicKey)
 	}
 
 	unlock, err := atomic.Lock(dir, true)
@@ -86,13 +126,19 @@ func runSign(args []string, stdout, stderr io.Writer) int {
 		}
 		name = it.By[0]
 	}
-	fp := iteration.Fingerprint(priv.Public().(ed25519.PublicKey))
+	fp := iteration.Fingerprint(pub)
 	for _, s := range it.Signatures {
 		if s.Key == fp {
 			return o.fail("iteration %d is already signed with this key (by %s)", n, s.By)
 		}
 	}
-	sig := model.Signature{By: name, Key: fp, Sig: iteration.Sign(priv, it.Hash)}
+	sigText := *signature
+	if priv != nil {
+		sigText = iteration.Sign(priv, it.Hash)
+	} else if !iteration.Check(pub, it.Hash, sigText) {
+		return o.fail("the signature is not a signature of iteration %d by the owner of this public key", n)
+	}
+	sig := model.Signature{By: name, Key: fp, Sig: sigText}
 
 	path := filepath.Join(dir, load.IterationsFile)
 	old, err := os.ReadFile(path)

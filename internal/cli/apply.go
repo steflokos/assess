@@ -4,19 +4,23 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/steflokos/assess/internal/atomic"
 	"github.com/steflokos/assess/internal/diag"
 	"github.com/steflokos/assess/internal/edit"
 	"github.com/steflokos/assess/internal/load"
+	"github.com/steflokos/assess/internal/model"
 	"github.com/steflokos/assess/internal/source"
 )
 
@@ -139,6 +143,15 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	out, ps := edit.Apply(files, set, opt.source)
 	if len(ps) > 0 {
 		return changeProblems(o, opt.label, ps)
+	}
+	if len(out.Conflicts) == 0 {
+		var err error
+		if out.Conflicts, err = applyWrites(dir, res.Workspace, set, out); err != nil {
+			return o.fail("%v", err)
+		}
+	}
+	if len(out.Conflicts) > 0 {
+		return reportConflicts(o, out.Conflicts, opt.dry)
 	}
 
 	// Check the result as a project, in a copy, before the real files are touched.
@@ -273,6 +286,8 @@ type applyResult struct {
 	// Effects says which results of the calculation the change moves: the threat scenarios whose risk or feasibility is not what it was,
 	// and the item. It is left out when nothing moves and when the project cannot be calculated.
 	Effects []effect `json:"effects,omitempty"`
+	// Conflicts, when there are any, say what changed in the files after the change set was written. Nothing is written then.
+	Conflicts []edit.Conflict `json:"conflicts,omitempty"`
 }
 
 // blocked is a record that an error of the result is about.
@@ -380,4 +395,73 @@ func stagedCheck(dir string, res *load.Result, changed map[string][]byte) (*load
 	}
 	staged, diags := checkProject(stage)
 	return staged, diags, nil
+}
+
+// applyWrites adds the plain files of a change set to the outcome: assess.yaml, project.yaml and the policy. A file is written as a
+// whole. When the change set says which text it read (the hash), a file that holds another text is a conflict. An empty hash
+// says nothing.
+func applyWrites(dir string, ws *model.Workspace, set *edit.Set, out *edit.Outcome) ([]edit.Conflict, error) {
+	writes := set.Writes()
+	if len(writes) == 0 {
+		return nil, nil
+	}
+	policy := ws.PolicyFile
+	if policy == "" {
+		policy = load.DefaultPolicyFile
+	}
+	allowed := map[string]bool{load.ConfigFile: true, load.ProjectFile: true, policy: true}
+	var conflicts []edit.Conflict
+	var diffs []string
+	for _, w := range writes {
+		if !allowed[w.File] {
+			return nil, fmt.Errorf("a change set can write %s, %s and %s, and not %q", load.ConfigFile, load.ProjectFile, policy, w.File)
+		}
+		old, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(w.File)))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		if w.Was != nil && w.Was.Value != "" && w.Was.Value != edit.Hash(old) {
+			conflicts = append(conflicts, edit.Conflict{Kind: "file", ID: w.File, Reason: "changed", Was: w.Was.Value, Now: edit.Hash(old)})
+			continue
+		}
+		if string(old) == w.Text {
+			out.Unchanged = append(out.Unchanged, edit.Ref{Kind: "file", ID: w.File, File: w.File})
+			continue
+		}
+		out.Files[w.File] = []byte(w.Text)
+		out.Updated = append(out.Updated, edit.Ref{Kind: "file", ID: w.File, File: w.File})
+		diffs = append(diffs, edit.FileDiff(w.File, old, []byte(w.Text)))
+	}
+	out.Diff += strings.Join(diffs, "")
+	return conflicts, nil
+}
+
+// reportConflicts says what changed under the change set. Nothing was written.
+func reportConflicts(o *output, cs []edit.Conflict, dry bool) int {
+	var ds diag.List
+	for _, c := range cs {
+		ds.Errorf("conflict", source.Loc{}, "%s", conflictText(c))
+	}
+	o.show(ds)
+	fmt.Fprintf(o.stderr, "assess %s: the files changed after you read them. Nothing was written\n", o.cmd)
+	return o.finish(exitFindings, ds, applyResult{DryRun: dry, Created: []edit.Ref{}, Updated: []edit.Ref{}, Deleted: []edit.Ref{}, Unchanged: []edit.Ref{}, Files: []string{}, Conflicts: cs})
+}
+
+func conflictText(c edit.Conflict) string {
+	show := func(v any) string {
+		if v == nil {
+			return "not there"
+		}
+		b, _ := json.Marshal(v)
+		return string(b)
+	}
+	switch {
+	case c.Kind == "file":
+		return fmt.Sprintf("%s changed after you read it", c.ID)
+	case c.Reason == "exists":
+		return fmt.Sprintf("%s %s exists already, and you meant to create it", c.Kind, c.ID)
+	case c.Reason == "gone":
+		return fmt.Sprintf("%s %s is not there any more", c.Kind, c.ID)
+	}
+	return fmt.Sprintf("%s %s: %s was %s when you read it and is %s now", c.Kind, c.ID, c.Attribute, show(c.Was), show(c.Now))
 }
