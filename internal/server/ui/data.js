@@ -9,7 +9,7 @@ export const S = {
   desc: null, kinds: {}, apiVersion: 'assess/v1beta1',
   exp: null, diag: [], recs: [], of: {}, byKey: new Map(), threats: new Map(), byFile: new Map(),
   uses: new Map(), usedBy: new Map(), index: [], points: {}, open: [],
-  stamp: '', fatal: '',
+  stamp: '', fatal: '', noProject: false,
 };
 
 // load reads the format once and the project every time.
@@ -25,6 +25,7 @@ export async function load() {
   S.fatal = '';
   S.exp = exp.result || { records: [] };
   S.diag = exp.diagnostics || [];
+  S.noProject = S.diag.some((d) => d.code === 'no-project');
   S.recs = S.exp.records || [];
   S.open = S.exp.open || [];
   S.of = {}; S.byKey = new Map(); S.byFile = new Map();

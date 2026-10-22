@@ -35,7 +35,7 @@ export function choice({ values, label, value, required, onChange, text }) {
     const sel = h('select', { 'aria-label': label, onchange: () => onChange() }, h('option', { value: '', text: required ? 'Choose…' : 'Not set' }),
       values.map((v) => h('option', { value: String(v), text: shown(v) })));
     sel.value = value === undefined ? '' : String(value);
-    return { node: sel, get: () => (sel.value === '' ? undefined : values.find((v) => String(v) === sel.value)) };
+    return { node: sel, get: () => (sel.value === '' ? undefined : values.find((v) => String(v) === sel.value)), set: (v) => { sel.value = v === undefined ? '' : String(v); } };
   }
   let state = value === null ? undefined : value;
   const wrap = h('div', { class: 'seg', role: 'group', 'aria-label': label });
@@ -47,7 +47,7 @@ export function choice({ values, label, value, required, onChange, text }) {
   const paint = () => buttons.forEach((b, i) => { const on = state === values[i]; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
   buttons.forEach((b) => wrap.append(b));
   paint();
-  return { node: wrap, get: () => state };
+  return { node: wrap, get: () => state, set: (v) => { state = v; paint(); } };
 }
 
 // ---- text and numbers ---------------------------------------------------------------------------------------------------

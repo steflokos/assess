@@ -6,7 +6,7 @@ import { $, h, put, clear, plural, toast, api, tokenValue, paintTheme, nextTheme
 import { icon, KIND_ICON } from './icons.js';
 import { S, load, nameOf, kindTitle, workflow } from './data.js';
 import { editor } from './editor.js';
-import { overview, list, decisions, openItems, calc, explain, reportView, diagramView, iterations, files } from './views.js';
+import { overview, list, decisions, openItems, calc, explain, reportView, diagramView, iterations, files, welcome } from './views.js';
 import { openPalette } from './palette.js';
 import { notFound, empty } from './parts.js';
 
@@ -18,6 +18,7 @@ const go = (...parts) => { location.hash = '#/' + parts.map(encodeURIComponent).
 
 const ui = {
   go,
+  dirty: () => state.dirty,
   render: () => render(),
   refresh: async () => { await load(); render(); },
   setDirty(v) {
@@ -109,12 +110,14 @@ function render() {
       S.fatal === 'token' ? 'The address has a token at its end. Copy the whole line from the terminal into the address bar.' : S.fatal))));
     return;
   }
-  drawNav(parts);
+  document.body.classList.toggle('noproject', S.noProject);
+  drawNav(S.noProject ? ['none'] : parts);
   drawTop();
   paintTitle();
   const [a, b, c] = parts;
   let view;
-  if (!a) view = overview(ui);
+  if (S.noProject) view = welcome(ui);
+  else if (!a) view = overview(ui);
   else if (a === 'kind' && b && c) view = editor(b, c, false, ui);
   else if (a === 'kind' && b) view = list(b, ui);
   else if (a === 'new' && b) view = editor(b, '', true, ui);
@@ -123,8 +126,8 @@ function render() {
   else if (a === 'calc') view = b ? explain(b) : calc();
   else if (a === 'report') view = reportView();
   else if (a === 'diagram') view = diagramView(b, ui);
-  else if (a === 'iterations') view = iterations();
-  else if (a === 'files') view = files();
+  else if (a === 'iterations') view = iterations(ui);
+  else if (a === 'files') view = files(ui);
   else view = notFound('There is no such page.');
   main.append(view);
   main.scrollTop = 0;

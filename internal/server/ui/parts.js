@@ -3,7 +3,8 @@
 
 import { h, chip, plural } from './lib.js';
 import { icon } from './icons.js';
-import { recordAt, kindTitle } from './data.js';
+import { recordAt, kindTitle, nameOf } from './data.js';
+import { labelOf } from './form.js';
 
 export const hrefOf = (...parts) => '#/' + parts.map(encodeURIComponent).join('/');
 export const where = (d) => (d.file ? d.file + (d.line ? ':' + d.line + (d.column ? ':' + d.column : '') : '') : '');
@@ -69,3 +70,27 @@ export function notFound(text) {
 }
 
 export const kindHeading = (k) => kindTitle(k);
+
+// ---- when someone else changed the files first --------------------------------------------------------------------------------------
+const shown = (v) => (v === null || v === undefined ? 'not set' : typeof v === 'string' ? v : JSON.stringify(v));
+
+// conflictText says in words what a conflict of apply means.
+export function conflictText(c) {
+  if (c.kind === 'file') return c.id + ' was changed on disk after you opened it.';
+  const what = c.kind + ' "' + nameOf(c.kind, c.id) + '"';
+  if (c.reason === 'gone') return 'The ' + what + ' was deleted after you opened it.';
+  if (c.reason === 'exists') return 'There is a ' + what + ' now. You meant to create one with this id.';
+  return labelOf(c.attribute) + ' of the ' + what + ' was ' + shown(c.was) + ' when you opened this page. It is ' + shown(c.now) + ' now.';
+}
+
+// conflicts shows what changed under a person and what to do about it. keep writes the change over theirs, and reload throws the
+// change away and shows what is there. Nothing was written.
+export function conflicts(list, { keep, reload }) {
+  const gone = list.some((c) => c.reason === 'gone' || c.reason === 'exists');
+  return h('div', { class: 'alert warn conflict' },
+    h('strong', { text: 'Someone changed this after you opened it. Nothing was written.' }),
+    h('ul', {}, list.map((c) => h('li', { text: conflictText(c) }))),
+    h('div', { class: 'row' },
+      keep && !gone ? h('button', { class: 'btn small', type: 'button', onclick: keep }, 'Keep my change') : null,
+      reload ? h('button', { class: 'btn small', type: 'button', onclick: reload }, gone ? 'Reload' : 'Discard mine and reload') : null));
+}

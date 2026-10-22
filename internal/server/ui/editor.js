@@ -7,7 +7,7 @@ import { h, put, clear, plural, debounce, ask, toast, api, chip, tokenValue, upp
 import { icon, KIND_ICON } from './icons.js';
 import { S, rec, nameOf, kindName, kindTitle } from './data.js';
 import { recordForm, chipPicker, readOnly, inSchemaOrder, shell } from './form.js';
-import { hrefOf, diagnostics, diff, effects, crumbs, notFound } from './parts.js';
+import { hrefOf, diagnostics, diff, effects, conflicts, crumbs, notFound } from './parts.js';
 
 const changeSet = (changes) => ({ apiVersion: S.apiVersion, changes });
 
@@ -17,6 +17,9 @@ export function editor(kind, id, isNew, ui) {
   const existing = isNew ? null : rec(kind, id);
   if (!isNew && !existing) return notFound('There is no ' + info.name + ' with the id ' + id + '.');
   const original = existing ? existing.attributes || {} : {};
+  // what the page read, which a change says it expects to find. If someone else changed a value and this person decides to keep their
+  // own change, the value that is there now becomes the one that is expected.
+  const baseline = Object.assign({}, original);
 
   // ---- the id and the parent of a new record
   let idCtl = null, parentCtl = null;
@@ -52,13 +55,14 @@ export function editor(kind, id, isNew, ui) {
     if (isNew) {
       const newId = idCtl.get();
       if (!newId) return { error: 'Give the new record an id.' };
-      const change = { op: 'put', kind, id: newId, attributes: attrs };
+      const change = { op: 'put', kind, id: newId, attributes: attrs, new: true };
       const parent = parentCtl && parentCtl.get();
       if (parent) change.parent = parent;
       return { set: changeSet([change]), id: newId, n };
     }
     if (!n) return { none: true };
-    return { set: changeSet([{ op: 'put', kind, id, attributes: attrs }]), id, n, attrs };
+    const was = Object.fromEntries(Object.keys(attrs).map((k) => [k, baseline[k] === undefined ? null : baseline[k]]));
+    return { set: changeSet([{ op: 'put', kind, id, attributes: attrs, was }]), id, n, attrs };
   };
 
   const check = async () => {
@@ -72,6 +76,8 @@ export function editor(kind, id, isNew, ui) {
     if (mine !== seq) return; // a newer check is on its way
     clear(status);
     const errors = (env.diagnostics || []).filter((d) => d.severity === 'error');
+    const clash = (env.result || {}).conflicts || [];
+    if (clash.length) { showConflicts(clash); return; }
     if (!env.ok) {
       status.append(errors.length ? diagnostics(errors.slice(0, 20)) : h('div', { class: 'alert err', text: env.text || 'The change cannot be applied.' }));
       return;
@@ -91,12 +97,25 @@ export function editor(kind, id, isNew, ui) {
     checkLater();
   }
 
+  // someone else changed what this page read. The person decides: keep their own change over it, or reload and see what is there.
+  function showConflicts(list) {
+    clear(status);
+    put(status, conflicts(list, {
+      keep: () => {
+        for (const c of list) if (c.attribute) baseline[c.attribute] = c.now === undefined || c.now === null ? undefined : c.now;
+        check();
+      },
+      reload: async () => { ui.setDirty(false); await ui.refresh(); if (!rec(kind, id)) ui.go('kind', kind); },
+    }));
+  }
+
   async function doSave() {
     if (save.disabled) return;
     const b = build();
     if (!b.set) return;
     save.disabled = true;
     const env = await api('/api/apply', { method: 'POST', body: b.set });
+    if (((env.result || {}).conflicts || []).length) { showConflicts(env.result.conflicts); return; }
     if (!env.ok) {
       clear(status);
       status.append((env.diagnostics || []).length ? diagnostics(env.diagnostics.slice(0, 20)) : h('div', { class: 'alert err', text: env.text || 'The change was not written.' }));
@@ -105,12 +124,14 @@ export function editor(kind, id, isNew, ui) {
     ui.setDirty(false);
     await ui.refresh();
     // Undo puts the old values back, or removes what was created.
+    // Undo expects to find what was just written, so that it does not undo over a change that someone made since.
     const back = isNew ? [{ op: 'delete', kind, id: b.id }]
-      : [{ op: 'put', kind, id, attributes: Object.fromEntries(Object.keys(b.attrs).map((k) => [k, original[k] === undefined ? null : inSchemaOrder(kind, info.attributes.find((a) => a.name === k) || { name: k }, original[k])])) }];
+      : [{ op: 'put', kind, id, attributes: Object.fromEntries(Object.keys(b.attrs).map((k) => [k, baseline[k] === undefined ? null : inSchemaOrder(kind, info.attributes.find((a) => a.name === k) || { name: k }, baseline[k])])),
+        was: Object.fromEntries(Object.keys(b.attrs).map((k) => [k, b.attrs[k]])) }];
     toast((isNew ? 'Created ' : 'Saved ') + (nameOf(kind, b.id) || b.id) + '.', 'ok', { label: 'Undo', run: async () => {
       const undone = await api('/api/apply', { method: 'POST', body: changeSet(back) });
       await ui.refresh();
-      if (undone.ok) toast('Undone.'); else toast('That could not be undone.', 'err');
+      if (undone.ok) toast('Undone.'); else toast(((undone.result || {}).conflicts || []).length ? 'Someone changed it since. It was not undone.' : 'That could not be undone.', 'err');
       if (isNew && undone.ok) ui.go('kind', kind);
     } });
     if (isNew) ui.go('kind', kind, b.id); else ui.render();
