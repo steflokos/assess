@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/steflokos/assess/internal/attack"
+	"github.com/steflokos/assess/internal/theme"
 )
 
 // pageData is what the part templates receive: the view, the style sheet and the script, and the
@@ -105,7 +106,7 @@ func newRenderer(v *View, t *Template) (*renderer, error) {
 	}
 	// The css and the js are constants of the program and never project data, so they are trusted as CSS and JavaScript.
 	// Everything that comes from the project goes through the escaping of html/template.
-	r.data = pageData{View: v, CSS: template.CSS(string(css) + attack.CSS), JS: template.JS(js), ScriptHash: base64.StdEncoding.EncodeToString(sum[:])}
+	r.data = pageData{View: v, CSS: template.CSS(string(css) + theme.CSS() + attack.CSS), JS: template.JS(js), ScriptHash: base64.StdEncoding.EncodeToString(sum[:])}
 	r.parts, err = template.New("parts").Funcs(template.FuncMap{
 		"known":        func(ref string) bool { return r.anchors[ref] },
 		"attacksvg":    r.attackSVG,

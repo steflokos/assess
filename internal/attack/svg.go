@@ -12,21 +12,21 @@ import (
 // CSS is the style of the picture. The colours are custom properties with a light fallback, so a page can set them
 // from its own theme (the report does) and a file that stands alone still looks right.
 const CSS = `.ag{display:block;font-family:var(--sans,Helvetica,Arial,sans-serif)}
-.ag text{fill:var(--ag-ink,#1d2433);font-size:10px}
+.ag text{fill:var(--ag-ink,#1C2540);font-size:10px}
 .ag rect{fill:var(--ag-box,#fff);stroke:var(--ag-line,#7a8499);stroke-width:1.2}
-.ag .t rect{fill:var(--ag-soft,#eef2ff);stroke:var(--ag-accent,#2a58d8);stroke-width:2}
-.ag .c rect{fill:var(--ag-ctl-bg,#e6f5ec);stroke:var(--ag-ctl,#2f8f5b)}
+.ag .t rect{fill:var(--ag-soft,#E6EDF9);stroke:var(--ag-accent,#2A5298);stroke-width:2}
+.ag .c rect{fill:var(--ag-ctl-bg,#CCEADD);stroke:var(--ag-ctl,#0F7244)}
 .ag .x rect{opacity:.55}
-.ag .b rect{stroke:var(--ag-base,#c26a00);stroke-width:2.8}
-.ag .r rect{stroke:var(--ag-resid,#2a58d8);stroke-width:2.8}
+.ag .b rect{stroke:var(--ag-base,#C17D0B);stroke-width:2.8}
+.ag .r rect{stroke:var(--ag-resid,#2A5298);stroke-width:2.8}
 .ag .o circle{fill:var(--ag-box,#fff);stroke:var(--ag-line,#7a8499);stroke-width:1.2}
 .ag .o text{font-size:8px;font-style:italic}
 .ag .e{fill:none;stroke:var(--ag-line,#7a8499);stroke-width:1.2}
-.ag .e.m{stroke:var(--ag-ctl,#2f8f5b);stroke-dasharray:5 3}
-.ag .e.a{stroke:var(--ag-bypass,#b42b2f);stroke-dasharray:1.5 3.5;stroke-width:1.8;stroke-linecap:round}
+.ag .e.m{stroke:var(--ag-ctl,#0F7244);stroke-dasharray:5 3}
+.ag .e.a{stroke:var(--ag-bypass,#C9202F);stroke-dasharray:1.5 3.5;stroke-width:1.8;stroke-linecap:round}
 .ag .k{fill:var(--ag-line,#7a8499);stroke:none}
-.ag .k.m{fill:var(--ag-ctl,#2f8f5b)}
-.ag .k.a{fill:var(--ag-bypass,#b42b2f)}
+.ag .k.m{fill:var(--ag-ctl,#0F7244)}
+.ag .k.a{fill:var(--ag-bypass,#C9202F)}
 .ag a{cursor:pointer}
 .ag a:hover rect{stroke-width:3}
 .ag .key text{font-size:9.5px}`

@@ -399,7 +399,7 @@ func (d *drawing) draw() []byte {
 	var out strings.Builder
 	fmt.Fprintf(&out, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %.0f %.0f" width="%.0f" height="%.0f" font-family="Helvetica, Arial, sans-serif">`, width, height, width, height)
 	out.WriteString(`<rect width="100%" height="100%" fill="#ffffff"/>`)
-	fmt.Fprintf(&out, `<text x="%.0f" y="26" font-size="16" font-weight="700" fill="#1d2433">System architecture: %s</text>`, margin, html.EscapeString(d.itemName()))
+	fmt.Fprintf(&out, `<text x="%.0f" y="26" font-size="16" font-weight="700" fill="#1C2540">System architecture: %s</text>`, margin, html.EscapeString(d.itemName()))
 	out.WriteString(d.sb.String())
 	out.WriteString("</svg>\n")
 	return []byte(out.String())
@@ -474,9 +474,9 @@ func (d *drawing) text(x, y float64, s string, size float64, weight, anchor, fil
 func style(n *node, nested bool) (fill, stroke string, width float64, ink string) {
 	switch {
 	case n.asset && nested:
-		return "#f7f9fc", "#2b3a55", 2.2, "#1d2433"
+		return "#f7f9fc", "#2b3a55", 2.2, "#1C2540"
 	case n.asset:
-		return "#ffffff", "#2b3a55", 2.2, "#1d2433"
+		return "#ffffff", "#2b3a55", 2.2, "#1C2540"
 	case nested:
 		return "#e9ecf2", "#a3abbb", 1.2, "#6b7385"
 	}
@@ -487,7 +487,7 @@ func (d *drawing) pill(p *node) {
 	w := pillWidth(p)
 	fill, stroke, sw, ink := "#f1f3f7", "#b7bfcd", 1.0, "#7a8394"
 	if p.asset {
-		fill, stroke, sw, ink = "#e3eefb", "#2b6cb0", 1.6, "#1d2433"
+		fill, stroke, sw, ink = "#e3eefb", "#2b6cb0", 1.6, "#1C2540"
 	}
 	fmt.Fprintf(&d.sb, `<rect x="%.1f" y="%.1f" width="%.1f" height="16" rx="8" fill="%s" stroke="%s" stroke-width="%g"/>`, p.x, p.y, w, fill, stroke, sw)
 	d.text(p.x+8, p.y+11.5, p.id, 10, "normal", "start", ink)
@@ -566,12 +566,12 @@ func (d *drawing) chip(i *node) {
 	}
 	stroke, sw, ink := "#a3abbb", 1.0, "#6b7385"
 	if i.asset {
-		stroke, sw, ink = "#2b3a55", 2.0, "#1d2433"
+		stroke, sw, ink = "#2b3a55", 2.0, "#1C2540"
 	}
 	fmt.Fprintf(&d.sb, `<rect x="%.1f" y="%.1f" width="%.1f" height="16" rx="3" fill="%s" stroke="%s" stroke-width="%g"/>`, i.x, i.y, cw, fill, stroke, sw)
 	d.text(i.x+cw/2, i.y+11.5, i.id, 10, "normal", "middle", ink)
 	if i.entry {
-		fmt.Fprintf(&d.sb, `<circle cx="%.1f" cy="%.1f" r="4.5" fill="#d64545" stroke="#ffffff" stroke-width="1"/>`, i.x+cw, i.y)
+		fmt.Fprintf(&d.sb, `<circle cx="%.1f" cy="%.1f" r="4.5" fill="#C9202F" stroke="#ffffff" stroke-width="1"/>`, i.x+cw, i.y)
 	}
 }
 
@@ -646,20 +646,20 @@ func (d *drawing) legend(y float64) float64 {
 	x := margin
 	chip := func(fill, stroke string, sw float64, label string) {
 		fmt.Fprintf(&d.sb, `<rect x="%.1f" y="%.1f" width="16" height="12" rx="3" fill="%s" stroke="%s" stroke-width="%g"/>`, x, y, fill, stroke, sw)
-		d.text(x+22, y+10, label, 10, "normal", "start", "#1d2433")
+		d.text(x+22, y+10, label, 10, "normal", "start", "#1C2540")
 		x += 22 + textWidth(label, 10) + 20
 	}
 	chip("#ffd9a8", "#2b3a55", 1.2, "external interface")
 	chip("#dfe3ea", "#2b3a55", 1.2, "internal interface")
 	chip("#ffffff", "#2b3a55", 1.2, "exposure not stated")
-	fmt.Fprintf(&d.sb, `<circle cx="%.1f" cy="%.1f" r="4.5" fill="#d64545"/>`, x+6, y+6)
-	d.text(x+16, y+10, "entry point", 10, "normal", "start", "#1d2433")
+	fmt.Fprintf(&d.sb, `<circle cx="%.1f" cy="%.1f" r="4.5" fill="#C9202F"/>`, x+6, y+6)
+	d.text(x+16, y+10, "entry point", 10, "normal", "start", "#1C2540")
 	x += 16 + textWidth("entry point", 10) + 20
 	chip("#ffffff", "#2b3a55", 2.2, "an asset")
 	chip("#f1f3f7", "#a3abbb", 1.2, "not an asset")
 	if d.arrows {
 		fmt.Fprintf(&d.sb, `<polygon points="%.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="#5b6475"/>`, x+2, y+1, x+10, y+1, x+6, y+10)
-		d.text(x+16, y+10, "direction of a transfer in a function flow", 10, "normal", "start", "#1d2433")
+		d.text(x+16, y+10, "direction of a transfer in a function flow", 10, "normal", "start", "#1C2540")
 		x += 16 + textWidth("direction of a transfer in a function flow", 10) + 20
 	}
 	return x
