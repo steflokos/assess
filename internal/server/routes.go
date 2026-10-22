@@ -18,9 +18,12 @@ import (
 	"github.com/steflokos/assess/internal/theme"
 )
 
-// uiPolicy is what the page of the interface may load: its own files and nothing else.
-const uiPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
-	"frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+// uiPolicy is what the page of the interface may load: its own files and nothing else, and frames from the two names of this
+// server.
+func (s *Server) uiPolicy() string {
+	return "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
+		"frame-src " + s.frames + "; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+}
 
 // Handler is the whole server: the checks, the files of the interface and the routes that run commands.
 func (s *Server) Handler() http.Handler {
@@ -30,7 +33,7 @@ func (s *Server) Handler() http.Handler {
 	ui, _ := fs.Sub(uiFiles, "ui")
 	files := http.FileServerFS(ui)
 	static := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", uiPolicy)
+		w.Header().Set("Content-Security-Policy", s.uiPolicy())
 		w.Header().Set("Cache-Control", "no-store")
 		files.ServeHTTP(w, r)
 	}
@@ -153,8 +156,8 @@ func (s *Server) Handler() http.Handler {
 	// the report and the diagrams, which a frame or an image loads
 	mux.Handle("GET /report", s.page(func(w http.ResponseWriter, r *http.Request) {
 		// The report has a content policy of its own, which allows its own script. Another policy here would add to it
-		// and stop the script. Only the places that may frame it are limited.
-		w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+		// and stop the script. Only the places that may frame it are limited: the interface, from the other name of this server.
+		w.Header().Set("Content-Security-Policy", "frame-ancestors "+s.frames)
 		s.textCommand(w, r, "text/html; charset=utf-8", "report", "-o", "-", s.dir)
 	}))
 	mux.Handle("GET /diagram.svg", s.page(func(w http.ResponseWriter, r *http.Request) {
@@ -228,6 +231,33 @@ func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, o
 	return code, o.Bytes(), e.Bytes(), nil
 }
 
+// maxText is how much of what a command said for a person is added to its document.
+const maxText = 20 << 10
+
+// withText adds what the command said for a person to its JSON document, as text. The document has the findings, and the text
+// has the sentence that says what happened, such as "nothing has changed since iteration 1". Without text the document is as
+// the command wrote it.
+func withText(doc, said []byte) []byte {
+	said = bytes.TrimSpace(said)
+	if len(said) == 0 {
+		return doc
+	}
+	if len(said) > maxText {
+		said = said[:maxText]
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(doc, &fields) != nil || fields == nil {
+		return doc
+	}
+	text, _ := json.Marshal(string(said))
+	fields["text"] = text
+	out, err := json.Marshal(fields)
+	if err != nil {
+		return doc
+	}
+	return out
+}
+
 // writes says whether a command changes the files. A dry run of apply or finalize does not.
 func writes(args []string) bool {
 	switch args[0] {
@@ -247,7 +277,7 @@ func (s *Server) jsonCommand(w http.ResponseWriter, r *http.Request, in io.Reade
 	}
 	if len(out) > 0 && json.Valid(out) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(out)
+		w.Write(withText(out, errb))
 		return
 	}
 	msg := strings.TrimSpace(string(errb))

@@ -135,8 +135,13 @@ func TestTheTokenIsRequiredForTheAPIButNotForTheInterface(t *testing.T) {
 	if code != 200 || !strings.Contains(body, "<title>assess</title>") {
 		t.Errorf("the interface needs no token: %d", code)
 	}
-	if !strings.Contains(h.Get("Content-Security-Policy"), "script-src 'self'") || h.Get("X-Content-Type-Options") != "nosniff" {
+	port := portOf(ts.URL)
+	if csp := h.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "frame-src http://127.0.0.1:"+port+" http://localhost:"+port) ||
+		h.Get("X-Content-Type-Options") != "nosniff" {
 		t.Errorf("the interface has its headers: %v", h)
+	}
+	if _, _, h := do(t, ts, request{path: "/report?t=" + token, noToken: true}); !strings.Contains(h.Get("Content-Security-Policy"), "frame-ancestors http://127.0.0.1:"+port+" http://localhost:"+port) {
+		t.Errorf("only the interface may frame the report: %v", h)
 	}
 	if code, _, _ := do(t, ts, request{path: "/etc/passwd", noToken: true}); code != 404 {
 		t.Errorf("anything else is not there: %d", code)
@@ -178,6 +183,13 @@ func TestOtherSitesAreRefused(t *testing.T) {
 	}
 	if f.count() != 2 {
 		t.Errorf("a refused request runs nothing: %d commands", f.count())
+	}
+	// the interface shows the report from the other name of the server, which the browser calls another site
+	if code, _, _ := do(t, ts, request{path: "/report?t=" + token, noToken: true, header: map[string]string{"Sec-Fetch-Site": "cross-site"}}); code != 200 {
+		t.Errorf("the report in a frame: %d", code)
+	}
+	if code, _, _ := do(t, ts, request{path: "/report?t=wrong", noToken: true, header: map[string]string{"Sec-Fetch-Site": "cross-site"}}); code != 401 {
+		t.Errorf("the report without the token: %d", code)
 	}
 }
 
@@ -415,5 +427,23 @@ func TestACommandThatWritesRunsAloneAndOthersRunTogether(t *testing.T) {
 	}
 	if mostReaders < 2 {
 		t.Errorf("commands that only read run together: at most %d at once", mostReaders)
+	}
+}
+
+// The document of a command has the findings. What the command said for a person goes along as text.
+func TestWhatTheCommandSaidForAPersonGoesAlongAsText(t *testing.T) {
+	f := &fake{out: doc, err: "assess finalize: nothing has changed since iteration 1. Nothing was written\n"}
+	ts := start(t, f, "D")
+	_, body, _ := do(t, ts, request{path: "/api/open"})
+	var got struct {
+		OK   bool   `json:"ok"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal([]byte(body), &got); err != nil || !got.OK || !strings.Contains(got.Text, "nothing has changed since iteration 1") {
+		t.Errorf("%v %s", err, body)
+	}
+	f.err = ""
+	if _, body, _ := do(t, ts, request{path: "/api/open"}); strings.Contains(body, `"text"`) {
+		t.Errorf("a command that said nothing adds nothing: %s", body)
 	}
 }

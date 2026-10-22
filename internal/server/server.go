@@ -51,7 +51,10 @@ type Server struct {
 	token string
 	ln    net.Listener
 	hosts map[string]bool
-	sem   chan struct{}
+	// frames are the two origins of this server, 127.0.0.1 and localhost. They are different origins for a browser, which the
+	// interface uses to show the report: the report is loaded from the other name, so it cannot read what the interface keeps.
+	frames string
+	sem    chan struct{}
 	// turns makes the commands of this process take turns: a command that writes runs alone, and commands that read run
 	// together. The lock of the project (internal/atomic) does this between processes. Inside one process it lets a second
 	// call join the lock that is held, because a command takes it again when it loads the project it has just written. Two
@@ -96,8 +99,9 @@ func New(opt Options) (*Server, error) {
 	_, port, _ := net.SplitHostPort(opt.Listener.Addr().String())
 	s := &Server{
 		dir: opt.Dir, run: opt.Run, token: tok, ln: opt.Listener,
-		hosts: map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true, "[::1]:" + port: true},
-		sem:   make(chan struct{}, maxRunning),
+		hosts:  map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true, "[::1]:" + port: true},
+		frames: "http://127.0.0.1:" + port + " http://localhost:" + port,
+		sem:    make(chan struct{}, maxRunning),
 	}
 	return s, nil
 }

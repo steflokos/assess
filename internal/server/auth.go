@@ -17,7 +17,7 @@ import (
 //
 //   - Host: the request has to be addressed to the server by its own name. A page that was moved to an address of the
 //     attacker by a DNS trick (rebinding) still sends the attacker's name, and is refused.
-//   - Origin and Sec-Fetch-Site: a request that comes from another site is refused.
+//   - Origin and Sec-Fetch-Site: an API request that comes from another site is refused.
 //   - Token: a random value that is made when the server starts and given to the person in the address that is
 //     printed. A page that does not know it cannot call the API.
 //   - Content-Type: a POST has to be JSON, which another site cannot send without asking the server first.
@@ -30,10 +30,6 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		h.Set("Referrer-Policy", "no-referrer")
 		if !s.hosts[strings.ToLower(r.Host)] {
 			writeError(w, http.StatusForbidden, "host", "this server answers only to its own address")
-			return
-		}
-		if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
-			writeError(w, http.StatusForbidden, "origin", "a request from another site is refused")
 			return
 		}
 		if o := r.Header.Get("Origin"); o != "" && !strings.EqualFold(o, "http://"+r.Host) {
@@ -67,6 +63,12 @@ func (s *Server) page(next http.HandlerFunc) http.Handler {
 func (s *Server) protected(next http.HandlerFunc, inAddress bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
+		// A page of this server may use the other name of the server for the report, which a browser calls another site. So that
+		// is allowed for what a frame or an image loads, which needs the token in its address. The API is only for this origin.
+		if !inAddress && r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+			writeError(w, http.StatusForbidden, "origin", "a request from another site is refused")
+			return
+		}
 		if !s.tokenOK(r, inAddress) {
 			writeError(w, http.StatusUnauthorized, "token", "the token is missing or wrong. Open the address that assess serve printed")
 			return
