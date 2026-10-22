@@ -66,6 +66,10 @@ The modules are `app.js` (start, menu, routing), `data.js` (what the page knows 
 `views.js` (the other pages), `palette.js` (search), `parts.js` (shared pieces) and `icons.js`. The server serves every file of the
 folder, so a new module needs no change in Go.
 
+The scripts have tests in `internal/server/ui/tests`. They use `node --test` and no package, and they work on the real answers of `describe`
+and `export`. `go test ./internal/cli` runs them when `node` is installed and skips them when it is not. They also make a signature
+the way the page does, and `assess sign` has to accept it. The part of the page that draws things is checked by hand in a browser.
+
 The server writes nothing itself. A route builds the arguments of a command in Go, from a fixed list, and runs it. A route that takes
 text from the client checks it first, so that it can never be taken for a flag. Any new route goes through the checks in
 `internal/server/auth.go`.

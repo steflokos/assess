@@ -641,6 +641,13 @@ openssl genpkey -algorithm ed25519 -out jane.key
 openssl pkey -in jane.key -pubout -out jane.pub
 ```
 
+A signature can also be made somewhere else and given to assess, for example in a web browser that holds your key. assess then
+needs only the signature and the public key, and it checks them against the hash of the iteration before it writes anything:
+
+```sh
+assess sign -signature <base64> -public jane.pub my-tara       # or -public - to read the public key from standard input
+```
+
 You can say once where the public keys are, with `keys: keys` in `assess.yaml`. The path is relative to the project,
 and `-keys` wins over it. A signature that has no key to check it shows as *not checked*. That does not fail
 `assess verify`, unless you use `-strict`. The signature covers the hash, so it also covers every iteration before it.
@@ -802,6 +809,13 @@ writes the records for it. It takes a change set, in JSON or in YAML:
 - `-source name` adds `notes: {source: name}` to every record that the change set creates or changes. Rules can
   read it (see "Rules"), so a company can ask for a review of everything that came from a tool.
 - `-dry-run` shows what would change, as a diff, and writes nothing.
+- `was` says what the attributes held when you read them, as a mapping from the name to the value, and `null` for an attribute that was
+  not there. If one of them holds something else now, nothing is written, and the result has `conflicts`: each one has the `kind`, the `id`,
+  the `attribute`, what it `was` and what it is `now`. Only the attributes that the change names are compared, so two people who change
+  different attributes or different records do not collide. A put with `"new": true` says that the record must not exist yet.
+- `{"op": "write", "file": "policy.yaml", "text": "…", "was": "sha256:…"}` writes one of the plain files as a whole: `assess.yaml`,
+  `project.yaml` or the policy. `export` gives the text of each of them with its hash, and a file that has another hash now is a
+  conflict. The dry run shows the diff and the `effects`.
 - In JSON, the result has `effects` when the change moves a result of the calculation. Each entry names a threat scenario, or the
   item, with its risk values and feasibility levels before and after. A threat scenario that the change creates or removes has only
   one of the two. It is left out when nothing moves, and when the project cannot be calculated.
@@ -927,8 +941,18 @@ What you can do in the page:
 - Let assess write assets, threat scenarios and risks, and close an iteration.
 - See the calculation, the worksheet of each threat scenario, the report and the diagrams.
 
-What the page does not do: it shows `assess.yaml`, `project.yaml` and `policy.yaml` but does not edit them, it does not create a
-project (run `assess init`), and it does not sign. Your private key stays on the command line, where `assess sign` reads it.
+Three more things that the page does:
+
+- **It keeps two people from overwriting each other.** A change says which values it read, and assess refuses to write over a value that
+  someone else changed in the meantime. The page then says what changed, and you choose between keeping your change and reloading. A
+  change to a different attribute or a different record is not a conflict.
+- **It edits the settings.** The Files page edits `assess.yaml`, `project.yaml` and the policy as text. A change is checked first, the
+  errors have their line and a click puts the caret there, the comments stay, and a change to a number of the policy says which
+  threat scenarios it moves.
+- **It signs an iteration in the browser.** You choose the file of your private key and the page makes the signature itself. The key is
+  read in the page, used there and forgotten. It is never sent to the server. The server gets the signature and the public key, and assess
+  checks them against the hash of the iteration. The browser has to support ed25519 (current Chrome, Firefox and Safari do).
+- **It creates the project.** In a folder with no project, `assess serve` offers to create one.
 
 The page has no login, so `assess serve` listens on this computer only and refuses any other address. A web page that is open in
 the same browser cannot use it, because every request has to carry the token. The page runs the same commands as the command line,
