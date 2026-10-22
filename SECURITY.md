@@ -13,6 +13,8 @@ assess runs on your machine and reads and writes the files of a project. These a
 - A command writes a file outside the project folder.
 - A project file, a change set or a rule makes assess run code or read a file it should not.
 - The report runs a script that is not its own.
+- A web page that is not the interface of `assess serve` can read or change a project through it, or the server listens on an
+  address that is not on this computer.
 - A closed iteration can be changed and `assess verify` still says the chain is intact.
 - A signature that is not valid passes `assess verify`.
 

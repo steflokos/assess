@@ -17,6 +17,7 @@ What is in it:
 - Iterations. `assess finalize` closes the treatment decisions in a hash chain, `assess verify` finds a change to it,
   and `assess sign` adds your signature.
 - Commands for programs: `-format json`, `apply`, `delete`, `export`, `describe` and `open`.
+- `assess serve`, a web interface on your own computer, with forms for the records.
 - `examples/ota`, a finished example project.
 
 Known limits of this beta:

@@ -16,8 +16,8 @@ assess checks the files, calculates feasibility and risk, runs rules that you wr
 assess aims to make the TARA process simpler. It does not cover everything that a large TARA tool does, so some features
 are missing in these early versions. These are the goals instead:
 
-- **Simplicity.** One binary and plain YAML files. There is no server, no database and no account. The editor
-  completes and checks what you write.
+- **Simplicity.** One binary and plain YAML files. There is nothing to host, no database and no account. The editor
+  completes and checks what you write, and `assess serve` opens a web interface on your own computer when you want forms.
 - **Speed of work.** `assess generate` writes the repetitive records, so you spend your time on the decisions.
 - **Explainability.** ISO/SAE 21434 expects you to justify your decisions. `assess explain` shows how each value was
   calculated and which attack path it chose for a threat scenario.
@@ -68,6 +68,7 @@ assess explain <threat-id> my-tara   # show how one threat scenario got its numb
 assess diagram my-tara           # the architecture as one SVG image, out/architecture.svg
 assess diagram -threat <threat-id> my-tara   # the attack tree of one threat scenario as an SVG image
 assess report my-tara            # the whole assessment as one HTML page, out/report.html
+assess serve my-tara             # a web interface for the project, on this computer only (see "The web interface")
 assess template -o layout.html   # the standard report layout, to start your own from
 assess lint my-tara              # check the project against the rules in rules/
 assess open my-tara              # what is still open: not calculated, no decision yet, found by a rule
@@ -890,6 +891,36 @@ ids have changed. `assess schema -watch` rewrites it each time you save a file. 
 
 assess does not rewrite existing editor settings. If your `.vscode/settings.json` or `.vscode/tasks.json` already
 exists, assess prints what you need to add.
+
+## The web interface
+
+`assess serve` shows a project in your web browser. It is for the moments when you would rather fill in a form than write YAML.
+The files stay the only source of truth. You can edit them in your editor while the page is open, and the page shows the change
+within a few seconds.
+
+```sh
+assess serve my-tara
+```
+
+assess prints an address that ends in `#t=` and a token. Open the whole address. The token is new on every run. Without it, the
+page cannot read or write anything. `-addr 127.0.0.1:9000` picks another port.
+
+What you can do in the page:
+
+- See the overview, the findings with their place in the files, and every record of every kind.
+- Change a record in a form. The form is built from the description of the format, so it offers the allowed values and the ids that
+  exist. Every change is checked first. The errors show where they are in the files, and the lines that would change are shown as a
+  diff. Save writes only those lines.
+- Delete a record. The page says what depends on it before anything is removed.
+- Let assess write assets, threat scenarios and risks, and close an iteration.
+- See the calculation, the worksheet of each threat scenario, the report and the diagrams.
+
+What the page does not do: it shows `assess.yaml`, `project.yaml` and `policy.yaml` but does not edit them, it does not create a
+project (run `assess init`), and it does not sign. Your private key stays on the command line, where `assess sign` reads it.
+
+The page has no login, so `assess serve` listens on this computer only and refuses any other address. A web page that is open in
+the same browser cannot use it, because every request has to carry the token. The page runs the same commands as the command line,
+so what it writes passes the same checks as `assess apply`.
 
 ## Versions and compatibility
 

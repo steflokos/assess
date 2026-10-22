@@ -32,6 +32,8 @@ project yourself: `go run ./cmd/assess eval internal/testproject/testdata/projec
   each mistake in a file says and where it points. It also covers iterations, `apply`, `delete` and the report.
 - `internal/iteration`, `internal/atomic`, `internal/edit`, `internal/rules`, `internal/schema` and the other packages
   test their own code. `cmd/assess` builds the program and runs it, the way a person or a script does.
+- `internal/server` is tested with a fake runner, and `internal/cli/serve_test.go` runs the same routes against the real commands. The
+  checks that keep other web pages out each have a test.
 - A few tests keep the declarations in line with the format. Every attribute has a doc tag and its name is one word.
 - `examples/ota` and the golden files in `internal/cli/testdata/golden` guard the numbers and outputs that users depend
   on. If one of them changes on purpose, record it with `go test ./internal/cli -run Golden -update`, and read the diff
@@ -52,6 +54,19 @@ registry in `internal/taxonomy/iso21434`. Attribute names come from the `yaml` t
 follows. What a rule can read is declared once, in `internal/vocab`.
 
 A fact is written once. If a value can be worked out from other values, assess works it out and does not ask for it again.
+
+## The web interface
+
+`assess serve` is in `internal/server` and `internal/cli/serve.go`. The page is three plain files in `internal/server/ui`: HTML, CSS and
+JavaScript, with no framework, no build step and no dependency. Keep it that way. The page has no inline script or style, because
+its content policy does not allow them. Text from a project is always put into the page as text and never as HTML.
+
+The server writes nothing itself. A route builds the arguments of a command in Go, from a fixed list, and runs it. A route that takes
+text from the client checks it first, so that it can never be taken for a flag. Any new route goes through the checks in
+`internal/server/auth.go`.
+
+The colors are in `internal/theme`, once. The report and the page both take them from there. A test checks the contrast of every pair
+of text and background, so run `go test ./internal/theme` after you change one.
 
 ## Dependencies
 
