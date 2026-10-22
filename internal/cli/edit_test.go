@@ -4,12 +4,14 @@
 package cli_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/steflokos/assess/internal/cli"
 	"github.com/steflokos/assess/internal/testproject"
 )
 
@@ -78,6 +80,22 @@ component unit-1:
 	}
 	if testproject.Read(t, dir, "item/architecture.yaml") != after {
 		t.Error("the file is not written when nothing changes")
+	}
+}
+
+// A program that has the change set in memory gives it to RunWith and needs no file.
+func TestRunWithReadsTheChangeSetFromTheReader(t *testing.T) {
+	dir := testproject.Copy(t)
+	var out, errb bytes.Buffer
+	code := cli.RunWith(strings.NewReader(newUnit), []string{"apply", "-format", "json", "-", dir}, &out, &errb)
+	if code != 0 || !strings.Contains(out.String(), `"ok": true`) {
+		t.Fatalf("exit %d\n%s%s", code, out.String(), errb.String())
+	}
+	if !strings.Contains(testproject.Read(t, dir, "item/architecture.yaml"), "component unit-1:") {
+		t.Error("the record is written")
+	}
+	if code := cli.RunWith(nil, []string{"version"}, &out, &errb); code != 0 {
+		t.Errorf("another command runs as it does in Run: exit %d", code)
 	}
 }
 

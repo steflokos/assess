@@ -77,6 +77,15 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	return exitUsage
 }
 
+// RunWith is Run for a program that has the standard input of the command in hand. Only apply reads it, and it reads the
+// change set from in. Every other command is run as Run runs it.
+func RunWith(in io.Reader, args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "apply" {
+		return runApplyFrom(in, args[1:], stdout, stderr)
+	}
+	return Run(args, stdout, stderr)
+}
+
 func usage(w io.Writer, cmds []command) {
 	fmt.Fprintln(w, "assess - ISO/SAE 21434 TARA as code")
 	fmt.Fprintln(w)

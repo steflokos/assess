@@ -30,6 +30,12 @@ import (
 // column of the file as it would be. The files are edited as text, so only the lines that change are different.
 // Records that a rule would flag are not an error here. Run assess lint for that.
 func runApply(args []string, stdout, stderr io.Writer) int {
+	return runApplyFrom(os.Stdin, args, stdout, stderr)
+}
+
+// runApplyFrom is runApply with the standard input given, so that a program that has the change set in memory does not need a
+// file for it. The change set is read from in when its name is - or is not given.
+func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("apply", stderr)
 	dry := fl.Bool("dry-run", false, "show what would change and write nothing")
 	src := fl.String("source", "", "write this name as notes.source on every record that is created or changed")
@@ -59,7 +65,7 @@ func runApply(args []string, stdout, stderr io.Writer) int {
 	label := setName
 	if setName == "-" {
 		label = "<stdin>"
-		data, err = io.ReadAll(os.Stdin)
+		data, err = io.ReadAll(in)
 	} else {
 		data, err = os.ReadFile(setName)
 	}
