@@ -142,7 +142,7 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	}
 
 	// Check the result as a project, in a copy, before the real files are touched.
-	after, err := stagedCheck(dir, res, out.Files)
+	staged, after, err := stagedCheck(dir, res, out.Files)
 	if err != nil {
 		return o.fail("%v", err)
 	}
@@ -184,6 +184,8 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 		}
 		return o.finish(exitFindings, diags, result)
 	}
+
+	result.Effects = effectsOf(res.Workspace, staged.Workspace)
 
 	w := o.text()
 	if opt.person {
@@ -268,6 +270,9 @@ type applyResult struct {
 	// Blocked says, when the result would have errors, which record each error is in. After a delete this is the
 	// list of records that still refer to what was deleted, so that they can be deleted or changed in the next change set.
 	Blocked []blocked `json:"blocked,omitempty"`
+	// Effects says which results of the calculation the change moves: the threat scenarios whose risk or feasibility is not what it was,
+	// and the item. It is left out when nothing moves and when the project cannot be calculated.
+	Effects []effect `json:"effects,omitempty"`
 }
 
 // blocked is a record that an error of the result is about.
@@ -334,11 +339,11 @@ func sortedNames(m map[string][]byte) []string {
 
 // stagedCheck checks the project as it would be after the changes, in a temporary copy of its files: the
 // configuration, the project, the policy, the report template and the record files, with the changed ones
-// replaced. It returns what checking the copy finds, with the same file names as the real project.
-func stagedCheck(dir string, res *load.Result, changed map[string][]byte) (diag.List, error) {
+// replaced. It returns the copy as a loaded project and what checking it finds, with the same file names as the real project.
+func stagedCheck(dir string, res *load.Result, changed map[string][]byte) (*load.Result, diag.List, error) {
 	stage, err := os.MkdirTemp("", "assess-apply-")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer os.RemoveAll(stage)
 	copyFile := func(rel string) error {
@@ -370,9 +375,9 @@ func stagedCheck(dir string, res *load.Result, changed map[string][]byte) (diag.
 	}
 	for rel := range names {
 		if err := copyFile(rel); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	_, diags := checkProject(stage)
-	return diags, nil
+	staged, diags := checkProject(stage)
+	return staged, diags, nil
 }

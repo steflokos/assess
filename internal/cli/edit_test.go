@@ -358,3 +358,81 @@ func TestApplyWritesAnyTextSoThatItReadsBackTheSame(t *testing.T) {
 		})
 	}
 }
+
+// effects of a dry run: what the change does to the calculation, before anything is written.
+type effectsDoc struct {
+	Effects []struct {
+		Kind, ID string
+		Name     string
+		Before   *struct{ Base, Residual *int }
+		After    *struct{ Base, Residual *int }
+	}
+}
+
+func dryRunEffects(t *testing.T, dir, set string) (envelope, effectsDoc) {
+	t.Helper()
+	r := run(t, "apply", "-format", "json", "-dry-run", changeSet(t, "set.json", set), dir)
+	var env envelope
+	if err := json.Unmarshal([]byte(r.out), &env); err != nil {
+		t.Fatalf("%v\n%s", err, r.out)
+	}
+	var fx effectsDoc
+	json.Unmarshal(env.Result, &fx)
+	return env, fx
+}
+
+func TestAChangeSaysWhichResultsItMoves(t *testing.T) {
+	dir := testproject.Copy(t)
+	harder := `{"apiVersion": "assess/v1beta1", "changes": [
+  {"op": "put", "kind": "step", "id": "modify-package-in-transit", "attributes": {"potential": {"time": "ET4", "expertise": "SE3", "knowledge": "KoIC3", "window": "WoO3", "equipment": "Eq3"}}}
+]}`
+	env, fx := dryRunEffects(t, dir, harder)
+	if !env.OK || len(fx.Effects) == 0 {
+		t.Fatalf("a step that is much harder to take lowers a risk: %+v %s", fx, env.Result)
+	}
+	var threat bool
+	for _, e := range fx.Effects {
+		if e.Kind == "threat" && e.ID == "update-package-tampering" {
+			threat = e.Before != nil && e.After != nil && e.Before.Base != nil && e.After.Base != nil && *e.After.Base < *e.Before.Base
+		}
+	}
+	if !threat {
+		t.Errorf("update-package-tampering has a lower base risk after the change: %+v", fx.Effects)
+	}
+	if strings.Contains(testproject.Read(t, dir, "tara/attack-steps.yaml"), "ET4") {
+		t.Error("a dry run writes nothing")
+	}
+}
+
+func TestAChangeThatMovesNothingListsNoEffects(t *testing.T) {
+	dir := testproject.Copy(t)
+	env, fx := dryRunEffects(t, dir, `{"apiVersion": "assess/v1beta1", "changes": [
+  {"op": "put", "kind": "step", "id": "modify-package-in-transit", "attributes": {"name": "Change the package on the way"}}
+]}`)
+	if !env.OK || len(fx.Effects) != 0 || strings.Contains(string(env.Result), `"effects"`) {
+		t.Errorf("a new name moves no result: %s", env.Result)
+	}
+	env, _ = dryRunEffects(t, dir, `{"apiVersion": "assess/v1beta1", "changes": [
+  {"op": "put", "kind": "step", "id": "modify-package-in-transit", "attributes": {"potential": {"time": "ET9"}}}
+]}`)
+	if env.OK || strings.Contains(string(env.Result), `"effects"`) {
+		t.Errorf("a change that would break the project has no effects: %s", env.Result)
+	}
+}
+
+func TestADeleteListsTheThreatScenariosThatGo(t *testing.T) {
+	dir := testproject.Copy(t)
+	env, fx := dryRunEffects(t, dir, `{"apiVersion": "assess/v1beta1", "changes": [
+  {"op": "delete", "kind": "asset", "id": "update-package", "cascade": true}
+]}`)
+	if !env.OK {
+		t.Fatalf("%s", env.Result)
+	}
+	var gone bool
+	for _, e := range fx.Effects {
+		gone = gone || (e.Kind == "threat" && e.ID == "update-package-tampering" && e.Before != nil && e.After == nil)
+	}
+	if !gone {
+		t.Errorf("the threat scenario of the deleted asset goes: %+v", fx.Effects)
+	}
+}
