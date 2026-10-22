@@ -17,7 +17,9 @@ What is in it:
 - Iterations. `assess finalize` closes the treatment decisions in a hash chain, `assess verify` finds a change to it,
   and `assess sign` adds your signature.
 - Commands for programs: `-format json`, `apply`, `delete`, `export`, `describe` and `open`.
-- `assess serve`, a web interface on your own computer, with forms for the records.
+- `assess serve`, a web interface on your own computer. It guides you along the steps, searches, edits records in forms, shows what a
+  change does to the risk before you save it, and decides the risks in one table.
+- `apply` says in JSON what a change does to the calculation (`effects`).
 - `examples/ota`, a finished example project.
 
 Known limits of this beta:

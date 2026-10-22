@@ -57,9 +57,14 @@ A fact is written once. If a value can be worked out from other values, assess w
 
 ## The web interface
 
-`assess serve` is in `internal/server` and `internal/cli/serve.go`. The page is three plain files in `internal/server/ui`: HTML, CSS and
-JavaScript, with no framework, no build step and no dependency. Keep it that way. The page has no inline script or style, because
+`assess serve` is in `internal/server` and `internal/cli/serve.go`. The page is plain files in `internal/server/ui`: HTML, CSS and
+JavaScript modules, with no framework, no build step and no dependency. Keep it that way. The page has no inline script or style, because
 its content policy does not allow them. Text from a project is always put into the page as text and never as HTML.
+
+The modules are `app.js` (start, menu, routing), `data.js` (what the page knows about the project, and the path of the work),
+`lib.js` (elements, the API, the theme, toasts and dialogs), `form.js` (the widgets of the form), `editor.js` (the page of a record),
+`views.js` (the other pages), `palette.js` (search), `parts.js` (shared pieces) and `icons.js`. The server serves every file of the
+folder, so a new module needs no change in Go.
 
 The server writes nothing itself. A route builds the arguments of a command in Go, from a fixed list, and runs it. A route that takes
 text from the client checks it first, so that it can never be taken for a flag. Any new route goes through the checks in

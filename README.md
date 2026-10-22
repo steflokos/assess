@@ -802,6 +802,9 @@ writes the records for it. It takes a change set, in JSON or in YAML:
 - `-source name` adds `notes: {source: name}` to every record that the change set creates or changes. Rules can
   read it (see "Rules"), so a company can ask for a review of everything that came from a tool.
 - `-dry-run` shows what would change, as a diff, and writes nothing.
+- In JSON, the result has `effects` when the change moves a result of the calculation. Each entry names a threat scenario, or the
+  item, with its risk values and feasibility levels before and after. A threat scenario that the change creates or removes has only
+  one of the two. It is left out when nothing moves, and when the project cannot be calculated.
 
 Before assess writes anything, it checks the result as a project, in a copy. If the result has errors, nothing is
 written. The errors say which file, line and column they are at in the files as they would be. When an error is
@@ -907,11 +910,20 @@ page cannot read or write anything. `-addr 127.0.0.1:9000` picks another port.
 
 What you can do in the page:
 
-- See the overview, the findings with their place in the files, and every record of every kind.
-- Change a record in a form. The form is built from the description of the format, so it offers the allowed values and the ids that
-  exist. Every change is checked first. The errors show where they are in the files, and the lines that would change are shown as a
-  diff. Save writes only those lines.
-- Delete a record. The page says what depends on it before anything is removed.
+- **Follow the path.** The overview shows the seven steps of "Order of work" and says which one is next, with a button for it. A new
+  project starts there. A finished one shows its status.
+- **Find anything.** Press Ctrl K (Cmd K on a Mac), or `/`, and type part of a name or an id.
+- **Change a record in a form.** The form is built from the description of the format, so it offers the allowed values and the ids that
+  exist. It shows the fields that are required or have a value, and the others are one click away in "Add a field". An id is a chip that
+  opens its record. The attack path of a threat scenario is edited as groups of "all of" and "any one of". A rating is a row of
+  selects with the points that the policy gives. The impact of a damage scenario is a grid of stakeholders by categories.
+- **See what a change does before you save it.** Every change is checked first. The errors show where they are in the files, the lines
+  that would change are shown as a diff, and the page says which threat scenarios would get a different risk. Save writes only those
+  lines, Ctrl S does the same, and Undo puts the old values back.
+- **Decide the risks in one table.** The decisions page lists every risk with its treatment, and the changes are checked and saved
+  together.
+- **See what a record is connected to.** The side of a record page shows its calculation, its attack tree, what it uses and what uses it.
+- **Delete a record.** The page says what depends on it before anything is removed.
 - Let assess write assets, threat scenarios and risks, and close an iteration.
 - See the calculation, the worksheet of each threat scenario, the report and the diagrams.
 
