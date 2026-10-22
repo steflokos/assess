@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -51,10 +52,15 @@ type Server struct {
 	ln    net.Listener
 	hosts map[string]bool
 	sem   chan struct{}
+	// turns makes the commands of this process take turns: a command that writes runs alone, and commands that read run
+	// together. The lock of the project (internal/atomic) does this between processes. Inside one process it lets a second
+	// call join the lock that is held, because a command takes it again when it loads the project it has just written. Two
+	// requests are two calls in one process, so without turns the second would join the first and a change could be lost.
+	turns sync.RWMutex
 }
 
 // ErrNotLocal says that an address is not on this computer.
-var ErrNotLocal = errors.New("assess serve has no login, so it only listens on this computer. Use 127.0.0.1, localhost or [::1]")
+var ErrNotLocal = errors.New("the web interface has no login, so it only listens on this computer. Use 127.0.0.1, localhost or [::1]")
 
 // Listen listens on addr, which has to be on this computer. A host of localhost means 127.0.0.1.
 func Listen(addr string) (net.Listener, error) {

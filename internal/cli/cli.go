@@ -44,6 +44,7 @@ func commands() []command {
 		{"open", "list what is still open: not calculated, no decision yet, found by a rule", runOpen},
 		{"report", "write the report of the assessment as one HTML page", runReport},
 		{"schema", "write schema.yaml (how to structure the files) and the editor schema", runSchema},
+		{"serve", "start the web interface for a project, on this computer only", runServe},
 		{"sign", "sign a closed iteration with your private key", runSign},
 		{"template", "write the standard report template, or list its placeholders", runTemplate},
 		{"validate", "check a project against the schema: structure, values, ids and references", runValidate},

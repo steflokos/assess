@@ -13,9 +13,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/steflokos/assess/internal/server"
 )
@@ -58,8 +60,13 @@ const doc = `{"command":"x","ok":true,"diagnostics":[]}`
 // start runs a server on a free port, with the fake runner and a known token.
 func start(t *testing.T, f *fake, dir string) *httptest.Server {
 	t.Helper()
+	return startRunner(t, f.run, dir)
+}
+
+func startRunner(t *testing.T, run server.Runner, dir string) *httptest.Server {
+	t.Helper()
 	ts := httptest.NewUnstartedServer(nil)
-	s, err := server.New(server.Options{Dir: dir, Run: f.run, Listener: ts.Listener, Token: token})
+	s, err := server.New(server.Options{Dir: dir, Run: run, Listener: ts.Listener, Token: token})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,5 +361,59 @@ func TestEveryFileThatTheInterfaceNamesIsThere(t *testing.T) {
 		if code, _, _ := do(t, ts, request{path: "/" + m[1], noToken: true}); code != 200 {
 			t.Errorf("%s: %d", m[1], code)
 		}
+	}
+}
+
+// Two requests are two commands in one process, where the lock of the project cannot tell them apart. The server makes them take
+// turns: a command that writes runs alone, and commands that read run together.
+func TestACommandThatWritesRunsAloneAndOthersRunTogether(t *testing.T) {
+	var mu sync.Mutex
+	var writers, readers, mostReaders int
+	overlap := false
+	run := func(in io.Reader, args []string, stdout, stderr io.Writer) int {
+		write := args[0] == "apply" && !slices.Contains(args, "-dry-run")
+		mu.Lock()
+		if write {
+			overlap = overlap || writers+readers > 0
+			writers++
+		} else {
+			overlap = overlap || writers > 0
+			readers++
+			mostReaders = max(mostReaders, readers)
+		}
+		mu.Unlock()
+		time.Sleep(15 * time.Millisecond)
+		mu.Lock()
+		if write {
+			writers--
+		} else {
+			readers--
+		}
+		mu.Unlock()
+		io.WriteString(stdout, doc)
+		return 0
+	}
+	ts := startRunner(t, run, "D")
+	var wg sync.WaitGroup
+	for i := 0; i < 12; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			switch i % 3 {
+			case 0:
+				do(t, ts, request{method: "POST", path: "/api/apply", body: "{}"})
+			case 1:
+				do(t, ts, request{method: "POST", path: "/api/apply?dry=1", body: "{}"})
+			default:
+				do(t, ts, request{path: "/api/open"})
+			}
+		}()
+	}
+	wg.Wait()
+	if overlap {
+		t.Error("a command that writes ran at the same time as another command")
+	}
+	if mostReaders < 2 {
+		t.Errorf("commands that only read run together: at most %d at once", mostReaders)
 	}
 }

@@ -44,7 +44,7 @@ func TestUsageListsEveryCommand(t *testing.T) {
 			names = append(names, strings.Fields(line)[0])
 		}
 	}
-	want := []string{"apply", "delete", "describe", "diagram", "eval", "explain", "export", "finalize", "generate", "init", "lint", "open", "report", "schema", "sign", "template", "validate", "verify", "version"}
+	want := []string{"apply", "delete", "describe", "diagram", "eval", "explain", "export", "finalize", "generate", "init", "lint", "open", "report", "schema", "serve", "sign", "template", "validate", "verify", "version"}
 	if strings.Join(names, " ") != strings.Join(want, " ") {
 		t.Errorf("commands:\n got %v\nwant %v", names, want)
 	}

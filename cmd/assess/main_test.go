@@ -4,15 +4,19 @@
 package main_test
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/steflokos/assess/internal/testproject"
 )
@@ -184,5 +188,78 @@ func TestTwoFinalizesOfTheSameFilesWriteOneIteration(t *testing.T) {
 	}
 	if r := assess(t, "verify", dir); r.code != 0 {
 		t.Errorf("%s%s", r.out, r.err)
+	}
+}
+
+// The web interface starts on a free port, prints an address with a token, and answers with it and without it as it should.
+func TestTheWebInterfaceStartsAndWantsItsToken(t *testing.T) {
+	dir := testproject.Copy(t)
+	cmd := exec.Command(binary, "serve", "-addr", "127.0.0.1:0", dir)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		cmd.Process.Kill()
+		cmd.Wait()
+	}()
+
+	found := make(chan string, 1)
+	go func() {
+		sc := bufio.NewScanner(stderr)
+		for sc.Scan() {
+			if line := strings.TrimSpace(sc.Text()); strings.HasPrefix(line, "http://") {
+				found <- line
+				break
+			}
+		}
+		io.Copy(io.Discard, stderr)
+	}()
+	var address string
+	select {
+	case address = <-found:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the server did not say where it listens")
+	}
+	base, token, ok := strings.Cut(address, "/#t=")
+	if !ok || len(token) != 32 {
+		t.Fatalf("the address has no token: %q", address)
+	}
+
+	get := func(path, token string) (int, string) {
+		req, _ := http.NewRequest("GET", base+path, nil)
+		if token != "" {
+			req.Header.Set("X-Assess-Token", token)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		body, _ := io.ReadAll(res.Body)
+		return res.StatusCode, string(body)
+	}
+	if code, body := get("/api/describe", token); code != 200 || !strings.Contains(body, `"ok": true`) {
+		t.Errorf("with the token: %d %s", code, body)
+	}
+	if code, _ := get("/api/describe", ""); code != 401 {
+		t.Errorf("without the token: %d", code)
+	}
+	if code, body := get("/", ""); code != 200 || !strings.Contains(body, "<title>assess</title>") {
+		t.Errorf("the interface: %d", code)
+	}
+}
+
+func TestTheWebInterfaceListensOnThisComputerOnly(t *testing.T) {
+	dir := testproject.Copy(t)
+	r := assess(t, "serve", "-addr", "0.0.0.0:0", dir)
+	if r.code != 2 || !strings.Contains(r.err, "only listens on this computer") {
+		t.Errorf("%+v", r)
+	}
+	if r := assess(t, "serve", t.TempDir()); r.code != 2 || !strings.Contains(r.err, "has no assess.yaml") {
+		t.Errorf("a folder that is not a project: %+v", r)
 	}
 }

@@ -202,6 +202,13 @@ func readBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
 
 // exec runs one command. It waits for a free place, and a command that panics is an error of this request only.
 func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, out, errb []byte, err error) {
+	if writes(args) {
+		s.turns.Lock()
+		defer s.turns.Unlock()
+	} else {
+		s.turns.RLock()
+		defer s.turns.RUnlock()
+	}
 	select {
 	case s.sem <- struct{}{}:
 	case <-r.Context().Done():
@@ -219,6 +226,15 @@ func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, o
 	}
 	code = s.run(in, args, &o, &e)
 	return code, o.Bytes(), e.Bytes(), nil
+}
+
+// writes says whether a command changes the files. A dry run of apply or finalize does not.
+func writes(args []string) bool {
+	switch args[0] {
+	case "apply", "generate", "finalize":
+		return !slices.Contains(args, "-dry-run")
+	}
+	return false
 }
 
 // jsonCommand runs a command that was asked for JSON and writes its document. When the command wrote none, which means it
