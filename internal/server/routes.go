@@ -1,0 +1,269 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Stefanos Flokos
+
+package server
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"html"
+	"io"
+	"io/fs"
+	"net/http"
+	"slices"
+	"strings"
+
+	"github.com/steflokos/assess/internal/taxonomy/iso21434"
+	"github.com/steflokos/assess/internal/theme"
+)
+
+// uiPolicy is what the page of the interface may load: its own files and nothing else.
+const uiPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
+	"frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+
+// Handler is the whole server: the checks, the files of the interface and the routes that run commands.
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	// the interface itself. It holds no secret, so it needs no token.
+	ui, _ := fs.Sub(uiFiles, "ui")
+	files := http.FileServerFS(ui)
+	static := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", uiPolicy)
+		w.Header().Set("Cache-Control", "no-store")
+		files.ServeHTTP(w, r)
+	}
+	mux.HandleFunc("GET /{$}", static)
+	for _, name := range []string{"app.js", "app.css", "logo.svg"} {
+		mux.HandleFunc("GET /"+name, static)
+	}
+	mux.HandleFunc("GET /tokens.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		io.WriteString(w, theme.CSS())
+	})
+
+	// what the project says, as the JSON that every command gives
+	mux.Handle("GET /api/describe", s.api(func(w http.ResponseWriter, r *http.Request) {
+		s.jsonCommand(w, r, nil, "describe", "-format", "json")
+	}))
+	mux.Handle("GET /api/export", s.api(func(w http.ResponseWriter, r *http.Request) {
+		args := []string{"export"}
+		if on(r, "derived") {
+			args = append(args, "-derived")
+		}
+		s.jsonCommand(w, r, nil, append(args, s.dir)...)
+	}))
+	for _, name := range []string{"validate", "lint", "eval", "open", "verify"} {
+		mux.Handle("GET /api/"+name, s.api(func(w http.ResponseWriter, r *http.Request) {
+			s.jsonCommand(w, r, nil, name, "-format", "json", s.dir)
+		}))
+	}
+	mux.Handle("GET /api/explain", s.api(func(w http.ResponseWriter, r *http.Request) {
+		id, ok := idOf(w, r)
+		if !ok {
+			return
+		}
+		args := []string{"explain", "-format", "json"}
+		if on(r, "all") {
+			args = append(args, "-all")
+		}
+		s.jsonCommand(w, r, nil, append(args, id, s.dir)...)
+	}))
+	mux.Handle("GET /api/explain-text", s.api(func(w http.ResponseWriter, r *http.Request) {
+		id, ok := idOf(w, r)
+		if !ok {
+			return
+		}
+		args := []string{"explain"}
+		if on(r, "all") {
+			args = append(args, "-all")
+		}
+		s.textCommand(w, r, "text/plain; charset=utf-8", append(args, id, s.dir)...)
+	}))
+
+	// what changes the files
+	mux.Handle("POST /api/apply", s.api(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := readBody(w, r)
+		if !ok {
+			return
+		}
+		args := []string{"apply", "-format", "json"}
+		if on(r, "dry") {
+			args = append(args, "-dry-run")
+		}
+		s.jsonCommand(w, r, bytes.NewReader(body), append(args, "-", s.dir)...)
+	}))
+	mux.Handle("POST /api/generate", s.api(func(w http.ResponseWriter, r *http.Request) {
+		what := r.URL.Query().Get("what")
+		if !slices.Contains([]string{"assets", "threats", "risks"}, what) {
+			writeError(w, http.StatusBadRequest, "what", "what is assets, threats or risks")
+			return
+		}
+		args := []string{"generate", "-format", "json"}
+		if on(r, "force") {
+			if what != "assets" {
+				writeError(w, http.StatusBadRequest, "force", "force applies only to assets")
+				return
+			}
+			args = append(args, "-force")
+		}
+		s.jsonCommand(w, r, nil, append(args, what, s.dir)...)
+	}))
+	mux.Handle("POST /api/finalize", s.api(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := readBody(w, r)
+		if !ok {
+			return
+		}
+		var in struct {
+			Note string   `json:"note"`
+			By   []string `json:"by"`
+		}
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil {
+			writeError(w, http.StatusBadRequest, "body", "the body is {\"note\": \"…\", \"by\": [\"…\"]}")
+			return
+		}
+		args := []string{"finalize", "-format", "json"}
+		if on(r, "dry") {
+			args = append(args, "-dry-run")
+		}
+		if in.Note != "" {
+			args = append(args, "-note="+in.Note)
+		}
+		for _, name := range in.By {
+			args = append(args, "-by="+name)
+		}
+		s.jsonCommand(w, r, nil, append(args, s.dir)...)
+	}))
+
+	// a cheap way to see that the files changed
+	mux.Handle("GET /api/stamp", s.api(func(w http.ResponseWriter, r *http.Request) {
+		stamp, err := stampOf(s.dir)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "stamp", err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"stamp": stamp})
+	}))
+
+	// the report and the diagrams, which a frame or an image loads
+	mux.Handle("GET /report", s.page(func(w http.ResponseWriter, r *http.Request) {
+		// The report has a content policy of its own, which allows its own script. Another policy here would add to it
+		// and stop the script. Only the places that may frame it are limited.
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+		s.textCommand(w, r, "text/html; charset=utf-8", "report", "-o", "-", s.dir)
+	}))
+	mux.Handle("GET /diagram.svg", s.page(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+		args := []string{"diagram", "-o", "-"}
+		if id := r.URL.Query().Get("threat"); id != "" {
+			if !iso21434.ValidID(id) {
+				writeError(w, http.StatusBadRequest, "id", "the id of a threat scenario is lower case words with hyphens")
+				return
+			}
+			args = append(args, "-threat", id)
+		}
+		s.textCommand(w, r, "image/svg+xml", append(args, s.dir)...)
+	}))
+
+	return s.guard(mux)
+}
+
+// on says whether a flag of the query is set.
+func on(r *http.Request, name string) bool {
+	v := r.URL.Query().Get(name)
+	return v == "1" || v == "true"
+}
+
+// idOf reads the id in the query. An id that is not a valid id is refused before any command is run, so it can never be taken for a
+// flag.
+func idOf(w http.ResponseWriter, r *http.Request) (string, bool) {
+	id := r.URL.Query().Get("id")
+	if !iso21434.ValidID(id) {
+		writeError(w, http.StatusBadRequest, "id", "the id is lower case words with hyphens")
+		return "", false
+	}
+	return id, true
+}
+
+// readBody reads the body of a request, up to the limit.
+func readBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
+	if err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, "size", fmt.Sprintf("the body is larger than %d MB", maxBody>>20))
+		return nil, false
+	}
+	return body, true
+}
+
+// exec runs one command. It waits for a free place, and a command that panics is an error of this request only.
+func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, out, errb []byte, err error) {
+	select {
+	case s.sem <- struct{}{}:
+	case <-r.Context().Done():
+		return 0, nil, nil, r.Context().Err()
+	}
+	defer func() { <-s.sem }()
+	var o, e bytes.Buffer
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("the command stopped: %v", p)
+		}
+	}()
+	if in == nil {
+		in = strings.NewReader("")
+	}
+	code = s.run(in, args, &o, &e)
+	return code, o.Bytes(), e.Bytes(), nil
+}
+
+// jsonCommand runs a command that was asked for JSON and writes its document. When the command wrote none, which means it
+// stopped before it knew the format, the document says why.
+func (s *Server) jsonCommand(w http.ResponseWriter, r *http.Request, in io.Reader, args ...string) {
+	code, out, errb, err := s.exec(r, in, args)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed", err.Error())
+		return
+	}
+	if len(out) > 0 && json.Valid(out) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(out)
+		return
+	}
+	msg := strings.TrimSpace(string(errb))
+	if msg == "" {
+		msg = fmt.Sprintf("the command stopped with exit code %d", code)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(errorDocument(args[0], "failed", msg))
+}
+
+// textCommand runs a command and writes what it printed, with the content type of that. A command that did not succeed has
+// printed its findings instead, and they are written as a 409 that a person can read.
+func (s *Server) textCommand(w http.ResponseWriter, r *http.Request, contentType string, args ...string) {
+	code, out, errb, err := s.exec(r, nil, args)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed", err.Error())
+		return
+	}
+	if code == 0 {
+		w.Header().Set("Content-Type", contentType)
+		w.Write(out)
+		return
+	}
+	msg := strings.TrimSpace(string(out) + "\n" + string(errb))
+	if strings.HasPrefix(contentType, "text/html") {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusConflict)
+		fmt.Fprintf(w, "<!doctype html><meta charset=\"utf-8\"><title>No report</title><body style=\"font:15px system-ui;padding:1.5rem\">"+
+			"<p>The report cannot be built yet.</p><pre style=\"white-space:pre-wrap\">%s</pre>", html.EscapeString(msg))
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusConflict)
+	io.WriteString(w, msg+"\n")
+}
