@@ -38,8 +38,12 @@ func (s *Server) Handler() http.Handler {
 		files.ServeHTTP(w, r)
 	}
 	mux.HandleFunc("GET /{$}", static)
-	for _, name := range []string{"app.js", "app.css", "logo.svg"} {
-		mux.HandleFunc("GET /"+name, static)
+	// every file of the folder, except the page, which is served at /
+	entries, _ := fs.ReadDir(ui, ".")
+	for _, e := range entries {
+		if !e.IsDir() && e.Name() != "index.html" {
+			mux.HandleFunc("GET /"+e.Name(), static)
+		}
 	}
 	mux.HandleFunc("GET /tokens.css", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")

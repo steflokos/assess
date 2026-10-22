@@ -361,18 +361,44 @@ func TestTheStampFollowsTheFilesOfTheProject(t *testing.T) {
 	}
 }
 
-// Every file that the page of the interface names has to be served.
+// Every file that the page of the interface names has to be served, and so does every file that one of its scripts imports.
 func TestEveryFileThatTheInterfaceNamesIsThere(t *testing.T) {
 	ts := start(t, &fake{}, "D")
 	_, page, _ := do(t, ts, request{path: "/", noToken: true})
-	found := regexp.MustCompile(`(?:href|src)="([^"#]+)"`).FindAllStringSubmatch(page, -1)
-	if len(found) < 3 {
-		t.Fatalf("the page names %d files", len(found))
+	named := regexp.MustCompile(`(?:href|src)="([^"#]+)"`).FindAllStringSubmatch(page, -1)
+	if len(named) < 3 {
+		t.Fatalf("the page names %d files", len(named))
 	}
-	for _, m := range found {
-		if code, _, _ := do(t, ts, request{path: "/" + m[1], noToken: true}); code != 200 {
-			t.Errorf("%s: %d", m[1], code)
+	imports := regexp.MustCompile(`from '\./([^']+)'`)
+	queue, seen := []string{}, map[string]bool{}
+	for _, m := range named {
+		queue = append(queue, m[1])
+	}
+	scripts := 0
+	for len(queue) > 0 {
+		name := queue[0]
+		queue = queue[1:]
+		if seen[name] {
+			continue
 		}
+		seen[name] = true
+		code, body, h := do(t, ts, request{path: "/" + name, noToken: true})
+		if code != 200 {
+			t.Errorf("%s: %d", name, code)
+			continue
+		}
+		if strings.HasSuffix(name, ".js") {
+			scripts++
+			if !strings.Contains(h.Get("Content-Type"), "javascript") {
+				t.Errorf("%s is served as %q, and a browser refuses a module with another type", name, h.Get("Content-Type"))
+			}
+			for _, m := range imports.FindAllStringSubmatch(body, -1) {
+				queue = append(queue, m[1])
+			}
+		}
+	}
+	if scripts < 5 {
+		t.Errorf("only %d scripts were reached", scripts)
 	}
 }
 

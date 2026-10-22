@@ -13,15 +13,19 @@
   <header class="top">
     <a class="brand" href="#/"><img src="logo.svg" alt="">assess</a>
     <span class="item" id="item"></span>
+    <button class="search" id="search" type="button" aria-label="Search records and pages">
+      <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.5-4.5"/></svg>
+      <span>Search records and pages</span><span class="kbd">Ctrl K</span>
+    </button>
     <span class="grow"></span>
-    <span class="row" id="counts" aria-live="polite"></span>
-    <button class="btn" id="theme" type="button" title="Switch between the system, light and dark theme">Theme: auto</button>
+    <span class="row tight" id="counts" aria-live="polite"></span>
+    <button class="iconbtn" id="theme" type="button" title="Change the theme" aria-label="Change the theme"></button>
   </header>
   <div class="shell">
     <nav class="side" id="nav" aria-label="Areas of the project"></nav>
     <main id="main" tabindex="-1"></main>
   </div>
 </div>
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
