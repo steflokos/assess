@@ -2,7 +2,7 @@
 // The pages that are not the page of one record: the overview with the next step, the lists, the decisions, what is open, the
 // calculation, the report, the diagram, the iterations and the files.
 
-import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, short, firstSentence, upper } from './lib.js';
+import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, short, firstSentence, upper, when, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
 import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow } from './data.js';
 import { choice } from './form.js';
@@ -15,7 +15,10 @@ export async function act(action, ui) {
   if (action.generate) {
     const env = await api('/api/generate?what=' + action.generate, { method: 'POST', body: {} });
     await ui.refresh();
-    toast((env.text || '').split('\n')[0] || (env.ok ? 'Done.' : (env.diagnostics[0] || {}).message || 'It did not work.'), env.ok ? 'ok' : 'err');
+    // what the command said, without the advice that is about the command line
+    let said = (env.text || '').replace(/\s*Run assess [^.\n]*\.?/g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+    if (action.generate === 'assets' && /already exists/.test(said)) said = 'The assets are written already, so nothing was changed.';
+    toast(said || (env.ok ? 'Done.' : (env.diagnostics[0] || {}).message || 'It did not work.'), !env.ok ? 'err' : /^nothing/i.test(said) ? 'warn' : 'ok');
     return;
   }
   if (action.finalize) await finalizeDialog(ui);
@@ -43,7 +46,12 @@ async function finalizeDialog(ui) {
 
 // ---- the overview ---------------------------------------------------------------------------------------------------------------------
 function actionButton(a, ui) {
-  return h('button', { class: 'btn ' + (a.primary ? 'primary' : ''), type: 'button', onclick: (e) => { e.currentTarget.disabled = true; act(a, ui).finally(() => { e.currentTarget.disabled = false; }); } }, a.label);
+  const b = h('button', { class: 'btn ' + (a.primary ? 'primary' : ''), type: 'button', onclick: () => {
+    b.disabled = true;
+    b.textContent = a.go ? a.label : 'Working…';
+    act(a, ui).finally(() => { b.disabled = false; b.textContent = a.label; });
+  } }, a.label);
+  return b;
 }
 
 export function overview(ui) {
@@ -92,7 +100,7 @@ export function overview(ui) {
   const its = exp.iterations || [];
   if (its.length) {
     const last = its[its.length - 1];
-    right.append(h('div', { class: 'card' }, h('h2', { text: 'Last iteration' }), h('p', {}, h('strong', { text: 'Number ' + last.number }), h('span', { class: 'muted', text: ', closed ' + last.date })),
+    right.append(h('div', { class: 'card' }, h('h2', { text: 'Last iteration' }), h('p', {}, h('strong', { text: 'Number ' + last.number }), h('span', { class: 'muted', text: ', closed ' + when(last.date) })),
       h('a', { href: '#/iterations', text: 'See the iterations' })));
   }
   const facts = h('dl', { class: 'facts' });
@@ -177,7 +185,7 @@ export function list(kind, ui) {
     h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: kindTitle(kind) }), h('p', { class: 'muted', text: info.doc })),
       h('a', { class: 'btn primary', href: hrefOf('new', kind) }, icon('plus', 15), 'New ' + info.name)));
   if (!rows.length) {
-    page.append(h('div', { class: 'card' }, empty(KIND_ICON[kind] || 'circle', 'No ' + kindsName(kind) + ' yet', 'Add the first one. ' + firstSentence(info.doc), { label: 'New ' + info.name, href: hrefOf('new', kind) })));
+    page.append(h('div', { class: 'card' }, empty(KIND_ICON[kind] || 'circle', 'No ' + kindsName(kind) + ' yet', firstSentence(info.doc) + ' Add the first one.', { label: 'New ' + info.name, href: hrefOf('new', kind) })));
     return page;
   }
   const tools = h('div', { class: 'row', style: 'margin-bottom: 12px' }, filter, count);
@@ -300,7 +308,7 @@ export function decisions(ui) {
 
   page.append(h('div', { class: 'row', style: 'margin-bottom: 12px' }, filter, seg.node),
     h('div', { class: 'card flush scroll' }, h('table', { class: 't decide' }, h('thead', {}, h('tr', {}, ['Risk', 'Value', 'Treatment'].map((t) => h('th', { text: t })))), body)),
-    h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, h('span', { class: 'faint small', text: 'Ctrl S' }))));
+    h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, h('span', { class: 'faint small', text: mod + ' S' }))));
   return page;
 }
 
@@ -337,7 +345,7 @@ export function calc() {
     h('p', { class: 'muted', text: 'The risk of each threat scenario, before the controls and with them. Open one to see how each number came out.' }))));
   if (!r) { page.append(h('div', { class: 'alert warn', text: 'The project has errors, so nothing is calculated yet.' })); return page; }
   page.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('strong', { text: 'The item' }), chip(r.item.base, 'Before the controls'), h('span', { class: 'muted', text: 'before, decided by' }),
-    r.item.baseBy ? h('a', { href: hrefOf('kind', 'damage', r.item.baseBy), class: 'cp link', text: nameOf('damage', r.item.baseBy) || r.item.baseBy }) : null,
+    r.item.baseBy ? h('a', { href: hrefOf('kind', 'threat', r.item.baseBy), class: 'cp link', text: nameOf('threat', r.item.baseBy) || r.item.baseBy }) : null,
     chip(r.item.residual, 'With the controls'), h('span', { class: 'muted', text: 'with the controls' }))));
   page.append(h('div', { class: 'card flush scroll' }, h('table', { class: 't' },
     h('thead', {}, h('tr', {}, ['Threat scenario', 'Before', 'With controls', 'Type', 'Feasibility'].map((t) => h('th', { text: t })))),
@@ -361,9 +369,15 @@ export function explain(id) {
 // the report cannot read anything that this page keeps. A sandbox attribute would do the same, but a browser may refuse to load a
 // sandboxed frame from the local computer.
 const otherHost = () => (location.hostname === 'localhost' ? '127.0.0.1' : 'localhost');
-const reportURL = (more) => location.protocol + '//' + otherHost() + ':' + location.port + '/report?t=' + encodeURIComponent(S.view) + (more || '');
+// A content policy cannot name [::1], so at that address the report is not framed, and opens in its own tab on the same name.
+const framed = () => location.hostname !== '[::1]';
+const reportURL = (more) => location.protocol + '//' + (framed() ? otherHost() : location.hostname) + ':' + location.port + '/report?t=' + encodeURIComponent(S.view) + (more || '');
 
 export function reportView() {
+  if (!framed()) {
+    return h('div', { class: 'page' }, crumbs({ text: 'Report' }), h('div', { class: 'card' }, empty('page', 'The report opens in its own tab',
+      'This address, [::1], cannot show the report inside the page. Use http://127.0.0.1 or http://localhost to see it here.', { label: 'Open the report', run: () => window.open(reportURL(), '_blank', 'noopener') })));
+  }
   const frame = h('iframe', { class: 'frame', title: 'The report', src: reportURL('&v=' + Date.now()) });
   return h('div', { class: 'page wide' }, crumbs({ text: 'Report' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Report' }),
     h('p', { class: 'muted', text: 'The same page that assess report writes. It is built from the files when you open it.' })),
@@ -383,31 +397,36 @@ export function diagramView(id, ui) {
 
 async function signDialog(it, ui) {
   const prefix = ((S.desc || {}).signing || {}).messagePrefix;
-  const file = h('input', { type: 'file', accept: '.pem,.key,.txt', 'aria-label': 'Your private key' });
-  const by = h('input', { type: 'text', 'aria-label': 'Your name', value: (it.by || [])[0] || ((S.exp.project || {}).assessors || [])[0] || '' });
-  const out = h('div', {});
-  const body = h('div', {},
-    h('p', { class: 'muted', text: 'The page makes the signature here, in your browser, with the key that you choose. The key is not sent to the server and it is not kept. The server gets only the signature and the public key, and assess checks them against the iteration.' }),
-    h('div', { class: 'field' }, h('div', { class: 'flabel' }, h('label', { text: 'Your private key' })), file,
-      h('p', { class: 'doc', text: 'An ed25519 key in PKCS#8 form without a passphrase, as openssl genpkey -algorithm ed25519 writes it.' })),
-    h('div', { class: 'field' }, h('div', { class: 'flabel' }, h('label', { text: 'Your name' })), by), out);
-  const dlg = await ask({ title: 'Sign iteration ' + it.number, body, ok: 'Sign' });
-  if (!dlg) return;
-  const fail = (msg) => ask({ title: 'The iteration was not signed', noCancel: true, body: h('div', { class: 'alert err', text: msg }) });
-  if (!file.files.length) { await fail('Choose the file of your private key first.'); return; }
+  let name = (it.by || [])[0] || ((S.exp.project || {}).assessors || [])[0] || '';
+  let problem = '';
   let made;
-  try {
-    made = await signIteration(await file.files[0].text(), prefix, it.hash);
-  } catch (e) {
-    await fail(e.message);
-    return;
-  } finally {
-    file.value = '';
+  // The dialog opens again with the problem in it, so that a wrong file is said where the person is looking.
+  for (;;) {
+    const file = h('input', { type: 'file', 'aria-label': 'Your private key' });
+    const by = h('input', { type: 'text', 'aria-label': 'Your name', value: name });
+    const body = h('div', {},
+      problem ? h('div', { class: 'alert err', text: problem }) : null,
+      h('p', { class: 'muted', text: 'The page makes the signature here, in your browser, with the key that you choose. The key is not sent to the server and it is not kept. The server gets only the signature and the public key, and assess checks them against the iteration.' }),
+      h('div', { class: 'field' }, h('div', { class: 'flabel' }, h('label', { text: 'Your private key' })), file,
+        h('p', { class: 'doc', text: 'An ed25519 key in PKCS#8 form without a passphrase. OpenSSL 3 makes one with openssl genpkey -algorithm ed25519. The openssl that comes with macOS may not know that algorithm.' })),
+      h('div', { class: 'field' }, h('div', { class: 'flabel' }, h('label', { text: 'Your name' })), by));
+    if (!(await ask({ title: 'Sign iteration ' + it.number, body, ok: 'Sign' }))) return;
+    name = by.value;
+    if (!file.files.length) { problem = 'Choose the file of your private key first.'; continue; }
+    try {
+      made = await signIteration(await file.files[0].text(), prefix, it.hash);
+    } catch (e) {
+      problem = e.message;
+      continue;
+    } finally {
+      file.value = '';
+    }
+    break;
   }
-  const env = await api('/api/sign', { method: 'POST', body: { iteration: it.number, by: by.value.trim(), public: made.public, signature: made.signature } });
+  const env = await api('/api/sign', { method: 'POST', body: { iteration: it.number, by: name.trim(), public: made.public, signature: made.signature } });
   await ui.refresh();
   if (env.ok) toast('Signed iteration ' + it.number + '.');
-  else await fail((env.diagnostics[0] || {}).message || 'The signature was not accepted.');
+  else await ask({ title: 'The iteration was not signed', noCancel: true, body: h('div', { class: 'alert err', text: (env.diagnostics[0] || {}).message || 'The signature was not accepted.' }) });
 }
 
 export function iterations(ui) {
@@ -416,15 +435,18 @@ export function iterations(ui) {
   const check = h('button', { class: 'btn', type: 'button', onclick: async () => {
     const env = await api('/api/verify');
     clear(out);
-    put(out, h('div', { class: 'alert ' + (env.ok ? 'ok' : 'err'), text: env.ok ? 'The chain is intact.' : 'The chain is not intact.' }), said(env), diagnostics((env.diagnostics || []).slice(0, 20)));
+    const unchecked = (env.result || {}).unchecked || 0;
+    const verdict = !env.ok ? 'Something was changed after an iteration was closed.'
+      : 'No iteration was changed after it was closed.' + (unchecked ? ' ' + plural(unchecked, 'signature') + (unchecked === 1 ? ' was' : ' were') + ' not checked, because assess.yaml names no public keys.' : '');
+    put(out, h('div', { class: 'alert ' + (env.ok ? (unchecked ? 'info' : 'ok') : 'err'), text: verdict }), said(env), diagnostics((env.diagnostics || []).slice(0, 20)));
   } }, 'Check the chain');
   const page = h('div', { class: 'page' }, crumbs({ text: 'Iterations' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Iterations' }),
     h('p', { class: 'muted', text: 'Each closed iteration holds the treatment decisions of one round. They are linked by hashes, so a later change to one is found. A signature says who stands behind a round.' })), check), out);
   if (!its.length) page.append(h('div', { class: 'card' }, empty('clock', 'No iteration is closed yet', 'Close one when every risk has its decision.')));
   else page.append(h('div', { class: 'card flush scroll' }, h('table', { class: 't' },
     h('thead', {}, h('tr', {}, ['No.', 'Date', 'By', 'Note', 'Decisions', 'Hash', 'Signed by', ''].map((t) => h('th', { text: t })))),
-    h('tbody', {}, its.map((i) => h('tr', {}, h('td', { class: 'num', text: i.number }), h('td', { class: 'small', text: i.date }), h('td', { text: (i.by || []).join(', ') }),
-      h('td', { text: i.note || '' }), h('td', { class: 'num', text: (i.decisions || []).length }), h('td', { class: 'mono small', text: short(i.hash) }),
+    h('tbody', {}, its.map((i) => h('tr', {}, h('td', { class: 'tnum', text: i.number }), h('td', { class: 'small', text: when(i.date) }), h('td', { text: (i.by || []).join(', ') }),
+      h('td', { text: i.note || '' }), h('td', { class: 'tnum', text: Object.keys(i.decisions || {}).length }), h('td', { class: 'mono small', text: short(i.hash) }),
       h('td', {}, (i.signatures || []).length ? (i.signatures || []).map((s) => h('div', { class: 'small', title: s.key, text: s.by })) : h('span', { class: 'faint small', text: 'Not signed' })),
       h('td', {}, h('button', { class: 'btn small', type: 'button', onclick: () => signDialog(i, ui) }, icon('pen', 14), 'Sign…'))))))));
   return page;
@@ -452,7 +474,7 @@ function fileEditor(name, ui) {
   const status = h('div', { 'aria-live': 'polite' });
   const save = h('button', { class: 'btn primary', type: 'button', disabled: true }, 'Save');
   const discard = h('button', { class: 'btn', type: 'button', onclick: () => { ui.setDirty(false); ui.render(); } }, 'Discard changes');
-  let seq = 0;
+  let seq = 0, kept = false;
 
   const set = () => ({ apiVersion: S.apiVersion, changes: [{ op: 'write', file: name, text: ta.value, was }] });
   // an error has a line and a column of this text. A click puts the caret there.
@@ -474,7 +496,7 @@ function fileEditor(name, ui) {
     if (!list.length) return false;
     clear(status);
     put(status, conflicts(list, {
-      keep: () => { was = list[0].now; check(); },
+      keep: () => { was = list[0].now; kept = true; check(); },
       reload: async () => { ui.setDirty(false); await ui.refresh(); },
     }));
     return true;
@@ -484,7 +506,7 @@ function fileEditor(name, ui) {
     const mine = ++seq;
     clear(status);
     save.disabled = true;
-    if (ta.value === original) { status.append(h('p', { class: 'muted small', text: 'No changes yet.' })); return; }
+    if (ta.value === original) { ui.setDirty(false); status.append(h('p', { class: 'muted small', text: 'No changes yet.' })); return; }
     const env = await api('/api/apply?dry=1', { method: 'POST', body: set() });
     if (mine !== seq) return;
     clear(status);
@@ -506,7 +528,8 @@ function fileEditor(name, ui) {
     if (!env.ok) { clear(status); put(status, errors((env.diagnostics || []).slice(0, 20))); return; }
     ui.setDirty(false);
     await ui.refresh();
-    toast('Saved ' + name + '.', 'ok', { label: 'Undo', run: async () => {
+    // After "Keep my change" the text that was read is not the text that was on disk, and putting it back would remove the other change.
+    toast('Saved ' + name + '.', 'ok', kept ? undefined : { label: 'Undo', run: async () => {
       const undone = await api('/api/apply', { method: 'POST', body: { apiVersion: S.apiVersion, changes: [{ op: 'write', file: name, text: original, was: S.exp.texts[name].hash }] } });
       await ui.refresh();
       toast(undone.ok ? 'Undone.' : 'That could not be undone.', undone.ok ? 'ok' : 'err');
@@ -516,14 +539,18 @@ function fileEditor(name, ui) {
   window.addEventListener('assess:save', doSave);
   window.addEventListener('assess:leave', () => window.removeEventListener('assess:save', doSave), { once: true });
 
-  return h('div', {}, info.doc ? h('p', { class: 'muted', text: info.doc }) : null, ta, h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, discard, h('span', { class: 'faint small', text: 'Ctrl S' }))));
+  return h('div', {}, info.doc ? h('p', { class: 'muted', text: info.doc }) : null, ta, h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, discard, h('span', { class: 'faint small', text: mod + ' S' }))));
 }
 
 export function files(ui) {
   const names = Object.keys(S.exp.texts || {});
   if (!names.includes(openFile)) openFile = names[0];
   const panel = h('div', {});
-  const draw = () => { clear(panel); panel.append(fileEditor(openFile, ui)); };
+  const draw = () => {
+    window.dispatchEvent(new CustomEvent('assess:leave')); // the editor that goes away takes its Ctrl S with it
+    clear(panel);
+    panel.append(fileEditor(openFile, ui));
+  };
   const pick = choice({ values: names, label: 'File', value: openFile, required: true, onChange: () => {
     if (ui.dirty() && !confirm('Leave this file without saving your changes?')) { pick.set(openFile); return; }
     ui.setDirty(false);
@@ -539,9 +566,12 @@ export function files(ui) {
 // ---- a folder with no project -------------------------------------------------------------------------------------------------------
 export function welcome(ui) {
   return h('div', { class: 'page' }, h('div', { class: 'card' }, empty('sparkle', 'There is no project in this folder yet',
-    'Create one and assess writes what you need: the folders for the item and the analysis, a policy with the values of the standard to check, a few rules and the settings for your editor. Then the page guides you through the steps.',
-    { label: 'Create a project here', run: async () => {
+    'Create one and assess writes what you need: the folders for the item and the analysis, a policy file with the values that the calculation uses, a few rules and the settings for your editor. Then the page guides you through the steps.',
+    { label: 'Create a project here', run: async (e) => {
+      const button = e && e.currentTarget;
+      if (button) { if (button.disabled) return; button.disabled = true; button.textContent = 'Creating…'; }
       const env = await api('/api/init', { method: 'POST', body: {} });
+      if (button) { button.disabled = false; button.textContent = 'Create a project here'; }
       if (!env.ok) { await ask({ title: 'The project was not created', noCancel: true, body: h('div', { class: 'alert err', text: (env.diagnostics[0] || {}).message || 'init failed' }) }); return; }
       toast('Project created.');
       await ui.refresh();

@@ -3,7 +3,7 @@
 // run of assess apply first. The page shows the errors with their place in the files, the lines that would change and what the change
 // does to the calculation. Only apply writes.
 
-import { h, put, clear, plural, debounce, ask, toast, api, chip, upper } from './lib.js';
+import { h, put, clear, plural, debounce, ask, toast, api, chip, upper, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
 import { S, rec, nameOf, kindName, kindTitle } from './data.js';
 import { recordForm, chipPicker, readOnly, inSchemaOrder, shell } from './form.js';
@@ -22,8 +22,9 @@ export function editor(kind, id, isNew, ui) {
   const baseline = Object.assign({}, original);
 
   // ---- the id and the parent of a new record
-  let idCtl = null, parentCtl = null;
+  let idCtl = null, parentCtl = null, byHand = false;
   const top = [];
+  const slug = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '');
   if (isNew) {
     const taken = new Set((S.of[kind] || []).map((r) => r.id));
     if (info.idOf && info.idOf.length) {
@@ -31,10 +32,18 @@ export function editor(kind, id, isNew, ui) {
       const pool = idCtl;
       idCtl = { node: pool.node, get: () => { const v = pool.get(); return v && !taken.has(v) ? v : undefined; } };
     } else {
-      const input = h('input', { type: 'text', class: 'mono', placeholder: info.heading.replace(/^\S+\s/, ''), spellcheck: 'false', 'aria-label': 'Id', oninput: () => changed() });
-      idCtl = { node: input, get: () => input.value.trim() || undefined };
+      const input = h('input', { type: 'text', class: 'mono', placeholder: 'Made from the name', spellcheck: 'false', 'aria-label': 'Id', oninput: () => { byHand = true; changed(); } });
+      idCtl = { node: input, get: () => input.value.trim() || undefined, focus: () => input.focus(), fill: (name) => {
+        if (byHand) return;
+        const base = slug(name);
+        let id = base, n = 2;
+        while (base && taken.has(id)) id = base + '-' + n++;
+        input.value = id;
+      } };
     }
-    top.push(shell('Id', true, 'Written as ' + info.heading + '. ' + (info.idOf && info.idOf.length ? 'It is the id of the ' + info.idOf.join(' or ') + ' that this record is about.' : 'Lower case words with hyphens.'), idCtl.node));
+    top.push(shell('Id', true, info.idOf && info.idOf.length
+      ? 'It is the id of the ' + info.idOf.join(' or ') + ' that this record is about.'
+      : 'The short name that other records use to refer to this one. It is made from the name, and you can write your own. Letters, digits, hyphens, dots and underscores.', idCtl.node));
     if (info.parents && info.parents.length) {
       parentCtl = chipPicker({ kinds: info.parents, multiple: false, value: undefined, placeholder: info.topLevel ? 'Not inside another record' : 'Choose…', label: 'Parent', onChange: () => changed() });
       top.push(shell('Written inside', !info.topLevel, 'The record that this one is part of: ' + info.parents.join(' or ') + '.', parentCtl.node));
@@ -44,8 +53,8 @@ export function editor(kind, id, isNew, ui) {
   // ---- checking and saving
   const status = h('div', { 'aria-live': 'polite' });
   const save = h('button', { class: 'btn primary', type: 'button', disabled: true }, isNew ? 'Create' : 'Save');
-  const discard = h('button', { class: 'btn', type: 'button', onclick: () => { ui.setDirty(false); ui.render(); } }, isNew ? 'Cancel' : 'Discard changes');
-  let seq = 0;
+  const discard = h('button', { class: 'btn', type: 'button', onclick: () => { ui.setDirty(false); if (isNew) ui.go('kind', kind); else ui.render(); } }, isNew ? 'Cancel' : 'Discard changes');
+  let seq = 0, waiting = false;
   const form = recordForm(kind, original, () => changed());
 
   const build = () => {
@@ -70,10 +79,11 @@ export function editor(kind, id, isNew, ui) {
     const b = build();
     clear(status);
     save.disabled = true;
-    if (b.error) { status.append(h('div', { class: 'alert info', text: b.error })); return; }
-    if (b.none) { status.append(h('p', { class: 'muted small', text: 'No changes yet.' })); save.textContent = 'Save'; return; }
+    if (b.error) { waiting = false; status.append(h('div', { class: 'alert info', text: b.error })); return; }
+    if (b.none) { waiting = false; ui.setDirty(false); status.append(h('p', { class: 'muted small', text: 'No changes yet.' })); save.textContent = 'Save'; return; }
     const env = await api('/api/apply?dry=1', { method: 'POST', body: b.set });
     if (mine !== seq) return; // a newer check is on its way
+    waiting = false
     clear(status);
     const errors = (env.diagnostics || []).filter((d) => d.severity === 'error');
     const clash = (env.result || {}).conflicts || [];
@@ -90,6 +100,9 @@ export function editor(kind, id, isNew, ui) {
   };
   const checkLater = debounce(check, 450);
   function changed() {
+    seq++; // an answer to an earlier check is not about this text any more
+    waiting = true;
+    if (idCtl && idCtl.fill) idCtl.fill(form.changes().attrs.name);
     ui.setDirty(true);
     clear(status);
     status.append(h('p', { class: 'muted small', text: 'Checking…' }));
@@ -110,6 +123,7 @@ export function editor(kind, id, isNew, ui) {
   }
 
   async function doSave() {
+    if (waiting) { checkLater.cancel(); await check(); } // Ctrl S while the page is still checking waits for the check
     if (save.disabled) return;
     const b = build();
     if (!b.set) return;
@@ -170,9 +184,10 @@ export function editor(kind, id, isNew, ui) {
   const main = h('div', { class: 'rmain' },
     h('div', { class: 'card' }, top, form.node),
     facts.length ? h('div', { class: 'card facts' }, h('div', { class: 'label', text: 'Written by assess' }), facts,
-      h('p', { class: 'muted small', text: 'assess generate risks writes these. Run it again after you change the attack steps.' })) : null,
-    h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, discard, h('span', { class: 'faint small', text: 'Ctrl S' }))));
+      h('p', { class: 'muted small', text: 'assess works these out when it writes the risks. Write the risks again after you change the attack steps.' })) : null,
+    h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, discard, h('span', { class: 'faint small', text: mod + ' S' }))));
 
+  if (isNew) setTimeout(() => { if (idCtl && idCtl.focus) idCtl.focus(); }, 0); // the page is on the screen by then
   return h('div', { class: 'page wide' },
     crumbs({ text: kindTitle(kind), href: hrefOf('kind', kind) }, { text: isNew ? 'New' : title }),
     head,
@@ -187,13 +202,24 @@ function group(list) {
     h('div', { class: 'chips' }, items.map((r) => h('a', { class: 'cp link', href: hrefOf('kind', r.kind, r.id), title: r.id + ' (' + kindName(r.kind) + ')', text: nameOf(r.kind, r.id) })))));
 }
 
+// notCalculated says why a threat scenario has no risk yet, when the reason is something this page can name.
+function notCalculated(kind, id) {
+  const a = (rec(kind, id) || {}).attributes || {};
+  const missing = [];
+  if (kind === 'threat') {
+    if (!a.steps) missing.push('an attack path');
+    if (!a.damages) missing.push('a damage scenario');
+  }
+  return 'Not calculated yet.' + (missing.length ? ' It needs ' + missing.join(' and ') + '.' : '');
+}
+
 function context(kind, id) {
   const aside = h('aside', { class: 'ctx', 'aria-label': 'Connections' });
   const t = S.threats.get(id);
   if ((kind === 'threat' || kind === 'risk') && t) {
     const lv = (o) => (o && o.level ? o.level : '–');
     aside.append(h('div', { class: 'card' }, h('div', { class: 'label', text: 'Calculation' }),
-      t.risk ? h('div', { class: 'row', style: 'margin: 6px 0' }, chip(t.risk.base, 'Risk before the controls'), h('span', { class: 'muted small', text: 'before' }), chip(t.risk.residual, 'Risk with the controls'), h('span', { class: 'muted small', text: 'with controls' })) : h('p', { class: 'muted small', text: 'Not calculated yet.' }),
+      t.risk ? h('div', { class: 'row', style: 'margin: 6px 0' }, chip(t.risk.base, 'Risk before the controls'), h('span', { class: 'muted small', text: 'before' }), chip(t.risk.residual, 'Risk with the controls'), h('span', { class: 'muted small', text: 'with controls' })) : h('p', { class: 'muted small', text: notCalculated(kind, id) }),
       h('div', { class: 'muted small', text: 'Feasibility ' + lv(t.base) + ' → ' + lv(t.residual) }),
       h('a', { class: 'more', href: hrefOf('calc', id) }, 'Show the worksheet', icon('chevronRight', 14))));
   }
@@ -219,9 +245,9 @@ async function deleteRecord(kind, id, ui) {
     const blocked = (env.result || {}).blocked || [];
     if (!blocked.length) { await ask({ title: 'Cannot delete', body: problem(env), noCancel: true }); return; }
     const proceed = await ask({
-      title: nameOf(kind, id) + ' is used by other records', ok: 'Show what a delete with them removes',
+      title: nameOf(kind, id) + ' is used by other records', ok: 'Show what goes with it',
       body: h('div', {}, h('p', { text: 'These records refer to it:' }),
-        h('ul', {}, blocked.map((b) => h('li', {}, h('strong', { text: nameOf(b.kind, b.id) }), ' ', h('span', { class: 'muted', text: b.kind + ', ' + b.message }))))),
+        h('ul', {}, blocked.map((b) => h('li', {}, h('strong', { text: nameOf(b.kind, b.id) }), ' ', h('span', { class: 'muted', text: kindName(b.kind) + ': ' + b.message }))))),
     });
     if (!proceed) return;
     cascade = true;
@@ -229,7 +255,7 @@ async function deleteRecord(kind, id, ui) {
     if (!env.ok) { await ask({ title: 'Cannot delete', body: problem(env), noCancel: true }); return; }
   }
   const r = env.result || {};
-  const line = (d) => h('li', {}, h('strong', { text: nameOf(d.kind, d.id) }), ' ', h('span', { class: 'muted', text: d.kind + (d.reason ? ', ' + d.reason : '') }));
+  const line = (d) => h('li', {}, h('strong', { text: nameOf(d.kind, d.id) }), ' ', h('span', { class: 'muted', text: kindName(d.kind) + (d.reason ? ': ' + d.reason : '') }));
   const body = h('div', {}, h('p', { text: 'This removes:' }), h('ul', {}, (r.deleted || []).map(line)),
     (r.updated || []).length ? h('p', { text: 'And it changes:' }) : null, (r.updated || []).length ? h('ul', {}, r.updated.map(line)) : null,
     effects(r.effects), h('p', { class: 'muted small', text: 'A delete cannot be undone here. The files are in your version control.' }));

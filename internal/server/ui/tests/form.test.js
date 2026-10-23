@@ -28,3 +28,9 @@ test('what is empty and what assess writes', () => {
   assert.equal(readOnly('risk', { name: 'base', doc: '' }), true);
   assert.equal(readOnly('risk', { name: 'treatment', doc: 'Your decision.' }), false);
 });
+
+test('a list of blocks comes back in the order of the format too', () => {
+  const flow = { name: 'flow', type: 'blocks', attributes: [{ name: 'from', type: 'text' }, { name: 'to', type: 'text' }] };
+  const out = inSchemaOrder('function', flow, [{ to: 'b', from: 'a' }]);
+  assert.deepEqual(Object.keys(out[0]), ['from', 'to']);
+});

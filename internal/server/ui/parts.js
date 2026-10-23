@@ -3,7 +3,7 @@
 
 import { h, chip, plural } from './lib.js';
 import { icon } from './icons.js';
-import { recordAt, kindTitle, nameOf } from './data.js';
+import { recordAt, kindTitle, kindName, nameOf } from './data.js';
 import { labelOf } from './form.js';
 
 export const hrefOf = (...parts) => '#/' + parts.map(encodeURIComponent).join('/');
@@ -15,7 +15,7 @@ export function diagnostic(d) {
   const real = d.file && d.file !== '<stdin>'; // a place in the change set is not a place in the project
   const at = real ? recordAt(d.file, d.line || 1) : null;
   return h('div', { class: 'alert ' + cls },
-    h('span', { class: 'code', text: d.code }), d.message,
+    h('span', { class: 'code', text: d.code }), ' ', d.message,
     real ? h('div', { class: 'where' }, at ? h('a', { href: hrefOf('kind', at.kind, at.id) }, where(d)) : where(d)) : null);
 }
 export const diagnostics = (list) => { const f = document.createDocumentFragment(); list.forEach((d) => f.append(diagnostic(d))); return f; };
@@ -35,7 +35,7 @@ export function diff(text) {
 export function effects(list) {
   if (!list || !list.length) return null;
   const pair = (a, b, what, word) => (a === undefined && b === undefined ? null : h('span', { class: 'fx-pair', title: what },
-    h('span', { class: 'faint small', text: word }), chip(a, what + ' before'), h('span', { class: 'faint', text: '→' }), chip(b, what + ' after')));
+    h('span', { class: 'faint small', text: word }), chip(a, what + ', before the change'), h('span', { class: 'faint', text: '→' }), chip(b, what + ', after the change')));
   const rows = list.slice(0, 12).map((e) => {
     const b = e.before || {}, a = e.after || {};
     const label = e.kind === 'item' ? 'The item' : e.name || e.id;
@@ -43,7 +43,7 @@ export function effects(list) {
     return h('div', { class: 'fx-row' },
       h('span', { class: 'fx-name', text: label }),
       note ? h('span', { class: 'tag', text: note }) : null,
-      e.after || e.before ? [pair(b.base, a.base, 'Risk before the controls', 'before'), pair(b.residual, a.residual, 'Risk with the controls', 'with controls')] : null,
+      e.after || e.before ? [pair(b.base, a.base, 'Risk without the controls', 'without controls'), pair(b.residual, a.residual, 'Risk with the controls', 'with controls')] : null,
       b.baseLevel !== a.baseLevel || b.residualLevel !== a.residualLevel
         ? h('span', { class: 'fx-lv small', text: 'Feasibility ' + (b.baseLevel || '–') + ' → ' + (a.baseLevel || '–') + ', with controls ' + (b.residualLevel || '–') + ' → ' + (a.residualLevel || '–') }) : null);
   });
@@ -72,20 +72,24 @@ export function notFound(text) {
 export const kindHeading = (k) => kindTitle(k);
 
 // ---- when someone else changed the files first --------------------------------------------------------------------------------------
-const shown = (v) => (v === null || v === undefined ? 'not set' : typeof v === 'string' ? v : JSON.stringify(v));
+const shown = (v) => (v === null || v === undefined ? 'not set' : typeof v === 'string' ? '"' + v + '"' : JSON.stringify(v));
 
 // conflictText says in words what a conflict of apply means.
 export function conflictText(c) {
   if (c.kind === 'file') return c.id + ' was changed on disk after you opened it.';
-  const what = c.kind + ' "' + nameOf(c.kind, c.id) + '"';
+  const what = kindName(c.kind) + ' "' + nameOf(c.kind, c.id) + '"';
   if (c.reason === 'gone') return 'The ' + what + ' was deleted after you opened it.';
-  if (c.reason === 'exists') return 'There is a ' + what + ' now. You meant to create one with this id.';
+  if (c.reason === 'exists') return 'There is a ' + what + ' with this id already. Choose another id.';
   return labelOf(c.attribute) + ' of the ' + what + ' was ' + shown(c.was) + ' when you opened this page. It is ' + shown(c.now) + ' now.';
 }
 
 // conflicts shows what changed under a person and what to do about it. keep writes the change over theirs, and reload throws the
-// change away and shows what is there. Nothing was written.
+// change away and shows what is there. Nothing was written. An id that is taken is not a change by someone else, and has no reload:
+// the person only has to choose another id.
 export function conflicts(list, { keep, reload }) {
+  if (list.length && list.every((c) => c.reason === 'exists')) {
+    return h('div', { class: 'alert err conflict' }, h('strong', { text: 'That id is taken. Nothing was written.' }), h('ul', {}, list.map((c) => h('li', { text: conflictText(c) }))));
+  }
   const gone = list.some((c) => c.reason === 'gone' || c.reason === 'exists');
   return h('div', { class: 'alert warn conflict' },
     h('strong', { text: 'Someone changed this after you opened it. Nothing was written.' }),

@@ -11,6 +11,12 @@ import { S, candidates, kindOfId, nameOf, kindName, resolveAttr } from './data.j
 export const INVALID = { invalid: true };
 
 // Names that are one word in the files and that a person reads as two or more.
+// The fields that the calculation cannot do without. They are open on the form when they are empty, so that nothing is missing quietly.
+const NEEDED = { threat: ['damages', 'steps'], step: ['potential'] };
+
+// What a group of an attack path says about its parts, by the attribute that holds it.
+const ROOT_TEXT = { steps: 'of these lead to the threat', preparedby: 'of these have to come first', threatenedby: 'of these can defeat the control' };
+
 const LABELS = {
   preparedby: 'Prepared by', threatenedby: 'Threatened by', mitigatedby: 'Mitigated by', entrypoint: 'Entry point',
   roaduser: 'Road user', oem: 'OEM', knowledge: 'Knowledge of the item', window: 'Window of opportunity', time: 'Elapsed time',
@@ -77,11 +83,12 @@ function listBox(value, onChange) {
 export function chipPicker({ kinds, multiple, value, onChange, placeholder, label, exclude }) {
   let items = [].concat(value === undefined || value === null ? [] : value).filter((s) => typeof s === 'string');
   const pool = candidates(kinds).filter((c) => !exclude || !exclude.has(c.id));
+  const popId = uid();
   const wrap = h('div', { class: 'picker' });
   const chips = h('div', { class: 'chips' });
-  const input = h('input', { type: 'text', class: 'pick-in', placeholder: placeholder || 'Add…', 'aria-label': label || 'Add', autocomplete: 'off', spellcheck: 'false' });
-  const pop = h('ul', { class: 'pop', role: 'listbox', hidden: true });
-  let hit = [], at = 0;
+  const input = h('input', { type: 'text', class: 'pick-in', placeholder: placeholder || 'Add…', 'aria-label': label || 'Add', autocomplete: 'off', spellcheck: 'false', role: 'combobox', 'aria-autocomplete': 'list', 'aria-expanded': 'false', 'aria-controls': popId });
+  const pop = h('ul', { class: 'pop', role: 'listbox', id: popId, 'aria-label': (label || 'Suggestions'), hidden: true });
+  let hit = [], at = 0, moved = false;
 
   const add = (id) => {
     id = id.trim();
@@ -93,26 +100,38 @@ export function chipPicker({ kinds, multiple, value, onChange, placeholder, labe
     onChange();
   };
   const remove = (id) => { items = items.filter((x) => x !== id); paint(); onChange(); };
-  const close = () => { pop.hidden = true; };
+  const close = () => { pop.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); };
   const show = () => {
     const q = input.value.trim().toLowerCase();
     hit = pool.filter((c) => !items.includes(c.id) && (!q || c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) || kindName(c.kind).includes(q))).slice(0, 8);
     at = 0;
+    moved = false;
     clear(pop);
-    hit.forEach((c, i) => pop.append(h('li', { role: 'option', class: i === at ? 'on' : '', onmousedown: (e) => { e.preventDefault(); add(c.id); } },
+    hit.forEach((c, i) => pop.append(h('li', { role: 'option', id: popId + '-' + i, 'aria-selected': String(i === at), class: i === at ? 'on' : '', onmousedown: (e) => { e.preventDefault(); add(c.id); } },
       h('span', { class: 'pn', text: c.name }), h('span', { class: 'pid', text: c.id }), kinds && kinds.length > 1 ? h('span', { class: 'pk', text: kindName(c.kind) }) : null)));
     if (!hit.length) pop.append(h('li', { class: 'none', text: pool.length ? 'No match' + (q ? ' for ' + q : '') : 'Type an id' }));
     pop.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    if (hit.length) input.setAttribute('aria-activedescendant', popId + '-' + at);
   };
-  const mark = () => [...pop.children].forEach((li, i) => li.classList.toggle('on', i === at));
+  const mark = () => {
+    [...pop.children].forEach((li, i) => { li.classList.toggle('on', i === at); li.setAttribute('aria-selected', String(i === at)); });
+    if (hit.length) input.setAttribute('aria-activedescendant', popId + '-' + at);
+  };
 
   input.addEventListener('input', show);
   input.addEventListener('focus', show);
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); if (pop.hidden) show(); at = Math.min(at + 1, Math.max(hit.length - 1, 0)); mark(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(at - 1, 0); mark(); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (hit[at]) add(hit[at].id); else if (!pool.length || kindOfId(input.value.trim(), kinds)) add(input.value); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (pop.hidden) show(); moved = true; at = Math.min(at + 1, Math.max(hit.length - 1, 0)); mark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moved = true; at = Math.max(at - 1, 0); mark(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const typed = input.value.trim();
+      // the first suggestion is taken when something was typed or an arrow key chose one. An empty box adds nothing.
+      if (hit[at] && (typed || moved)) add(hit[at].id);
+      else if (typed && (!pool.length || kindOfId(typed, kinds))) add(typed);
+    }
     else if (e.key === 'Escape') { close(); }
     else if (e.key === 'Backspace' && !input.value && items.length) { remove(items[items.length - 1]); }
   });
@@ -261,7 +280,7 @@ function treeEditor(attr, value, onChange) {
     if (typeof v === 'string') return { leaf: v };
     if (v && typeof v === 'object') {
       const op = Object.keys(v)[0];
-      if (op === 'and' || op === 'or') return { op, kids: (v[op] || []).map(parse) };
+      if (op === 'and' || op === 'or') return { op, kids: (v[op] || []).map(parse).filter(Boolean) };
     }
     return null;
   };
@@ -287,7 +306,7 @@ function treeEditor(attr, value, onChange) {
     }
     const seg = choice({ values: ['and', 'or'], text: (v) => (v === 'and' ? 'All of' : 'Any one of'), label: 'How the parts combine', value: g.op, required: true, onChange: () => { g.op = seg.get(); touched = true; onChange(); } });
     return h('div', { class: 'grp' },
-      h('div', { class: 'gh' }, seg.node, h('span', { class: 'muted', text: isRoot ? 'of these lead to the threat' : 'of these' }),
+      h('div', { class: 'gh' }, seg.node, h('span', { class: 'muted', text: isRoot ? ROOT_TEXT[attr.name] || 'of these' : 'of these' }),
         isRoot ? null : h('button', { type: 'button', class: 'iconbtn', 'aria-label': 'Remove this group', onclick: () => { parent.kids.splice(parent.kids.indexOf(g), 1); changed(); } }, icon('trash', 14))),
       body,
       h('div', { class: 'tree-add' }, addLeaf(g), h('button', { type: 'button', class: 'btn small', onclick: () => { g.kids.push({ op: 'or', kids: [] }); changed(); } }, icon('plus', 14), ' Add a group')));
@@ -355,10 +374,19 @@ function widget(kind, attr, value, onChange) {
     case 'bool': return choice({ values: [true, false], text: (v) => (v ? 'Yes' : 'No'), label, value, required: false, onChange });
     case 'enum': return choice({ values: attr.values || [], label, value, required: !!attr.required, onChange });
     case 'enums': {
-      const have = new Set([].concat(value === undefined ? [] : value));
-      const boxes = (attr.values || []).map((v) => h('input', { type: 'checkbox', value: v, checked: have.has(v), onchange: () => onChange() }));
+      // The order in the file is kept: what stays is where it was, and what is new comes after it. A box that was not touched gives
+      // back the value as it was, so that opening a record never changes it.
+      let touched = false;
+      const was = [].concat(value === undefined ? [] : value);
+      const have = new Set(was);
+      const boxes = (attr.values || []).map((v) => h('input', { type: 'checkbox', value: v, checked: have.has(v), onchange: () => { touched = true; onChange(); } }));
       return { node: h('div', { class: 'checks' }, (attr.values || []).map((v, i) => h('label', {}, boxes[i], v))),
-        get: () => { const on = boxes.filter((b) => b.checked).map((b) => b.value); return on.length ? on : undefined; } };
+        get: () => {
+          if (!touched) return value;
+          const on = boxes.filter((b) => b.checked).map((b) => b.value);
+          const ordered = [...was.filter((v) => on.includes(v)), ...on.filter((v) => !was.includes(v))];
+          return ordered.length ? ordered : undefined;
+        } };
     }
     case 'id': return chipPicker({ kinds: attr.refs, multiple: false, value, onChange, placeholder: 'Choose…', label });
     case 'ids': return attr.refs && attr.refs.length
@@ -399,13 +427,22 @@ export function field(kind, attr0, value, onChange, opt) {
   const control = widget(kind, attr, value, onChange);
   const help = h('p', { class: 'doc', hidden: true, text: attr.doc || '' });
   const q = attr.doc ? h('button', { type: 'button', class: 'help', 'aria-label': 'What is ' + labelOf(attr.name) + '?', title: 'What is this?', onclick: () => { help.hidden = !help.hidden; } }, icon('help', 15)) : null;
+  const lab = h('label', { text: labelOf(attr.name) });
   const node = h('div', { class: 'field', 'data-name': attr.name },
-    h('div', { class: 'flabel' }, h('label', { for: id, text: labelOf(attr.name) }), attr.required ? h('span', { class: 'req', title: 'Required', text: '*' }) : null, q,
+    h('div', { class: 'flabel' }, lab, attr.required ? h('span', { class: 'req', title: 'Required', text: '*' }) : null, q,
       opt && opt.onRemove ? h('button', { type: 'button', class: 'iconbtn right', 'aria-label': 'Remove ' + labelOf(attr.name), title: 'Remove this field', onclick: opt.onRemove }, icon('x', 14)) : null),
     help, control.node);
-  // the label points at the first thing that can take the focus
+  // A click on the label goes to the control when there is one control: a text box, a select. A control made of several buttons or boxes
+  // is named by the label instead. If the label pointed at its first button, a click on the label would press it.
+  if (control.node.matches('input,select,textarea')) {
+    control.node.id = id;
+    lab.setAttribute('for', id);
+  } else {
+    lab.id = id + '-l';
+    if (!control.node.getAttribute('role')) control.node.setAttribute('role', 'group');
+    control.node.setAttribute('aria-labelledby', lab.id);
+  }
   const first = control.node.matches('input,select,textarea,button') ? control.node : control.node.querySelector('input,select,textarea,button');
-  if (first) first.id = id;
   return { attr, node, get: control.get, focus: () => (first ? first.focus() : null) };
 }
 
@@ -419,7 +456,7 @@ export function recordForm(kind, original, onChange) {
   // notes come last
   defs.sort((a, b) => (a.name === 'notes') - (b.name === 'notes'));
   const fields = defs.map((a) => {
-    const f = { def: a, shown: !!a.required || hasValue(original[a.name]) };
+    const f = { def: a, shown: !!a.required || hasValue(original[a.name]) || (NEEDED[kind] || []).includes(a.name) };
     f.make = () => {
       f.f = field(kind, a, original[a.name], onChange, a.required ? null : { onRemove: () => hide(f) });
       return f.f;
@@ -429,14 +466,14 @@ export function recordForm(kind, original, onChange) {
   const list = h('div', { class: 'fields' });
   const menuBox = h('div', { class: 'addfield' });
   const pop = h('div', { class: 'menu', hidden: true });
-  const button = h('button', { type: 'button', class: 'btn', 'aria-haspopup': 'true', onclick: () => { pop.hidden = !pop.hidden; } }, icon('plus', 14), ' Add a field');
+  const button = h('button', { type: 'button', class: 'btn', 'aria-haspopup': 'true', 'aria-expanded': 'false', onclick: () => { pop.hidden = !pop.hidden; button.setAttribute('aria-expanded', String(!pop.hidden)); } }, icon('plus', 14), ' Add a field');
 
   const paintMenu = () => {
     clear(pop);
     const rest = fields.filter((f) => !f.shown);
     menuBox.hidden = rest.length === 0;
     for (const f of rest) {
-      pop.append(h('button', { type: 'button', class: 'menu-i', onclick: () => { pop.hidden = true; show(f); } },
+      pop.append(h('button', { type: 'button', class: 'menu-i', onclick: () => { pop.hidden = true; button.setAttribute('aria-expanded', 'false'); show(f); } },
         h('strong', { text: labelOf(f.def.name) }), h('span', { class: 'muted', text: firstSentence(resolveAttr(kind, f.def).doc) })));
     }
   };
@@ -450,9 +487,10 @@ export function recordForm(kind, original, onChange) {
 
   for (const f of fields) if (f.shown) place(f);
   menuBox.append(button, pop);
+  menuBox.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) { pop.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); } });
   paintMenu();
   if (outside) document.removeEventListener('click', outside);
-  outside = (e) => { if (!menuBox.contains(e.target)) pop.hidden = true; };
+  outside = (e) => { if (!menuBox.contains(e.target)) { pop.hidden = true; button.setAttribute('aria-expanded', 'false'); } };
   document.addEventListener('click', outside);
 
   // changes is what the form changes in the record: the attributes that differ, and null for one that was emptied.
@@ -466,7 +504,7 @@ export function recordForm(kind, original, onChange) {
       if (cur === INVALID) { invalid = true; continue; }
       if (cur === undefined) { if (hasValue(orig)) out[name] = null; continue; }
       const a = resolveAttr(kind, f.def).type === 'ids' && typeof orig === 'string' ? [orig] : orig;
-      if (!same(cur, a)) out[name] = cur;
+      if (!same(cur, a)) out[name] = inSchemaOrder(kind, f.def, cur);
     }
     return { attrs: out, invalid };
   };
@@ -479,6 +517,7 @@ export { readOnly, hasValue };
 // back from export has its keys sorted, and writing it back so would change the look of the file.
 export function inSchemaOrder(kind, attr0, value) {
   const attr = resolveAttr(kind, attr0);
+  if (attr.type === 'blocks' && Array.isArray(value)) return value.map((v) => inSchemaOrder(kind, Object.assign({}, attr, { type: 'block' }), v));
   if (!value || typeof value !== 'object' || Array.isArray(value) || attr.type !== 'block' || !attr.attributes) return value;
   const out = {};
   for (const sub of attr.attributes) if (sub.name in value) out[sub.name] = inSchemaOrder(kind, sub, value[sub.name]);

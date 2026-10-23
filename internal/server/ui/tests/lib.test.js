@@ -2,7 +2,7 @@
 import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canon, same, lines, firstSentence, short, plural, upper } from '../lib.js';
+import { canon, same, lines, firstSentence, short, plural, upper, when } from '../lib.js';
 
 test('the same value in another order of keys is the same value', () => {
   assert.equal(same({ b: 1, a: { d: [1, 2], c: 3 } }, { a: { c: 3, d: [1, 2] }, b: 1 }), true);
@@ -18,4 +18,11 @@ test('lines, sentences and words', () => {
   assert.equal(plural(1, 'step'), '1 step');
   assert.equal(plural(2, 'step'), '2 steps');
   assert.equal(upper('threat'), 'Threat');
+});
+
+test('a date is written in plain form, and a text that is not a date stays', () => {
+  assert.match(when('2026-10-23T12:04:27+03:00'), /2026/);
+  assert.doesNotMatch(when('2026-10-23T12:04:27+03:00'), /T12:04/);
+  assert.equal(when('not a date'), 'not a date');
+  assert.equal(when(undefined), '');
 });

@@ -10,6 +10,7 @@ export const S = {
   exp: null, diag: [], recs: [], of: {}, byKey: new Map(), threats: new Map(), byFile: new Map(),
   uses: new Map(), usedBy: new Map(), index: [], points: {}, open: [],
   stamp: '', view: '', fatal: '', noProject: false,
+  sig: '', changed: true, // sig is the project as it was last read, and changed says whether the last read found something new
 };
 
 // load reads the format once and the project every time.
@@ -26,6 +27,9 @@ export async function load() {
     S.kinds = Object.fromEntries(S.desc.kinds.map((k) => [k.kind, k]));
   }
   S.fatal = '';
+  const sig = JSON.stringify([exp.result, exp.diagnostics]);
+  S.changed = sig !== S.sig;
+  S.sig = sig;
   S.exp = exp.result || { records: [] };
   S.diag = exp.diagnostics || [];
   S.noProject = S.diag.some((d) => d.code === 'no-project');
@@ -189,7 +193,7 @@ export function workflow() {
     {
       title: 'Decide the risks',
       done: risks > 0 && riskGaps === 0 && undecided === 0 && results,
-      text: risks ? (risks - undecided) + ' of ' + plural(risks, 'risk') + ' have a decision' : 'The risk of each threat scenario, and what you do about it.',
+      text: risks ? (risks - undecided) + ' of ' + plural(risks, 'risk') + (risks === 1 ? ' has' : ' have') + ' a decision' : 'The risk of each threat scenario, and what you do about it.',
       action: !results || !threats ? null
         : (risks === 0 || riskGaps > 0) ? { label: 'Write the risks', generate: 'risks', primary: true }
           : undecided > 0 ? { label: 'Decide ' + undecided + (undecided === 1 ? ' risk' : ' risks'), go: ['decisions'], primary: true }
@@ -198,8 +202,9 @@ export function workflow() {
     {
       title: 'Check, report and close the round',
       done: closed,
-      text: closed ? 'Iteration ' + last.number + ' is closed and nothing changed since.' : S.open.length ? plural(S.open.length, 'item') + (S.open.length === 1 ? ' is' : ' are') + ' still open.' : 'Close the round to keep the decisions in the hash chain.',
-      action: results ? (S.open.length ? { label: 'See what is open', go: ['open'] } : closed ? { label: 'Open the report', go: ['report'] } : { label: 'Close the iteration', finalize: true, primary: true }) : null,
+      text: closed ? 'Iteration ' + last.number + ' is closed and nothing changed since.' : S.open.length ? plural(S.open.length, 'item') + (S.open.length === 1 ? ' is' : ' are') + ' still open.' : 'Close the round to keep your decisions on record.',
+      action: !results ? null : S.open.length ? { label: 'See what is open', go: ['open'] } : closed ? { label: 'Open the report', go: ['report'] }
+        : risks > 0 ? { label: 'Close the iteration', finalize: true, primary: true } : null,
     },
   ];
   let found = false;

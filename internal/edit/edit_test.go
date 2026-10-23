@@ -425,6 +425,29 @@ func TestANewRecordIsNotWrittenToAFileThatDiffersOnlyInCase(t *testing.T) {
 	}
 }
 
+func TestTheDiffOfABlockShowsOnlyTheLinesThatDiffer(t *testing.T) {
+	in := map[string]string{"tara/damage-scenarios.yaml": "damage d:\n  name: D\n  impact:\n    roaduser:\n      safety:\n        level: Severe\n        rationale: Because of A and a sentence that is long enough to keep the block from fitting on one line\n      financial:\n        level: Major\n        rationale: Because of B and a sentence that is long enough to keep the block from fitting on one line\n"}
+	out, probs := applyTo(t, in, "changes:\n  - op: put\n    kind: damage\n    id: d\n    attributes:\n      impact:\n        roaduser:\n          safety:\n            level: Severe\n            rationale: Because of A and a sentence that is long enough to keep the block from fitting on one line\n          financial:\n            level: Moderate\n            rationale: Because of B and a sentence that is long enough to keep the block from fitting on one line\n")
+	if len(probs) != 0 {
+		t.Fatal(probs)
+	}
+	removed, added := 0, 0
+	for _, l := range strings.Split(out.Diff, "\n") {
+		switch {
+		case strings.HasPrefix(l, "-") && !strings.HasPrefix(l, "---"):
+			removed++
+		case strings.HasPrefix(l, "+") && !strings.HasPrefix(l, "+++"):
+			added++
+		}
+	}
+	if removed != 1 || added != 1 || !strings.Contains(out.Diff, "-        level: Major") || !strings.Contains(out.Diff, "+        level: Moderate") || !strings.Contains(out.Diff, "         rationale: Because of A and a sentence that is long enough to keep the block from fitting on one line") {
+		t.Errorf("one line changes and the others stay as context:\n%s", out.Diff)
+	}
+	if !strings.Contains(string(out.Files["tara/damage-scenarios.yaml"]), "        level: Moderate\n        rationale: Because of B and a sentence that is long enough to keep the block from fitting on one line\n") {
+		t.Errorf("the file itself is written as before:\n%s", out.Files["tara/damage-scenarios.yaml"])
+	}
+}
+
 func TestAFileThatIsNotYAMLIsAProblem(t *testing.T) {
 	in := files(t)
 	in["item/architecture.yaml"] = []byte("component a: [")

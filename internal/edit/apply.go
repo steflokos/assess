@@ -183,7 +183,7 @@ func Apply(files map[string][]byte, set *Set, source string) (*Outcome, []Proble
 		}
 		a.out.Files[name] = text
 		es, _ := ft.sorted()
-		diffs = append(diffs, unified(ft, es))
+		diffs = append(diffs, unified(ft, refine(ft, es)))
 	}
 	a.out.Diff = strings.Join(diffs, "")
 	return a.out, nil
@@ -601,6 +601,23 @@ func (a *applier) listKids(p *put, file string) {
 		a.out.Created = append(a.out.Created, Ref{Kind: kid.kind, ID: kid.id, File: file})
 		a.listKids(kid, file)
 	}
+}
+
+// refine narrows the edits for the diff that a person reads. An attribute is replaced as a whole, so a block of thirty lines in which
+// one value changes is one edit of thirty lines. The diff shows the lines that differ, and the lines that stay as context.
+func refine(f *fileText, es []edit) []edit {
+	var out []edit
+	for _, e := range es {
+		if e.n == 0 || len(e.text) == 0 {
+			out = append(out, e)
+			continue
+		}
+		for _, r := range lineEdits(f.lines[e.at:e.at+e.n], e.text) {
+			r.at += e.at
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // unified writes the edits of one file as a unified diff, with two lines of context.

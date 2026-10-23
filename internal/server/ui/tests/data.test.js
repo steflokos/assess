@@ -3,6 +3,7 @@ import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId } from '../data.js';
+import { pagesFor } from '../palette.js';
 
 await load();
 
@@ -53,4 +54,19 @@ test('the path of the work has seven steps and one of them is next', () => {
   assert.deepEqual(path.slice(0, 4).map((s) => s.state), ['done', 'done', 'done', 'done']);
   assert.ok(path.filter((s) => s.state === 'now').length <= 1, 'only the first step that is not done is the next one');
   for (const s of path) assert.ok(['done', 'now', 'todo'].includes(s.state));
+});
+
+test('a search for a word finds the list, the way to make one and the page, whether it is written as one or many', () => {
+  const titles = (q) => pagesFor(q).map((p) => p.title);
+  assert.ok(titles('attack steps').includes('Attack steps'), 'the list of a kind');
+  assert.ok(titles('attack steps').includes('New attack step'), 'making a record of it');
+  assert.ok(titles('step').includes('Attack steps'), 'one word finds the many');
+  assert.ok(titles('report').includes('Report'), 'a page');
+  assert.deepEqual(titles('nothing like this'), []);
+});
+
+test('a project reads the same twice, and a change is seen', async () => {
+  await load();
+  assert.equal(S.changed, false, 'the same answer is no change');
+  assert.equal(S.view, 'v', 'the token of the report is kept');
 });

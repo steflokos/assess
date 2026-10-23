@@ -59,8 +59,9 @@ type Server struct {
 	ln    net.Listener
 	log   io.Writer
 	hosts map[string]bool
-	// frames are the two origins of this server, 127.0.0.1 and localhost. They are different origins for a browser, which the
-	// interface uses to show the report: the report is loaded from the other name, so it cannot read what the interface keeps.
+	// frames are the two names of this server that a content policy can write, 127.0.0.1 and localhost. They are different origins for a
+	// browser, which the interface uses to show the report: the report is loaded from the other name, so it cannot read what the
+	// interface keeps. A policy cannot write [::1], so a page at that address opens the report in a tab of its own.
 	frames string
 	sem    chan struct{}
 	// turns makes the commands of this process take turns: a command that writes runs alone, and commands that read run
@@ -113,7 +114,7 @@ func New(opt Options) (*Server, error) {
 	s := &Server{
 		dir: opt.Dir, run: opt.Run, token: tok, view: view, ln: opt.Listener, log: opt.Log,
 		hosts:  map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true, "[::1]:" + port: true},
-		frames: "http://127.0.0.1:" + port + " http://localhost:" + port + " http://[::1]:" + port,
+		frames: "http://127.0.0.1:" + port + " http://localhost:" + port,
 		sem:    make(chan struct{}, maxRunning),
 	}
 	return s, nil

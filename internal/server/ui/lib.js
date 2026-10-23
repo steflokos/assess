@@ -40,8 +40,16 @@ export const canon = (v) => (v && typeof v === 'object' && !Array.isArray(v)
   ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])]))
   : Array.isArray(v) ? v.map(canon) : v);
 export const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
+// mod is the name of the key for shortcuts on this computer.
+export const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '') ? '⌘' : 'Ctrl';
 export const short = (hash) => String(hash || '').replace('sha256:', '').slice(0, 12);
 export const upper = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+// when writes a date and time from a file in plain form: 23 Oct 2026, 12:04. A text that is not a date is given back as it is.
+export function when(iso) {
+  const d = new Date(iso);
+  if (!iso || Number.isNaN(d.getTime())) return String(iso || '');
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
 export const firstSentence = (s) => { const m = /^.*?[.!?](\s|$)/.exec(s || ''); return (m ? m[0] : s || '').trim(); };
 
 // chip shows a risk value, 1 to 5, in its color. A value that is not there is a dash.
@@ -119,20 +127,30 @@ export async function plainText(path) {
 }
 
 // ---- toasts and dialogs -----------------------------------------------------------------------------------------------
-// toast tells what happened. An action, such as Undo, is a button in it.
+// toast tells what happened. An action, such as Undo, is a button in it. Toasts stack in one place, so a new one does not hide the
+// one before it, and the place is a live region, so a screen reader says them.
+export function toasts() {
+  let box = document.getElementById('toasts');
+  if (!box) {
+    box = h('div', { id: 'toasts', class: 'toasts', role: 'status', 'aria-live': 'polite' });
+    document.body.append(box);
+  }
+  return box;
+}
 export function toast(text, kind, action, ms) {
-  const el = h('div', { class: 'toast alert ' + (kind || 'ok'), role: 'status' }, h('span', { text }),
+  const el = h('div', { class: 'toast alert ' + (kind || 'ok') }, h('span', { text }),
     action ? h('button', { class: 'btn small', type: 'button', onclick: () => { el.remove(); action.run(); } }, action.label) : null);
-  document.body.append(el);
-  setTimeout(() => el.remove(), ms || (action ? 9000 : 4500));
+  toasts().append(el);
+  setTimeout(() => el.remove(), ms || (action ? 9000 : Math.min(4500 + String(text).length * 30, 12000)));
   return el;
 }
 
 // ask puts a question in a modal dialog. body is a node. It resolves to true when the person confirms.
 export function ask(opt) {
   return new Promise((resolve) => {
-    const dlg = h('dialog', {},
-      h('h2', { text: opt.title }),
+    const title = uid();
+    const dlg = h('dialog', { 'aria-labelledby': title },
+      h('h2', { id: title, text: opt.title }),
       opt.body,
       h('div', { class: 'actions' },
         opt.noCancel ? null : h('button', { class: 'btn', type: 'button', onclick: () => dlg.close('no') }, 'Cancel'),

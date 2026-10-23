@@ -16,6 +16,6 @@ export const fixture = (name) => JSON.parse(readFileSync(join(fixtures, name + '
 // fetch answers the routes of the server from the fixtures.
 globalThis.fetch = async (path) => {
   const name = String(path).split('?')[0].replace('/api/', '');
-  const body = JSON.stringify(name === 'stamp' ? { stamp: 'x' } : fixture(name));
+  const body = JSON.stringify(name === 'stamp' ? { stamp: 'x' } : name === 'view' ? { view: 'v' } : fixture(name));
   return { status: 200, text: async () => body };
 };
