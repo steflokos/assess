@@ -100,26 +100,42 @@ func Plain(data []byte) (map[string]any, error) {
 }
 
 // PlainNode is the value of a YAML node as plain data: maps, lists and scalars that JSON can hold. A date is
-// kept as it was written, such as 2026-09-12, and not turned into a point in time.
+// kept as it was written, such as 2026-09-12, and not turned into a point in time. A node that points at itself,
+// or that is made of aliases that multiply, gives nil where it gets too deep or too big.
 func PlainNode(n *yaml.Node) any {
+	left := plainBudget
+	return plainNode(n, 0, &left)
+}
+
+// plainBudget is how many nodes one value may have, and plainDepth how deep it may go. A real value is far under both.
+const (
+	plainBudget = 1_000_000
+	plainDepth  = 500
+)
+
+func plainNode(n *yaml.Node, depth int, left *int) any {
+	*left--
+	if *left < 0 || depth > plainDepth {
+		return nil
+	}
 	switch n.Kind {
 	case yaml.DocumentNode:
 		if len(n.Content) == 0 {
 			return nil
 		}
-		return PlainNode(n.Content[0])
+		return plainNode(n.Content[0], depth+1, left)
 	case yaml.AliasNode:
-		return PlainNode(n.Alias)
+		return plainNode(n.Alias, depth+1, left)
 	case yaml.MappingNode:
 		m := make(map[string]any, len(n.Content)/2)
 		for i := 0; i+1 < len(n.Content); i += 2 {
-			m[n.Content[i].Value] = PlainNode(n.Content[i+1])
+			m[n.Content[i].Value] = plainNode(n.Content[i+1], depth+1, left)
 		}
 		return m
 	case yaml.SequenceNode:
 		out := make([]any, len(n.Content))
 		for i, c := range n.Content {
-			out[i] = PlainNode(c)
+			out[i] = plainNode(c, depth+1, left)
 		}
 		return out
 	case yaml.ScalarNode:

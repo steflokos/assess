@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/steflokos/assess/internal/diag"
 	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
@@ -427,5 +429,19 @@ func TestALargeProjectLoadsInReasonableTime(t *testing.T) {
 	}
 	if d := time.Since(start); d > 20*time.Second {
 		t.Errorf("loading %d steps took %v", n, d)
+	}
+}
+
+func TestAValueThatPointsAtItselfOrGrowsWithoutEndIsReadAsFarAsItGoes(t *testing.T) {
+	// A cycle once overflowed the stack, which Go cannot recover from, and took the server with it.
+	for name, text := range map[string]string{
+		"a cycle": "name: &a [*a]\n",
+		"a bomb":  "a: &a [x, x, x, x, x, x, x, x, x]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a]\nc: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b]\nd: &d [*c, *c, *c, *c, *c, *c, *c, *c, *c]\ne: &e [*d, *d, *d, *d, *d, *d, *d, *d, *d]\nf: &f [*e, *e, *e, *e, *e, *e, *e, *e, *e]\ng: &g [*f, *f, *f, *f, *f, *f, *f, *f, *f]\nh: &h [*g, *g, *g, *g, *g, *g, *g, *g, *g]\ni: &i [*h, *h, *h, *h, *h, *h, *h, *h, *h]\n",
+	} {
+		var doc yaml.Node
+		if err := yaml.Unmarshal([]byte(text), &doc); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		load.PlainNode(&doc) // it returns
 	}
 }

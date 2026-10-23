@@ -5,7 +5,10 @@ package edit
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strings"
@@ -27,6 +30,9 @@ type fileText struct {
 	roots []*recNode
 	edits []edit
 	isNew bool // the file does not exist yet
+	// unsafe, when it is not empty, says why the file cannot be edited as lines. The records in it can still be found, so that a
+	// change set that names one is refused and not taken for a change of nothing.
+	unsafe string
 }
 
 // recNode is a record in a file.
@@ -68,12 +74,28 @@ func parseFile(name string, data []byte) (*fileText, error) {
 	if n := len(f.lines); n > 0 && f.lines[n-1] == "" {
 		f.lines = f.lines[:n-1]
 	}
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, err
+	// go-yaml counts these as the end of a line, and a person who reads the file by lines does not
+	if i := strings.IndexAny(text, "\u0085\u2028\u2029"); i >= 0 {
+		f.unsafe = "has a line separator character (U+0085, U+2028 or U+2029) that editors do not show"
 	}
-	if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 && doc.Content[0].Kind == yaml.MappingNode {
-		f.roots = f.records(doc.Content[0], nil, len(f.lines))
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	docs := 0
+	for {
+		var doc yaml.Node
+		err := dec.Decode(&doc)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		docs++
+		if docs > 1 {
+			f.unsafe = "has more than one YAML document"
+		}
+		if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 && doc.Content[0].Kind == yaml.MappingNode {
+			f.roots = append(f.roots, f.records(doc.Content[0], nil, len(f.lines))...)
+		}
 	}
 	return f, nil
 }
@@ -82,13 +104,35 @@ func blank(s string) bool   { return strings.TrimSpace(s) == "" }
 func comment(s string) bool { return strings.HasPrefix(strings.TrimSpace(s), "#") }
 
 // trim moves end up past the blank lines and the comment lines that follow the last line of a block: they
-// belong to what comes next. A block scalar keeps its comment-looking lines, which are text.
+// belong to what comes next. A block scalar keeps the comment-looking lines that are part of its text.
 func (f *fileText) trim(start, end int, block bool) int {
-	for end > start && (blank(f.lines[end-1]) || (!block && comment(f.lines[end-1]))) {
+	if block {
+		return f.trimText(start, end)
+	}
+	for end > start && (blank(f.lines[end-1]) || comment(f.lines[end-1])) {
 		end--
 	}
 	return end
 }
+
+// trimText is trim for a block scalar. Its text is the lines that are indented as deep as its first line. A line
+// that is less deep, such as a comment at the start of the next section, is not part of it.
+func (f *fileText) trimText(start, end int) int {
+	deep := math.MaxInt
+	for i := start; i < end; i++ {
+		if !blank(f.lines[i]) {
+			deep = indentOf(f.lines[i])
+			break
+		}
+	}
+	for end > start && (blank(f.lines[end-1]) || indentOf(f.lines[end-1]) < deep) {
+		end--
+	}
+	return end
+}
+
+// indentOf is the number of spaces before the text of a line.
+func indentOf(s string) int { return len(s) - len(strings.TrimLeft(s, " ")) }
 
 func isBlock(n *yaml.Node) bool {
 	return n.Kind == yaml.ScalarNode && (n.Style&yaml.LiteralStyle != 0 || n.Style&yaml.FoldedStyle != 0)
@@ -187,6 +231,9 @@ func (f *fileText) sorted() ([]edit, error) {
 		if es[i].at != es[j].at {
 			return es[i].at < es[j].at
 		}
+		if (es[i].n == 0) != (es[j].n == 0) {
+			return es[i].n == 0 // an insertion at a line goes before what replaces that line
+		}
 		return es[i].seq < es[j].seq
 	})
 	var out []edit
@@ -208,6 +255,9 @@ func (f *fileText) sorted() ([]edit, error) {
 
 // result applies the edits and returns the new text of the file.
 func (f *fileText) result() ([]byte, error) {
+	if f.unsafe != "" && len(f.edits) > 0 {
+		return nil, fmt.Errorf("%s %s, so assess does not edit it. Change it in your editor", f.name, f.unsafe)
+	}
 	es, err := f.sorted()
 	if err != nil {
 		return nil, err

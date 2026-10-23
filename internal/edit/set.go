@@ -53,7 +53,10 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"strconv"
 	"strings"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"go.yaml.in/yaml/v3"
 
@@ -107,13 +110,19 @@ type Problem struct {
 // ParseSet reads a change set. It reports every problem it finds.
 func ParseSet(data []byte) (*Set, []Problem) {
 	var doc yaml.Node
+	if t := bytes.TrimSpace(data); bytes.HasPrefix(t, []byte("{")) || bytes.HasPrefix(t, []byte("[")) {
+		data = joinSurrogates(data) // YAML cannot read the way that JSON writes a character outside the first plane
+	}
 	err := yaml.Unmarshal(data, &doc)
 	if err != nil && bytes.HasPrefix(bytes.TrimSpace(data), []byte("{")) {
 		// JSON may be indented with tabs, which YAML does not allow around block structure
 		err = yaml.Unmarshal(bytes.ReplaceAll(data, []byte("\t"), []byte(" ")), &doc)
 	}
 	if err != nil {
-		return nil, []Problem{{1, 1, "the change set is not valid JSON or YAML: " + firstLine(err.Error())}}
+		return nil, []Problem{{1, 1, "the change set is not valid JSON or YAML: " + strings.TrimPrefix(firstLine(err.Error()), "yaml: ")}}
+	}
+	if n, why := refused(&doc); n != nil {
+		return nil, []Problem{{n.Line, n.Column, why}}
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
 		return nil, []Problem{{1, 1, "a change set is a mapping with a list called changes"}}
@@ -152,6 +161,81 @@ func ParseSet(data []byte) (*Set, []Problem) {
 	return set, nil
 }
 
+// joinSurrogates turns the pairs of escapes that JSON uses for a character outside the first plane, such as \ud83d\ude00,
+// into the character. A backslash that is itself escaped is left alone.
+func joinSurrogates(data []byte) []byte {
+	if !bytes.Contains(data, []byte("\\u")) {
+		return data
+	}
+	hex := func(b []byte) (rune, bool) {
+		if len(b) < 6 || b[0] != '\\' || b[1] != 'u' {
+			return 0, false
+		}
+		n, err := strconv.ParseUint(string(b[2:6]), 16, 32)
+		return rune(n), err == nil
+	}
+	out := make([]byte, 0, len(data))
+	for i := 0; i < len(data); {
+		if data[i] != '\\' {
+			out = append(out, data[i])
+			i++
+			continue
+		}
+		if hi, ok := hex(data[i:]); ok && hi >= 0xD800 && hi < 0xDC00 {
+			if lo, ok := hex(data[i+6:]); ok && lo >= 0xDC00 && lo < 0xE000 {
+				out = utf8.AppendRune(out, utf16.DecodeRune(hi, lo))
+				i += 12
+				continue
+			}
+		}
+		out = append(out, data[i])
+		if i+1 < len(data) {
+			out = append(out, data[i+1])
+		}
+		i += 2
+	}
+	return out
+}
+
+// refused finds what a change set may not hold: an anchor or an alias, which can be made to point at itself or to grow
+// without end, and the characters that go-yaml reads as the end of a line and an editor does not show.
+func refused(n *yaml.Node) (*yaml.Node, string) {
+	if n.Kind == yaml.AliasNode || n.Anchor != "" {
+		return n, "a change set has no anchors or aliases (& and *). Write the value out"
+	}
+	if strings.ContainsAny(n.Value, "\u0085\u2028\u2029") {
+		return n, "a line separator character (U+0085, U+2028 or U+2029) is in the text. Take it out"
+	}
+	for _, c := range n.Content {
+		if bad, why := refused(c); bad != nil {
+			return bad, why
+		}
+	}
+	return nil, ""
+}
+
+// isNull says whether a node is a null, which is how JSON writes a value that is not there.
+func isNull(n *yaml.Node) bool { return n.Kind == yaml.ScalarNode && n.Tag == "!!null" }
+
+// badFile says what is wrong with the file that a new record is written to, or nothing. It is a yaml file in the folder
+// of its kind or in a folder below it, under a name that the loader reads. The words that come after the message are
+// the reason, or empty when the file is not in that folder at all.
+func badFile(file, folder string) string {
+	top, _, nested := strings.Cut(file, "/")
+	if !fs.ValidPath(file) || !nested || top != folder || !(strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml")) {
+		return "."
+	}
+	if strings.ContainsAny(file, "\\:\x00") {
+		return ". Write the path with / and without : in it"
+	}
+	for _, part := range strings.Split(file, "/")[1:] {
+		if load.Skipped(part) {
+			return ". Assess does not read " + part + ", so the record would be lost"
+		}
+	}
+	return ""
+}
+
 func firstLine(s string) string {
 	line, _, _ := strings.Cut(s, "\n")
 	return line
@@ -169,19 +253,30 @@ func parseChange(n *yaml.Node) (Change, []Problem) {
 	}
 	var attrs *yaml.Node
 	hasText := false
+	// text reads a field that is words. A null is a field that is not given, and anything but text is a problem.
+	text := func(k, v *yaml.Node) string {
+		switch {
+		case isNull(v):
+			return ""
+		case v.Kind != yaml.ScalarNode || v.Tag != "!!str":
+			bad(v, "%s is text. Put it in quotes if it is a number or true or false", k.Value)
+			return ""
+		}
+		return v.Value
+	}
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		k, v := n.Content[i], n.Content[i+1]
 		switch k.Value {
 		case "op":
-			c.Op = v.Value
+			c.Op = text(k, v)
 		case "kind":
-			c.Kind = v.Value
+			c.Kind = text(k, v)
 		case "id":
-			c.ID = v.Value
+			c.ID = text(k, v)
 		case "parent":
-			c.Parent = v.Value
+			c.Parent = text(k, v)
 		case "file":
-			c.File = v.Value
+			c.File = text(k, v)
 		case "attributes":
 			attrs = v
 		case "cascade":
@@ -190,15 +285,17 @@ func parseChange(n *yaml.Node) (Change, []Problem) {
 			}
 			c.Cascade = v.Value == "true"
 		case "was":
-			c.Was = v
+			if !isNull(v) { // null says that nothing is expected
+				c.Was = v
+			}
 		case "new":
 			if v.Kind != yaml.ScalarNode || (v.Value != "true" && v.Value != "false") {
 				bad(v, "new is true or false")
 			}
 			c.New = v.Value == "true"
 		case "text":
-			c.Text = v.Value
-			hasText = v.Kind == yaml.ScalarNode
+			c.Text = text(k, v)
+			hasText = v.Kind == yaml.ScalarNode && v.Tag == "!!str"
 		default:
 			bad(k, "%s is not allowed in a change. A change has op, kind, id, parent, file, attributes, was, new and, on a delete, cascade. A write has op, file, text and was", k.Value)
 		}
@@ -219,13 +316,15 @@ func parseChange(n *yaml.Node) (Change, []Problem) {
 	if !known {
 		bad(n, "kind %q is not a kind of record. The kinds are %s", c.Kind, strings.Join(iso21434.Words(), ", "))
 	}
-	if strings.Fields(c.ID) == nil || len(strings.Fields(c.ID)) != 1 {
+	switch {
+	case strings.Fields(c.ID) == nil || len(strings.Fields(c.ID)) != 1:
 		bad(n, "id must be one word, got %q", c.ID)
+	case !iso21434.ValidID(c.ID):
+		bad(n, "%q is not a valid id. Use letters, digits, '.', '_' and '-', starting with a letter or digit", c.ID)
 	}
 	if c.File != "" && known {
-		top, _, nested := strings.Cut(c.File, "/")
-		if !fs.ValidPath(c.File) || !nested || top != kind.Folder || !(strings.HasSuffix(c.File, ".yaml") || strings.HasSuffix(c.File, ".yml")) {
-			bad(n, "file must be a yaml file in %s/, got %q", kind.Folder, c.File)
+		if why := badFile(c.File, kind.Folder); why != "" {
+			bad(n, "file must be a yaml file in %s/, got %q%s", kind.Folder, c.File, why)
 		}
 	}
 	switch {

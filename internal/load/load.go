@@ -79,6 +79,10 @@ type Result struct {
 // skipped too.
 var skipDirs = map[string]bool{"out": true, "vendor": true, "node_modules": true}
 
+// Skipped says whether a folder or file name is left out when the record files are searched: a name that starts with a
+// dot, or a folder that holds other things than records.
+func Skipped(name string) bool { return strings.HasPrefix(name, ".") || skipDirs[name] }
+
 // Load reads the project rooted at root.
 func Load(root string) *Result {
 	r := &Result{Index: source.NewIndex()}

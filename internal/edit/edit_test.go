@@ -104,6 +104,17 @@ func TestParseSetSaysWhatIsWrongAndWhere(t *testing.T) {
 		{"a file that is not YAML", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/x.txt"}]}`, "file must be a yaml file in item/", 1},
 		{"a heading as an attribute", `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"interface x": {"name": "X"}}}]}`, "is a record heading, not an attribute", 1},
 		{"an attribute twice", "changes:\n  - op: put\n    kind: component\n    id: a\n    attributes:\n      name: A\n      name: B\n", "written twice", 7},
+		{"a null for the text of a file", `{"changes": [{"op": "write", "file": "policy.yaml", "text": null}]}`, "a write needs the file and its text", 1},
+		{"a null for an id", `{"changes": [{"op": "put", "kind": "component", "id": null}]}`, "id must be one word", 1},
+		{"an id that is a number", `{"changes": [{"op": "put", "kind": "component", "id": 123}]}`, "id is text", 1},
+		{"an id with a slash", `{"changes": [{"op": "put", "kind": "component", "id": "a/b"}]}`, `"a/b" is not a valid id`, 1},
+		{"an alias", "apiVersion: assess/v1beta1\nchanges: &a [*a]\n", "no anchors or aliases", 2},
+		{"a line separator", "{\"changes\": [{\"op\": \"put\", \"kind\": \"component\", \"id\": \"a\", \"attributes\": {\"name\": \"A\u2028B\"}}]}", "line separator", 1},
+		{"a file with a backslash", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/a\\b.yaml"}]}`, "without : in it", 1},
+		{"a file with a colon", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/C:x.yaml"}]}`, "without : in it", 1},
+		{"a file in a folder that is not read", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/vendor/x.yaml"}]}`, "does not read vendor", 1},
+		{"a file that is hidden", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/.x.yaml"}]}`, "does not read .x.yaml", 1},
+		{"a lone surrogate", `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"name": "\ud83d"}}]}`, "found invalid Unicode character escape code", 1},
 	}
 	_ = good
 	for _, c := range cases {
@@ -125,6 +136,18 @@ func TestParseSetSaysWhatIsWrongAndWhere(t *testing.T) {
 				t.Errorf("want %q in %+v", c.want, probs)
 			}
 		})
+	}
+}
+
+func TestAChangeSetFromAProgramThatEscapesEveryCharacterIsRead(t *testing.T) {
+	// Python writes a character outside the first plane as a pair of escapes. A backslash that is escaped stays text.
+	set := parse(t, `{"changes": [{"op": "put", "kind": "component", "id": "a", "parent": null, "was": null, "attributes": {"name": "Hi \ud83d\ude00", "description": "\\ud83d\\ude00"}}]}`)
+	attrs := set.Changes[0].Attrs
+	if attrs.Content[1].Value != "Hi \U0001F600" || attrs.Content[3].Value != `\ud83d\ude00` {
+		t.Errorf("%q %q", attrs.Content[1].Value, attrs.Content[3].Value)
+	}
+	if set.Changes[0].Parent != "" || set.Changes[0].Was != nil {
+		t.Errorf("a null is a field that is not given: %+v", set.Changes[0])
 	}
 }
 
@@ -330,6 +353,75 @@ func TestCascade(t *testing.T) {
 	// five more are changed: the function that uses it, the damage scenario that compromises it, two steps and a control
 	if out.Brought != 8 {
 		t.Errorf("eight records came with it: %d", out.Brought)
+	}
+}
+
+// applyTo applies a change set to files that a test writes, and returns what Apply returns.
+func applyTo(t *testing.T, in map[string]string, changes string) (*edit.Outcome, []edit.Problem) {
+	t.Helper()
+	files := map[string][]byte{}
+	for name, text := range in {
+		files[name] = []byte(text)
+	}
+	return edit.Apply(files, parse(t, changes), "")
+}
+
+func TestAFileWithMoreThanOneDocumentIsNotEdited(t *testing.T) {
+	in := map[string]string{"item/architecture.yaml": "component a:\n  name: A\n---\ncomponent b:\n  name: B\n"}
+	for name, changes := range map[string]string{
+		"a put in the first document":  `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"name": "X"}}]}`,
+		"a delete in the second one":   `{"changes": [{"op": "delete", "kind": "component", "id": "b"}]}`,
+		"a record that is new in them": `{"changes": [{"op": "put", "kind": "component", "id": "c", "file": "item/architecture.yaml", "attributes": {"name": "C"}}]}`,
+	} {
+		out, probs := applyTo(t, in, changes)
+		if out != nil || len(probs) == 0 || !strings.Contains(probs[0].Msg, "has more than one YAML document") {
+			t.Errorf("%s: %+v %+v", name, out, probs)
+		}
+	}
+}
+
+func TestALineSeparatorThatAnEditorDoesNotShowStopsAnEdit(t *testing.T) {
+	in := map[string]string{"item/architecture.yaml": "component a:\n  name: \"A\u2028B\"\n  description: text\n"}
+	_, probs := applyTo(t, in, `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"description": "new"}}]}`)
+	if len(probs) == 0 || !strings.Contains(probs[0].Msg, "line separator") {
+		t.Errorf("%+v", probs)
+	}
+}
+
+func TestTheCommentAfterABlockScalarIsNotPartOfIt(t *testing.T) {
+	in := map[string]string{"item/architecture.yaml": "component a:\n  name: A\n  description: |\n    first line\n    second line\n\n# Section B\n\ncomponent b:\n  name: B\n"}
+	out, probs := applyTo(t, in, `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"description": "New"}}]}`)
+	if len(probs) != 0 {
+		t.Fatal(probs)
+	}
+	got := string(out.Files["item/architecture.yaml"])
+	if !strings.Contains(got, "description: New\n") || strings.Contains(got, "second line") || !strings.Contains(got, "\n# Section B\n\ncomponent b:") {
+		t.Errorf("%s", got)
+	}
+	out, probs = applyTo(t, in, `{"changes": [{"op": "delete", "kind": "component", "id": "a"}]}`)
+	if len(probs) != 0 || !strings.Contains(string(out.Files["item/architecture.yaml"]), "# Section B") {
+		t.Errorf("a delete keeps the comment of the next section: %+v\n%s", probs, out.Files["item/architecture.yaml"])
+	}
+}
+
+func TestAnAttributeIsAddedWhileTheFirstRecordInsideIsDeleted(t *testing.T) {
+	in := map[string]string{"item/architecture.yaml": "component tcu:\n  name: TCU\n  interface debug-port:\n    name: Debug port\n"}
+	out, probs := applyTo(t, in, `{"changes": [
+		{"op": "delete", "kind": "interface", "id": "debug-port"},
+		{"op": "put", "kind": "component", "id": "tcu", "attributes": {"description": "New"}}]}`)
+	if len(probs) != 0 {
+		t.Fatal(probs)
+	}
+	if got := string(out.Files["item/architecture.yaml"]); got != "component tcu:\n  name: TCU\n  description: New\n" {
+		t.Errorf("%q", got)
+	}
+}
+
+func TestANewRecordIsNotWrittenToAFileThatDiffersOnlyInCase(t *testing.T) {
+	in := map[string]string{"tara/controls.yaml": "control a:\n  name: A\n"}
+	_, probs := applyTo(t, in, `{"changes": [{"op": "put", "kind": "control", "id": "b", "file": "tara/Controls.yaml", "attributes": {"name": "B"}}]}`)
+	if len(probs) == 0 || !strings.Contains(probs[0].Msg, "is the same file as tara/controls.yaml") {
+		t.Errorf("%+v", probs)
 	}
 }
 

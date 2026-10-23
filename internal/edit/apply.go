@@ -566,6 +566,12 @@ func (a *applier) insertTop(p *put, done map[*put]bool) {
 	}
 	f := a.texts[name]
 	if f == nil {
+		for other := range a.texts {
+			if strings.EqualFold(other, name) {
+				a.probs = append(a.probs, Problem{p.line, p.col, fmt.Sprintf("%s is the same file as %s on a disk that does not tell capital letters apart. Use %s", name, other, other)})
+				return
+			}
+		}
 		f = &fileText{name: name, eol: "\n", isNew: true}
 		if m := schema.Modeline(name); m != "" {
 			f.lines = strings.Split(strings.TrimRight(m, "\n"), "\n")
