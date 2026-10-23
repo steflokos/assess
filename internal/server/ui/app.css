@@ -173,7 +173,7 @@ ol.path li.todo .ptext { color: var(--muted); }
 
 /* ---- tables and lists ---------------------------------------------------------------------------------------- */
 table.t { width: 100%; border-collapse: collapse; font-size: .9rem; }
-table.t th { text-align: left; padding: 10px var(--s4); font-size: .72rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--raised); position: sticky; top: 0; z-index: 1; }
+table.t th { text-align: left; padding: 10px var(--s4); font-size: .72rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--raised); }
 table.t th:first-child { border-top-left-radius: var(--r3); }
 table.t th:last-child { border-top-right-radius: var(--r3); }
 table.t td { padding: 10px var(--s4); border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -188,7 +188,7 @@ button.sort { display: inline-flex; align-items: center; gap: 4px; border: 0; ba
 button.sort:hover { color: var(--fg); }
 th[aria-sort="ascending"] .arrow::after { content: "↑"; }
 th[aria-sort="descending"] .arrow::after { content: "↓"; }
-@media (max-width: 860px) { .card.scroll { overflow-x: auto; } table.t th { position: static; } }
+@media (max-width: 860px) { .card.scroll { overflow-x: auto; } }
 table.decide td:first-child { width: 34%; }
 
 input, select, textarea { font: inherit; font-size: .92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r2); padding: 7px var(--s3); width: 100%; }
