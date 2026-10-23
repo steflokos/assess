@@ -44,13 +44,19 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	if fl.NArg() < 1 || !slices.Contains([]string{"assets", "threats", "risks"}, fl.Arg(0)) {
-		fmt.Fprintln(stderr, "usage: assess generate [-force] assets|threats|risks [dir]")
+	if fl.NArg() >= 1 && !slices.Contains([]string{"assets", "threats", "risks"}, fl.Arg(0)) && !strings.HasPrefix(fl.Arg(0), "-") {
+		if near, ok := load.Closest(fl.Arg(0), []string{"assets", "threats", "risks"}); ok {
+			return o.fail("there is nothing to generate called %q. Did you mean %s?", fl.Arg(0), near)
+		}
+	}
+	if flagAfter(o, fl) {
 		return exitUsage
 	}
+	if fl.NArg() < 1 || !slices.Contains([]string{"assets", "threats", "risks"}, fl.Arg(0)) {
+		return o.fail("say what to generate: assess generate [flags] assets|threats|risks [dir]")
+	}
 	if *force && fl.Arg(0) != "assets" {
-		fmt.Fprintf(stderr, "assess generate: -force applies only to assets")
-		return exitUsage
+		return o.fail("-force applies only to assets")
 	}
 	dir := "."
 	switch fl.NArg() {
@@ -58,8 +64,7 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	case 2:
 		dir = fl.Arg(1)
 	default:
-		fmt.Fprintln(stderr, "assess generate: expected at most one directory")
-		return exitUsage
+		return o.fail("expected at most one folder")
 	}
 
 	unlock, err := atomic.Lock(dir, true)
@@ -98,6 +103,10 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	if path == "" {
 		if len(out.Skipped) > 0 {
 			fmt.Fprintf(w, "nothing added: %s could not be created\n", plural(len(out.Skipped), "threat scenario"))
+			return o.finish(code, nil, result)
+		}
+		if out.Total == 0 {
+			fmt.Fprintln(w, "nothing to add: no asset has a property yet. Write the assets first with assess generate assets")
 			return o.finish(code, nil, result)
 		}
 		fmt.Fprintf(w, "nothing to add: all %d asset properties of the architecture already have a threat scenario\n", out.Total)

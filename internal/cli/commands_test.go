@@ -21,17 +21,57 @@ import (
 
 func TestNoArgumentsAndUnknownCommands(t *testing.T) {
 	r := run(t)
-	if r.code != 2 || !strings.Contains(r.err, "usage: assess <command>") {
-		t.Errorf("no arguments: exit %d\n%s", r.code, r.err)
+	if r.code != 0 || !strings.Contains(r.out, "usage: assess <command>") || !strings.Contains(r.out, "assess init my-tara") {
+		t.Errorf("no arguments show what to do first: exit %d\n%s", r.code, r.out)
 	}
 	r = run(t, "frobnicate")
-	if r.code != 2 || !strings.Contains(r.err, `unknown command "frobnicate"`) {
+	if r.code != 2 || !strings.Contains(r.err, `there is no command "frobnicate"`) {
 		t.Errorf("an unknown command: exit %d\n%s", r.code, r.err)
+	}
+	if r := run(t, "valdiate"); r.code != 2 || !strings.Contains(r.err, "Did you mean validate?") {
+		t.Errorf("a typo is met with the command that was meant: %+v", r)
 	}
 	for _, h := range []string{"help", "-h", "--help"} {
 		if r := run(t, h); r.code != 0 || !strings.Contains(r.out, "usage: assess") {
 			t.Errorf("%s: exit %d", h, r.code)
 		}
+	}
+}
+
+func TestHelpOfACommandSaysHowItIsWritten(t *testing.T) {
+	for cmd, want := range map[string]string{"apply": "usage: assess apply [flags] <change set file, or - for standard input> [dir]", "delete": "usage: assess delete [flags] <kind> <id> [dir]", "validate": "usage: assess validate [flags] [dir]"} {
+		for _, args := range [][]string{{"help", cmd}, {cmd, "-h"}} {
+			if r := run(t, args...); r.code != 0 || !strings.Contains(r.err, want) || !strings.Contains(r.err, "Flags:") {
+				t.Errorf("%v: exit %d\n%s", args, r.code, r.err)
+			}
+		}
+	}
+	if r := run(t, "help", "nothing"); r.code != 2 {
+		t.Errorf("help of a command that is not there: %+v", r)
+	}
+}
+
+func TestApplyAndGenerateSayWhatIsWrongWithWhatWasGiven(t *testing.T) {
+	dir := testproject.Copy(t)
+	for name, c := range map[string]struct {
+		args []string
+		want string
+	}{
+		"a folder for the change set":    {[]string{"apply", dir}, "is a folder. Give the change set first"},
+		"a change set that is not there": {[]string{"apply", filepath.Join(dir, "no-such.json")}, "does not exist"},
+		"a flag after the folder":        {[]string{"generate", "assets", dir, "-force"}, "Put the flags first"},
+		"a word that is almost one":      {[]string{"generate", "asets", dir}, "Did you mean assets?"},
+		"nothing to generate":            {[]string{"generate", dir}, "say what to generate"},
+		"a folder without a project":     {[]string{"lint", t.TempDir()}, "has no assess.yaml"},
+	} {
+		r := run(t, c.args...)
+		if r.code != 2 && r.code != 1 || !strings.Contains(r.err+r.out, c.want) {
+			t.Errorf("%s: exit %d\n%s%s", name, r.code, r.out, r.err)
+		}
+	}
+	// a folder that has no project does not also say that the project has errors
+	if r := run(t, "lint", t.TempDir()); strings.Contains(r.err, "the project has errors") {
+		t.Errorf("%s", r.err)
 	}
 }
 

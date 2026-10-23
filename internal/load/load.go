@@ -90,8 +90,12 @@ func Load(root string) *Result {
 	cfgBytes, err := os.ReadFile(cfgPath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			where := root
+			if root == "." || root == "" {
+				where = "this folder"
+			}
 			r.Diags.Errorf(CodeNoWorkspace, source.Loc{File: ConfigFile},
-				"%s has no %s. Run assess init to create a project", root, ConfigFile)
+				"%s has no %s. Run assess init to create a project", where, ConfigFile)
 		} else {
 			r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "%v", err)
 		}

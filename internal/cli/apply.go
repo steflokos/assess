@@ -56,6 +56,9 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
+	if flagAfter(o, fl) {
+		return exitUsage
+	}
 	setName, dir := "-", "."
 	switch fl.NArg() {
 	case 0:
@@ -71,12 +74,21 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	label := setName
 	if setName == "-" {
 		label = "<stdin>"
+		if f, ok := in.(*os.File); ok && isTerminal(f) {
+			fmt.Fprintln(stderr, "assess apply: reading the change set from standard input. End it with Ctrl+D")
+		}
 		data, err = io.ReadAll(in)
 	} else {
+		if info, e := os.Stat(setName); e == nil && info.IsDir() {
+			return o.fail("%s is a folder. Give the change set first, and then the folder: assess apply <change set file> [dir]", setName)
+		}
 		data, err = os.ReadFile(setName)
 	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return o.fail("the change set %s does not exist", setName)
+	}
 	if err != nil {
-		return o.fail("%v", err)
+		return o.fail("the change set %s cannot be read: %v", setName, reason(err))
 	}
 	set, ps := edit.ParseSet(data)
 	if len(ps) > 0 {
@@ -132,9 +144,7 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	// A change set that only writes the plain files may be the one that repairs them, so errors in the project do not stop
 	// it. What it would leave is judged below, on the project as it would be.
 	if res.Workspace == nil || (before.Count(diag.Error) > 0 && !writesOnly(set)) {
-		o.show(before)
-		fmt.Fprintf(o.stderr, "assess %s: the project has errors. Run assess validate and fix them first\n", o.cmd)
-		return o.finish(exitFindings, before, nil)
+		return projectRefused(o, res, before)
 	}
 	files := map[string][]byte{}
 	for _, rel := range res.Files {

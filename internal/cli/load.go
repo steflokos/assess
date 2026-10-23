@@ -81,10 +81,18 @@ func fileList(files []string) string {
 func loadChecked(o *output, dir string) (*load.Result, bool) {
 	res, diags := checkProject(dir)
 	if diags.Count(diag.Error) > 0 || res.Workspace == nil {
-		o.show(diags)
-		fmt.Fprintf(o.stderr, "assess %s: the project has errors. Run assess validate and fix them first\n", o.cmd)
-		o.finish(exitFindings, diags, nil)
+		projectRefused(o, res, diags)
 		return nil, false
 	}
 	return res, true
+}
+
+// projectRefused shows why a command will not work on a project, and ends it with exitFindings. The advice to run validate is for a
+// project that is there and has errors. A folder with no project, or a project that is locked, says what is wrong by itself.
+func projectRefused(o *output, res *load.Result, diags diag.List) int {
+	o.show(diags)
+	if res.Workspace != nil {
+		fmt.Fprintf(o.stderr, "assess %s: the project has errors. Run assess validate and fix them first\n", o.cmd)
+	}
+	return o.finish(exitFindings, diags, nil)
 }

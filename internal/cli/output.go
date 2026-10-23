@@ -5,8 +5,10 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 
 	"github.com/steflokos/assess/internal/diag"
 	"github.com/steflokos/assess/internal/model"
@@ -129,4 +131,13 @@ func (o *output) refuse(result any, format string, args ...any) int {
 	var ds diag.List
 	ds.Errorf("refused", source.Loc{}, "%s", msg)
 	return o.finish(exitFindings, ds, result)
+}
+
+// reason is what went wrong with a file, without the name of the file and the call that failed, for a message that already says which file.
+func reason(err error) string {
+	var pe *fs.PathError
+	if errors.As(err, &pe) {
+		return pe.Err.Error()
+	}
+	return err.Error()
 }

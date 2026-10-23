@@ -223,7 +223,7 @@ func (b *builder) functions() Section {
 			if len(st.Over) > 0 {
 				where = append(where, "over "+strings.Join(st.Over, ", "))
 			}
-			flow.Items = append(flow.Items, Line{Text: fmt.Sprintf("%d. %s", i+1, st.Step), Note: strings.Join(where, "; ")})
+			flow.Items = append(flow.Items, Line{Text: fmt.Sprintf("%d. %s", i+1, st.Step), Note: strings.Join(where, ", ")})
 		}
 		if len(flow.Items) == 0 {
 			flow = txt("-")
@@ -541,7 +541,7 @@ func (b *builder) feasibility() Section {
 		row := Row{Cells: []Cell{link(r.Threat, aThreat+r.Threat)}}
 		for i, o := range []*engine.Outcome{r.Base, r.Residual} {
 			if o == nil {
-				row.Cells = append(row.Cells, open(strings.Join(notCalculated(r), "; ")), txt("-"))
+				row.Cells = append(row.Cells, open(strings.Join(notCalculated(r), ", ")), txt("-"))
 				continue
 			}
 			row.Cells = append(row.Cells, feasibilityCell(o), b.outlineCell(o.Best, i == 1))
@@ -623,7 +623,7 @@ func (b *builder) riskValues() Section {
 		}
 		tr := r.Risk
 		if tr == nil {
-			top.Rows = append(top.Rows, Row{Cells: []Cell{link(r.Threat, aThreat+r.Threat), open(""), txt("-"), open(""), txt("-"), open(strings.Join(r.RiskIssues, "; "))}})
+			top.Rows = append(top.Rows, Row{Cells: []Cell{link(r.Threat, aThreat+r.Threat), open(""), txt("-"), open(""), txt("-"), open(strings.Join(r.RiskIssues, ", "))}})
 			continue
 		}
 		typ := txt("-")

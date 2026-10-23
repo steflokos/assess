@@ -10,7 +10,7 @@ import { overview, list, decisions, openItems, calc, explain, reportView, diagra
 import { openPalette } from './palette.js';
 import { notFound, empty } from './parts.js';
 
-const state = { dirty: false, hash: '', suppress: false, changedOnDisk: false, drawn: '' };
+const state = { dirty: false, hash: '', suppress: false, changedOnDisk: false, drawn: '', pageTitle: '' };
 
 // ---- the way through the page ----------------------------------------------------------------------------------------------------------
 const unescape = (s) => { try { return decodeURIComponent(s); } catch (e) { return s; } }; // an address that was typed by hand may be broken
@@ -36,7 +36,8 @@ const ui = {
 
 function paintTitle() {
   const item = (S.of.item || [])[0];
-  document.title = (state.dirty ? '• ' : '') + (item ? nameOf('item', item.id) + ' · ' : '') + 'assess';
+  // the page, the item and the tool, so that the history of the browser and its tabs tell the pages apart
+  document.title = (state.dirty ? '• ' : '') + [state.pageTitle, item ? nameOf('item', item.id) : '', 'assess'].filter(Boolean).join(' · ');
 }
 
 window.addEventListener('hashchange', () => {
@@ -138,6 +139,8 @@ function render() {
   else if (a === 'files') view = files(ui);
   else view = notFound('There is no such page.');
   main.append(view);
+  state.pageTitle = (main.querySelector('h1') || {}).textContent || '';
+  paintTitle();
   main.scrollTop = again ? top : 0;
   if (!again) { // a screen reader and the keyboard start at the new page
     const heading = main.querySelector('h1');

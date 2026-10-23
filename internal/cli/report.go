@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -76,8 +77,12 @@ func runReport(args []string, stdout, stderr io.Writer) int {
 			path = filepath.Join(dir, filepath.FromSlash(name))
 		}
 		src, err := os.ReadFile(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			fmt.Fprintf(stderr, "assess report: the template %s does not exist. assess template -o %s writes the standard one to start from\n", path, path)
+			return exitUsage
+		}
 		if err != nil {
-			fmt.Fprintln(stderr, "assess report:", err)
+			fmt.Fprintf(stderr, "assess report: the template %s cannot be read: %v\n", path, reason(err))
 			return exitUsage
 		}
 		var errs []report.TemplateError
@@ -115,11 +120,11 @@ func runReport(args []string, stdout, stderr io.Writer) int {
 			path = filepath.Join(dir, filepath.FromSlash(defaultReport))
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			fmt.Fprintln(stderr, "assess report:", err)
+			fmt.Fprintf(stderr, "assess report: the folder for %s cannot be made: %v\n", path, reason(err))
 			return exitUsage
 		}
 		if err := atomic.WriteFile(path, page.Bytes(), 0o644); err != nil {
-			fmt.Fprintln(stderr, "assess report:", err)
+			fmt.Fprintf(stderr, "assess report: %s cannot be written: %v\n", path, reason(err))
 			return exitUsage
 		}
 		fmt.Fprintf(stderr, "assess: wrote %s\n", path)

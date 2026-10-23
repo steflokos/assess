@@ -602,7 +602,8 @@ assess hashes the content of an iteration with SHA-256. It writes the content in
 order of lines in the file do not change the hash. The form is `Canonical` in `internal/model/iteration.go`, if you
 want to compute a hash yourself. Each iteration also holds the hash of the one before it. Change anything in a closed
 iteration and its hash no longer matches. Change the hash too, and the next iteration no longer points at it. Either
-way the chain breaks where you made the change.
+way the chain breaks where you made the change. The rationale and the reference of a decision are not stored in the iteration. A short
+code of 8 hex characters stands for each, so a changed text is found, but the code is short.
 
 ```sh
 assess verify my-tara
@@ -648,8 +649,9 @@ needs only the signature and the public key, and it checks them against the hash
 assess sign -signature <base64> -public jane.pub my-tara       # or -public - to read the public key from standard input
 ```
 
-You can say once where the public keys are, with `keys: keys` in `assess.yaml`. The path is relative to the project,
-and `-keys` wins over it. A signature that has no key to check it shows as *not checked*. That does not fail
+You can say once where the public keys are, with `keys: keys` in `assess.yaml`. The path is relative to the project and has to stay inside it,
+and `-keys` wins over it. `verify` shows the start of each key next to the name, because the name is a label that anyone who can
+edit the file can change. A signature that repeats the key of another one in the same iteration is reported as wrong. A signature that has no key to check it shows as *not checked*. That does not fail
 `assess verify`, unless you use `-strict`. The signature covers the hash, so it also covers every iteration before it.
 Several people can sign the same iteration, each with their own key. The same key signs an iteration only once.
 
@@ -753,11 +755,11 @@ shape:
 
 - `ok` is true when the command exited with 0.
 - `diagnostics` is a list of errors and warnings. Each one has a `severity`, a `code`, a `file`, a `line`, a
-  `column` and a `message`. It is a list even when it is empty. It is filled when the project has errors too, so a
+  `column` and a `message`. A `line` or a `column` that is not known is left out. It is a list even when it is empty. It is filled when the project has errors too, so a
   program never has to read text.
 - `result` is what the command found. It is left out when there is nothing to say.
 
-In this mode the human text of a command goes to stderr. The exit code is `0` when all is well, `1` when the project
+In this mode the human text of a command goes to stderr. A wrong call is a document too, with the reason in `diagnostics`. The exit code is `0` when all is well, `1` when the project
 has findings (errors, or warnings under `-strict`) and `2` when the command line is wrong or something failed.
 
 ### Reading a project
@@ -806,13 +808,18 @@ writes the records for it. It takes a change set, in JSON or in YAML:
   still refers to what you delete, the change set is refused, and `blocked` lists the records. Either delete those
   records in the same change set, or add `"cascade": true` to the delete. It then does what `assess delete -cascade`
   does (see "Deleting records"), and the result lists each record that it deleted or changed, with a `reason`.
-- `-source name` adds `notes: {source: name}` to every record that the change set creates or changes. Rules can
-  read it (see "Rules"), so a company can ask for a review of everything that came from a tool.
+- `-source name` adds `notes: {source: name}` to every record that the change set creates or changes. A record that has a
+  `source` already keeps it. Rules can read it (see "Rules"), so a company can ask for a review of everything that came from a tool.
 - `-dry-run` shows what would change, as a diff, and writes nothing.
+- `apply` edits a file as text, so it does not edit a file that it cannot read by lines: a file with more than one YAML document, or one
+  with a line separator character (U+0085, U+2028 or U+2029) that an editor does not show. It says so, and you change that file yourself.
+  A change set cannot use YAML anchors or aliases (`&` and `*`), and a new record's `file` cannot start with a dot or sit in a folder that
+  assess does not read (`out`, `vendor` or `node_modules`).
 - `was` says what the attributes held when you read them, as a mapping from the name to the value, and `null` for an attribute that was
   not there. If one of them holds something else now, nothing is written, and the result has `conflicts`: each one has the `kind`, the `id`,
-  the `attribute`, what it `was` and what it is `now`. Only the attributes that the change names are compared, so two people who change
-  different attributes or different records do not collide. A put with `"new": true` says that the record must not exist yet.
+  the `attribute`, what it `was` and what it is `now`. Only the attributes that `was` names are compared. Name the ones that you change, and
+  not the whole record, so that two people who change different attributes or different records do not collide. A `was` of `null`
+  says that nothing is expected. A put with `"new": true` says that the record must not exist yet.
 - `{"op": "write", "file": "policy.yaml", "text": "…", "was": "sha256:…"}` writes one of the plain files as a whole: `assess.yaml`,
   `project.yaml` or the policy. `export` gives the text of each of them with its hash, and a file that has another hash now is a
   conflict. The dry run shows the diff and the `effects`.
@@ -845,7 +852,8 @@ Every command that writes does it in one piece, so an editor never sees half a f
 records (`apply`, `delete`, `generate`, `finalize` and `sign`) also lock the project while they work. Two of them at the same time take
 turns, so no change is lost. A command that only reads waits until a change is finished, so it never sees one
 half done. A command waits up to 30 seconds for the lock and then stops with an error. The lock is gone when the
-command ends, even if the command was killed. The same files always give the same output, so a run can be repeated
+command ends, even if the command was killed. That holds on a disk of this computer on Linux and macOS. On Windows, and on a disk that
+cannot lock, readers do not wait, and a command that was killed leaves a lock file behind for five minutes. The same files always give the same output, so a run can be repeated
 and compared.
 
 ## Editor support
@@ -853,8 +861,8 @@ and compared.
 `assess init` writes the editor files, and so does `assess schema` in an existing project. They are:
 
 - `.assess/schema.json` for the record files
-- `.assess/schema-assess.json`, `.assess/schema-project.json` and `.assess/schema-policy.json`, one for each
-  file at the root
+- `.assess/schema-assess.json`, `.assess/schema-project.json`, `.assess/schema-policy.json` and `.assess/schema-iterations.json`,
+  one for each file at the root
 - `.assess/ids.json`, which holds the ids of your records (see below)
 - `.vscode/settings.json`, `.vscode/extensions.json` and `.vscode/tasks.json`, if they do not exist yet
 
@@ -893,7 +901,7 @@ with the key for Trigger Suggest (Ctrl+Space by default). The list only gives su
 any other value, and `assess validate` tells you which ids do not exist.
 
 The ids come from `.assess/ids.json`. Every assess command that reads the project rewrites the file when the
-ids have changed. `assess schema -watch` rewrites it each time you save a file. In VS Code, the task in
+ids have changed, also `validate` and a dry run. `assess schema -watch` rewrites it each time you save a file. In VS Code, the task in
 `.vscode/tasks.json` starts it when you open the folder. VS Code asks once if automatic tasks may run, and
 `assess` must be on your PATH. In another editor, run `assess schema -watch` in a terminal.
 
@@ -920,7 +928,8 @@ assess serve my-tara
 ```
 
 assess prints an address that ends in `#t=` and a token. Open the whole address. The token is new on every run. Without it, the
-page cannot read or write anything. `-addr 127.0.0.1:9000` picks another port.
+page cannot read or write anything. `-addr 127.0.0.1:9000` picks another port. The address is 127.0.0.1, localhost or [::1]. At [::1] the
+report opens in a tab of its own, because a browser cannot be told to allow that address in a frame.
 
 What you can do in the page:
 
@@ -955,7 +964,9 @@ Three more things that the page does:
 - **It creates the project.** In a folder with no project, `assess serve` offers to create one.
 
 The page has no login, so `assess serve` listens on this computer only and refuses any other address. A web page that is open in
-the same browser cannot use it, because every request has to carry the token. The page runs the same commands as the command line,
+the same browser cannot use it, because every request has to carry the token. The report and the diagrams are loaded by a frame and an
+image, which cannot send a header, so they get a token of their own in the address. It opens those two pages and nothing else. The token
+of the API is never in an address, so a script in a report template cannot use it. The page runs the same commands as the command line,
 so what it writes passes the same checks as `assess apply`.
 
 ## Versions and compatibility

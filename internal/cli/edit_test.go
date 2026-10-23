@@ -613,7 +613,7 @@ func TestAUsageErrorIsAJSONDocumentToo(t *testing.T) {
 		}
 	}
 	r := run(t, "validate", dir, "-strict")
-	if r.code != 2 || !strings.Contains(r.err, "-strict comes after the folder") || !strings.Contains(r.err, "Put the flags before the folder") {
+	if r.code != 2 || !strings.Contains(r.err, "-strict is in the wrong place") || !strings.Contains(r.err, "Put the flags first") {
 		t.Errorf("%+v", r)
 	}
 }

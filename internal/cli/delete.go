@@ -36,6 +36,9 @@ func runDelete(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
+	if flagAfter(o, fl) {
+		return exitUsage
+	}
 	if fl.NArg() < 2 || fl.NArg() > 3 {
 		return o.fail("expected a kind and an id, and at most one directory: assess delete [-cascade] <kind> <id> [dir]")
 	}

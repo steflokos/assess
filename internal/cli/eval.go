@@ -112,22 +112,29 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 
 // oneDir returns the directory argument, "." when there is none.
 func oneDir(fl *flag.FlagSet, o *output) (string, bool) {
+	if flagAfter(o, fl) {
+		return "", false
+	}
 	switch fl.NArg() {
 	case 0:
 		return ".", true
 	case 1:
-		if strings.HasPrefix(fl.Arg(0), "-") {
-			o.fail("%s is read as the folder. Put the flags before the folder", fl.Arg(0))
-			return "", false
-		}
 		return fl.Arg(0), true
 	}
-	if strings.HasPrefix(fl.Arg(1), "-") {
-		o.fail("%s comes after the folder, where it is not a flag. Put the flags before the folder", fl.Arg(1))
-	} else {
-		o.fail("expected at most one folder")
-	}
+	o.fail("expected at most one folder")
 	return "", false
+}
+
+// flagAfter says so, and returns true, when what comes after the folder or the other arguments looks like a flag. The flag package stops
+// at the first word that is not a flag, so a flag written after it is taken for an argument, and the message that follows says something else.
+func flagAfter(o *output, fl *flag.FlagSet) bool {
+	for _, a := range fl.Args() {
+		if strings.HasPrefix(a, "-") && a != "-" {
+			o.fail("%s is in the wrong place: it comes after an argument, where it is not a flag. Put the flags first", a)
+			return true
+		}
+	}
+	return false
 }
 
 // runExplain shows how one threat scenario got its numbers, as a worksheet that

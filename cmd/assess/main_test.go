@@ -72,10 +72,10 @@ func TestExitCodesOfTheProgram(t *testing.T) {
 	if r := assess(t, "validate", dir); r.code != 0 || !strings.Contains(r.err, "ok (13 files") {
 		t.Errorf("a project that is fine: %+v", r)
 	}
-	if r := assess(t); r.code != 2 {
-		t.Errorf("no command is a wrong call: %+v", r)
+	if r := assess(t); r.code != 0 || !strings.Contains(r.out, "usage: assess") {
+		t.Errorf("no command shows how to start: %+v", r)
 	}
-	if r := assess(t, "nothing"); r.code != 2 || !strings.Contains(r.err, `unknown command "nothing"`) {
+	if r := assess(t, "nothing"); r.code != 2 || !strings.Contains(r.err, `there is no command "nothing"`) {
 		t.Errorf("%+v", r)
 	}
 	if r := assess(t, "validate", "-nonsense"); r.code != 2 {

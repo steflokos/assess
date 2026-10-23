@@ -94,7 +94,11 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 		return o.fail("%v", err)
 	}
 	if items := report.OpenItems(in); len(items) > 0 {
-		for _, it := range items {
+		for i, it := range items {
+			if i == 20 {
+				fmt.Fprintf(o.text(), "and %d more. assess open lists all of them\n", len(items)-20)
+				break
+			}
 			fmt.Fprintf(o.text(), "[%s] %s: %s\n", it.Code, it.Where, it.Text)
 		}
 		fmt.Fprintf(o.stderr, "assess finalize: %s. Close them first. Nothing was written\n", stillOpen(len(items)))

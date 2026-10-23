@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
+	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/model"
 )
 
@@ -58,11 +60,20 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	cmds := commands()
 	if len(args) == 0 {
 		showLogo(stdout, stderr)
-		usage(stderr, cmds)
-		return exitUsage
+		usage(stdout, cmds)
+		return exitOK
 	}
 	switch args[0] {
 	case "help", "-h", "-help", "--help":
+		if args[0] == "help" && len(args) > 1 { // assess help apply is assess apply -h
+			for _, c := range cmds {
+				if c.name == args[1] {
+					return c.run([]string{"-h"}, stdout, stderr)
+				}
+			}
+			fmt.Fprintf(stderr, "assess help: there is no command %q%s\n", args[1], didYouMean(args[1], cmds))
+			return exitUsage
+		}
 		usage(stdout, cmds)
 		return exitOK
 	case "-version", "--version":
@@ -73,9 +84,21 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			return c.run(args[1:], stdout, stderr)
 		}
 	}
-	fmt.Fprintf(stderr, "assess: unknown command %q\n\n", args[0])
+	fmt.Fprintf(stderr, "assess: there is no command %q%s\n\n", args[0], didYouMean(args[0], cmds))
 	usage(stderr, cmds)
 	return exitUsage
+}
+
+// didYouMean names the command that a word is most likely a typo of, as a sentence to put after a message, or says nothing.
+func didYouMean(word string, cmds []command) string {
+	names := make([]string, len(cmds))
+	for i, c := range cmds {
+		names[i] = c.name
+	}
+	if near, ok := load.Closest(word, names); ok {
+		return ". Did you mean " + near + "?"
+	}
+	return ""
 }
 
 // RunWith is Run for a program that has the standard input of the command in hand. Apply reads the change set from it, and sign
@@ -93,7 +116,7 @@ func RunWith(in io.Reader, args []string, stdout, stderr io.Writer) int {
 }
 
 func usage(w io.Writer, cmds []command) {
-	fmt.Fprintln(w, "assess - ISO/SAE 21434 TARA as code")
+	fmt.Fprintln(w, "assess is ISO/SAE 21434 TARA as code")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "usage: assess <command> [flags] [dir]")
 	fmt.Fprintln(w)
@@ -102,13 +125,41 @@ func usage(w io.Writer, cmds []command) {
 		fmt.Fprintf(w, "  %-10s %s\n", c.name, c.summary)
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Flags go before the directory. Run `assess <command> -h` for a command's flags.")
+	fmt.Fprintln(w, "Flags go before the directory. Run `assess help <command>` to see how a command is used.")
+	fmt.Fprintln(w, "To start a project, run `assess init my-tara`.")
 }
 
-// newFlagSet returns a FlagSet that reports problems on stderr and never exits.
+// synopsis is how the words after a command are written, for the help of the command. A command that is not here takes flags and a folder.
+var synopsis = map[string]string{
+	"apply":    "[flags] <change set file, or - for standard input> [dir]",
+	"delete":   "[flags] <kind> <id> [dir]",
+	"describe": "[flags]",
+	"explain":  "[flags] <threat id> [dir]",
+	"generate": "[flags] assets|threats|risks [dir]",
+	"init":     "[dir]",
+	"template": "[flags] [dir]",
+	"version":  "[flags]",
+}
+
+// newFlagSet returns a FlagSet that reports problems on stderr and never exits. Its help says how the command is written, and then
+// what its flags do.
 func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet("assess "+name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	rest, ok := synopsis[name]
+	if !ok {
+		rest = "[flags] [dir]"
+	}
+	fs.Usage = func() {
+		fmt.Fprintf(stderr, "usage: assess %s %s\n", name, rest)
+		for _, c := range commands() {
+			if c.name == name {
+				fmt.Fprintf(stderr, "\n%s\n", strings.ToUpper(c.summary[:1])+c.summary[1:]+".")
+			}
+		}
+		fmt.Fprintf(stderr, "\nFlags:\n")
+		fs.PrintDefaults()
+	}
 	return fs
 }
 

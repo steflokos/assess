@@ -3,6 +3,9 @@
 
 package load
 
+// Closest is closest for other packages: the candidate that word is most likely a typo of, if there is one.
+func Closest(word string, candidates []string) (string, bool) { return closest(word, candidates) }
+
 // closest returns the candidate nearest to word when it is near enough to be a typo of it:
 // at most two edits and fewer than a third of the letters.
 func closest(word string, candidates []string) (string, bool) {

@@ -82,7 +82,7 @@ func Eval(w io.Writer, rep *engine.Report) {
 	if len(noRisk) > 0 {
 		fmt.Fprintf(w, "\nrisk not calculated (%d):\n", len(noRisk))
 		for _, r := range noRisk {
-			fmt.Fprintf(w, "  %s: %s\n", r.Threat, strings.Join(r.RiskIssues, "; "))
+			fmt.Fprintf(w, "  %s: %s\n", r.Threat, strings.Join(r.RiskIssues, ", "))
 		}
 	}
 	if len(open) > 0 {
@@ -98,7 +98,7 @@ func Eval(w io.Writer, rep *engine.Report) {
 			if len(reasons) == 0 {
 				reasons = []string{"the policy lacks values for it (see above)"}
 			}
-			fmt.Fprintf(w, "  %s: %s\n", r.Threat, strings.Join(reasons, "; "))
+			fmt.Fprintf(w, "  %s: %s\n", r.Threat, strings.Join(reasons, ", "))
 		}
 	}
 }

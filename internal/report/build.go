@@ -400,10 +400,10 @@ func (b *builder) collectOpen() {
 			if len(reasons) == 0 {
 				continue // the policy gaps above are the reason
 			}
-			about(add("not-calculated", "Attack feasibility", aThreat+r.Threat, "%s: not calculated: %s", r.Threat, strings.Join(reasons, "; ")), "threat", r.Threat)
+			about(add("not-calculated", "Attack feasibility", aThreat+r.Threat, "%s: not calculated: %s", r.Threat, strings.Join(reasons, ", ")), "threat", r.Threat)
 		}
 		if len(r.RiskIssues) > 0 {
-			about(add("risk-not-calculated", "Risk values", aThreat+r.Threat, "%s: risk not calculated: %s", r.Threat, strings.Join(r.RiskIssues, "; ")), "threat", r.Threat)
+			about(add("risk-not-calculated", "Risk values", aThreat+r.Threat, "%s: risk not calculated: %s", r.Threat, strings.Join(r.RiskIssues, ", ")), "threat", r.Threat)
 		}
 	}
 	for _, d := range b.ws.DamageScenarios {

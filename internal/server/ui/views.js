@@ -152,7 +152,7 @@ export function list(kind, ui) {
   const count = h('span', { class: 'muted small' });
   const filter = h('input', { class: 'filter', type: 'search', placeholder: 'Filter by name or id', 'aria-label': 'Filter the list', oninput: () => { state.q = filter.value.trim().toLowerCase(); draw(); } });
   const nested = rows.some((r) => r.parent);
-  const heads = [['name', 'Name'], [kind === 'risk' || kind === 'threat' ? 'risk' : '', 'Details'], ...(nested ? [['inside', 'Inside']] : [])];
+  const heads = [['name', 'Name'], [kind === 'risk' || kind === 'threat' ? 'risk' : '', kind === 'risk' || kind === 'threat' ? 'Risk, before → with controls' : 'Details'], ...(nested ? [['inside', 'Inside']] : [])];
   const th = heads.map(([key, text]) => h('th', { 'aria-sort': 'none' }, key ? h('button', { type: 'button', class: 'sort', onclick: () => {
     state.dir = state.sort === key ? -state.dir : 1;
     state.sort = key;
@@ -330,11 +330,11 @@ export function openItems(ui) {
       h('td', {}, h('span', { class: 'tag info', text: OPEN_TITLES[it.code] || it.code })),
       h('td', {}, it.kind && it.id && rec(it.kind, it.id) ? h('a', { class: 'nm', href: hrefOf('kind', it.kind, it.id), text: nameOf(it.kind, it.id) }) : h('span', { class: 'mono small', text: it.where || '' })),
       h('td', { class: 'muted', text: it.text })))))));
-  const write = (label, what, text) => h('div', { class: 'card' }, h('h3', { text: label }), h('p', { class: 'muted small', text }), actionButton({ label, generate: what }, ui));
+  const write = (title, what, text) => h('div', { class: 'card' }, h('h3', { text: title }), h('p', { class: 'muted small', text }), actionButton({ label: 'Write ' + title.toLowerCase(), generate: what }, ui));
   page.append(h('h2', { class: 'sect', text: 'Let assess write records' }), h('div', { class: 'grid3' },
-    write('Write assets', 'assets', 'An asset for every element of the architecture, with all five properties. It is written once.'),
-    write('Write threat scenarios', 'threats', 'One for each asset property that has none. What exists stays as it is.'),
-    write('Write risks', 'risks', 'The risk of each threat scenario, with its two values. Your decisions stay.')));
+    write('Assets', 'assets', 'An asset for every element of the architecture, with all five properties. It is written once.'),
+    write('Threat scenarios', 'threats', 'One for each asset property that has none. What exists stays as it is.'),
+    write('Risks', 'risks', 'The risk of each threat scenario, with its two values. Your decisions stay.')));
   return page;
 }
 
@@ -379,10 +379,12 @@ export function reportView() {
       'This address, [::1], cannot show the report inside the page. Use http://127.0.0.1 or http://localhost to see it here.', { label: 'Open the report', run: () => window.open(reportURL(), '_blank', 'noopener') })));
   }
   const frame = h('iframe', { class: 'frame', title: 'The report', src: reportURL('&v=' + Date.now()) });
+  const building = h('p', { class: 'muted', role: 'status', text: 'Building the report…' });
+  frame.addEventListener('load', () => building.remove());
   return h('div', { class: 'page wide' }, crumbs({ text: 'Report' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Report' }),
     h('p', { class: 'muted', text: 'The same page that assess report writes. It is built from the files when you open it.' })),
-    h('button', { class: 'btn', type: 'button', onclick: () => { frame.src = reportURL('&v=' + Date.now()); } }, 'Build again'),
-    h('a', { class: 'btn', target: '_blank', rel: 'noopener', href: reportURL() }, icon('external', 15), 'Open in a new tab')), frame);
+    h('button', { class: 'btn', type: 'button', onclick: () => { frame.before(building); frame.src = reportURL('&v=' + Date.now()); } }, 'Build again'),
+    h('a', { class: 'btn', target: '_blank', rel: 'noopener', href: reportURL() }, icon('external', 15), 'Open in a new tab')), building, frame);
 }
 
 export function diagramView(id, ui) {
