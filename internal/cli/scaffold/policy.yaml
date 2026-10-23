@@ -66,8 +66,4 @@ risk:
 #   exclude: []                   # ids of controls the calculation ignores, as if they were not deployed (residual only)
 #
 # scalability:                    # not part of the standard. If you leave this section out, scalability is ignored
-#   mode: escalator               # ignored, escalator or matrix
-#   of: bottleneck                # which step of the path sets it: bottleneck, initial or broadest
-#   raise: {Single Vehicle: , Limited Batch: , Fleet-Wide: }   # escalator: added to the risk value
-#   cap:                          # escalator: the risk value does not go above this (if you leave it out: the highest in the matrix)
-#   # matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix
+#   shift: {Limited Batch: , Fleet-Wide: }   # impact levels added when one attack reaches a batch of vehicles, or the whole fleet. A damage scenario is rated for one vehicle

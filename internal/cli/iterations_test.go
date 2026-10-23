@@ -81,7 +81,7 @@ func TestFinalizeClosesTheDecisionsAsAnIteration(t *testing.T) {
 		"    note: First round\n",
 		"    tool: v0.1.0\n",
 		"      api-interface-spoofing: Share 1>1 ",
-		"      update-package-tampering: Reduce 5>4 ",
+		"      update-package-tampering: Reduce 5>2 ",
 		"    hash: sha256:",
 	} {
 		if !strings.Contains(text, want) {
@@ -327,7 +327,7 @@ func TestVerifyFindsWhatWasChanged(t *testing.T) {
 	}{
 		{"a note", func(s string) string { return strings.Replace(s, "note: one", "note: ONE", 1) }, "iteration 1  2026-10-20 09:30:00Z"},
 		{"a decision", func(s string) string {
-			return strings.Replace(s, "update-package-tampering: Reduce 5>4", "update-package-tampering: Accept 5>4", 1)
+			return strings.Replace(s, "update-package-tampering: Reduce 5>2", "update-package-tampering: Accept 5>2", 1)
 		}, "iteration 1  2026-10-20 09:30:00Z"},
 		{"a date", func(s string) string {
 			return strings.Replace(s, `"2026-10-27T09:30:00Z"`, `"2026-10-28T09:30:00Z"`, 1)

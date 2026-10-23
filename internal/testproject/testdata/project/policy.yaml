@@ -42,7 +42,4 @@ risk:
   affinity: 2
 
 scalability:
-  mode: escalator
-  of: bottleneck
-  raise: {Single Vehicle: 0, Limited Batch: 1, Fleet-Wide: 2}
-  cap: 5
+  shift: {Limited Batch: 1, Fleet-Wide: 2}

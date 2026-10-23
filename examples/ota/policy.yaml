@@ -62,16 +62,10 @@ risk:
     Moderate:   {High: 3, Medium: 2, Low: 2, Very Low: 1}
     Negligible: {High: 1, Medium: 1, Low: 1, Very Low: 1}
   affinity: 2                     # the highest risk value the project accepts without a goal, on the scale of the matrix
-                                  # With the escalator, an attack on the whole fleet against a severe damage is worth 4 even when it
-                                  # is very hard (Very Low). Such risks are goals here: the controls raise the effort as far as they can,
-                                  # and what is left is shared, avoided or kept visible. A risk is accepted only at 2 or below.
                                   # a risk with a value before any control at or below it is a Claim, a higher one a Goal
 
 # controls:                       # every control counts unless it is listed here
 #   exclude: []                   # ids of controls the calculation ignores, as if they were not deployed (residual only)
 
 scalability:                      # not part of the standard: it is a choice of this project
-  mode: escalator                 # the risk value from the matrix goes up with how far one attack reaches
-  of: bottleneck                  # the narrowest step of a path sets it: one step on one vehicle keeps the whole path at one vehicle
-  raise: {Single Vehicle: 0, Limited Batch: 1, Fleet-Wide: 2}   # added to the risk value
-  cap: 5                          # the risk value never goes above this, the highest of the matrix
+  shift: {Limited Batch: 1, Fleet-Wide: 2}   # impact levels added when one attack reaches a batch of vehicles, or the whole fleet. A damage scenario is rated for one vehicle

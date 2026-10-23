@@ -25,5 +25,5 @@ assess diagram .                          # out/architecture.svg
 - `rules/basic.yaml` holds the rules that `assess lint` checks. Two of them are rules of the project's own process:
   every goal is tracked, and a shared risk names its agreement.
 - `policy.yaml` holds the numbers the calculation uses. `project.yaml` holds the information for the report.
-- `iterations.yaml` holds the first closed iteration of the treatment decisions, with its hash. Run `assess verify .` to
+- `iterations.yaml` holds the two closed iterations of the treatment decisions, with their hashes. Run `assess verify .` to
   check it. It is not signed. `assess sign` adds your signature, and the README of assess explains how.

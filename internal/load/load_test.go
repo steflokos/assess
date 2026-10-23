@@ -83,7 +83,7 @@ func TestLoadTheTestProject(t *testing.T) {
 		}
 	}
 	// values are typed, and an open value is a nil pointer, not 0
-	if ws.Policy.Risk.Affinity == nil || *ws.Policy.Risk.Affinity != 2 || ws.Policy.Scalability.Mode != "escalator" {
+	if ws.Policy.Risk.Affinity == nil || *ws.Policy.Risk.Affinity != 2 || ws.Policy.Scalability.Shift[iso21434.ScalabilityFleetWide] == nil || *ws.Policy.Scalability.Shift[iso21434.ScalabilityFleetWide] != 2 {
 		t.Errorf("policy %+v", ws.Policy)
 	}
 	if v := ws.Policy.Feasibility.Points.Time["ET3"]; v == nil || *v != 17 {

@@ -11,10 +11,10 @@ risk update-package-tampering:
   name: Risk of tampering with Update package
   type: Goal
   base: 5
-  residual: 4
+  residual: 2
   description: A signed package cannot be changed on the network.
   treatment: Reduce
-  rationale: Signing brings the risk down, but the build server stays a way in for a whole fleet.
+  rationale: Signing brings the risk down. The build server stays a way in for a whole fleet, but it is a hard one.
   reference: [TEST-101]
 
 risk firmware-image-tampering:

@@ -16,6 +16,7 @@ import (
 	"github.com/steflokos/assess/internal/attack"
 	"github.com/steflokos/assess/internal/engine"
 	"github.com/steflokos/assess/internal/model"
+	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 )
 
 // plural reads "1 path" or "3 paths".
@@ -163,11 +164,16 @@ func worstRisk(r engine.Result) string {
 
 // scalabilityText says how scalability counts, in a few words.
 func scalabilityText(r *engine.RiskRules) string {
-	switch r.Scalability {
-	case "escalator", "matrix":
-		return r.Scalability + ", from the " + r.ScalabilityOf + " step"
+	if r.Scalability != "shift" {
+		return "ignored"
 	}
-	return "ignored"
+	var parts []string
+	for _, sv := range iso21434.ScalabilityValues() {
+		if n, ok := r.Shift[sv]; ok {
+			parts = append(parts, fmt.Sprintf("%s +%d", sv, n))
+		}
+	}
+	return "raises the impact by levels, " + strings.Join(parts, ", ") + ", from the narrowest step of a path"
 }
 
 // ruleLine reads "ET sum, SE max, KoIC max, WoO max, Eq max".
@@ -244,7 +250,7 @@ func explain(w io.Writer, x *attack.Index, ws *model.Workspace, rep *engine.Repo
 	if len(r.Damages) > 0 {
 		fmt.Fprintln(w, "\nrisk per damage scenario")
 		if rep.Risk != nil && rep.Risk.Scalability != "ignored" {
-			fmt.Fprintln(w, "the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path")
+			fmt.Fprintln(w, "the impact is raised for the scalability of each path, and the risk of every path is looked up from the raised impact and its feasibility. The highest decides, and a tie goes to the easier path")
 		}
 		for _, d := range r.Damages {
 			printDamage(w, d, r, rep.Risk)
@@ -285,13 +291,12 @@ func riskPairInt(base, residual *int) string {
 	return text(base) + " -> " + text(residual)
 }
 
-// scalabilityLine reads "Single Vehicle (taken from the bottleneck. Initial Fleet-Wide, bottleneck Single Vehicle,
-// broadest Fleet-Wide)".
+// scalabilityLine reads "Single Vehicle (the narrowest step of the path)".
 func scalabilityLine(sc *engine.PathScalability) string {
 	if len(sc.Missing) > 0 {
 		return "not known, " + strings.Join(sc.Missing, ", ") + " has no scalability"
 	}
-	return fmt.Sprintf("%s  (taken from the %s. Initial %s, bottleneck %s, broadest %s)", sc.Value, sc.Of, sc.Initial, sc.Bottleneck, sc.Broadest)
+	return sc.Value + "  (the narrowest step of the path)"
 }
 
 // printDamage shows the impact of a damage scenario stage by stage and the risk for both results.
@@ -323,7 +328,7 @@ func printDamage(w io.Writer, d engine.Damage, r engine.Result, rules *engine.Ri
 		if run.o == nil {
 			continue
 		}
-		fmt.Fprintf(w, "    %-9s %s, %s\n", run.name, decidingLevel(run.o, run.risk), riskDerivation(run.risk, rules))
+		fmt.Fprintf(w, "    %-9s %s, %s\n", run.name, decidingLevel(run.o, run.risk), riskDerivation(run.risk))
 	}
 }
 
@@ -368,18 +373,18 @@ func stageResult(rule, level string, total *int) string {
 	return rule + " " + level
 }
 
-// riskDerivation reads "matrix cell 3, Fleet-Wide +2 (cap 5), risk 5".
-func riskDerivation(r *engine.Risk, rules *engine.RiskRules) string {
+// riskDerivation reads "matrix cell 3, risk 3", or with scalability "Fleet-Wide raises the impact from Moderate to Severe (+2), risk 4".
+func riskDerivation(r *engine.Risk) string {
 	if r == nil {
 		return "risk not calculated"
 	}
 	switch {
-	case rules != nil && rules.Scalability == "escalator":
-		return fmt.Sprintf("matrix cell %d, %s +%d (cap %d), risk %d", r.Cell, r.Scalability, r.Raise, *r.Cap, r.Value)
-	case rules != nil && rules.Scalability == "matrix":
-		return fmt.Sprintf("matrix for %s: cell %d, risk %d", r.Scalability, r.Cell, r.Value)
+	case r.Scalability != "" && r.Impact == r.Rated:
+		return fmt.Sprintf("%s keeps the impact at %s, risk %d", r.Scalability, r.Impact, r.Value)
+	case r.Scalability != "":
+		return fmt.Sprintf("%s raises the impact from %s to %s (+%d), risk %d", r.Scalability, r.Rated, r.Impact, r.Shift, r.Value)
 	}
-	return fmt.Sprintf("matrix cell %d, risk %d", r.Cell, r.Value)
+	return fmt.Sprintf("matrix cell %d, risk %d", r.Value, r.Value)
 }
 
 func bandLine(bands []model.Band) string {

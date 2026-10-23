@@ -18,7 +18,7 @@ easiest path (#1)
   stage 1  steps combined by                            sum    max    max      max      max
            result                                       4      8      7        10       4
   total 33 = 4 + 8 + 7 + 10 + 4  ->  Very Low
-  scalability of this path: Limited Batch  (taken from the bottleneck. Initial Limited Batch, bottleneck Limited Batch, broadest Limited Batch)
+  scalability of this path: Limited Batch  (the narrowest step of the path)
 
 next easiest paths and the ones that decide a risk (explain -all shows each as a table)
   #2  total 45  Very Low  Limited Batch  bribe-ecu-manufacturer-insider
@@ -39,25 +39,25 @@ easiest path (#1)
   stage 2  controls combined by                          max    sum    sum      sum      sum
            result                                        4      14     14       14       8
   total 54 = 4 + 14 + 14 + 14 + 8  ->  Very Low
-  scalability of this path: Limited Batch  (taken from the bottleneck. Initial Limited Batch, bottleneck Limited Batch, broadest Limited Batch)
+  scalability of this path: Limited Batch  (the narrowest step of the path)
 
 next easiest paths and the ones that decide a risk (explain -all shows each as a table)
   #2  total 66  Very Low  Limited Batch  bribe-ecu-manufacturer-insider + defeat ecu-manufacturer-attestation
 
 risk per damage scenario
-the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path
+the impact is raised for the scalability of each path, and the risk of every path is looked up from the raised impact and its feasibility. The highest decides, and a tie goes to the easier path
   vehicles-built-untrusted  impact Severe
     roaduser  safety Major, financial Moderate, operational Major, privacy Moderate  ->  max Major
     oem       safety Moderate, financial Severe, operational Major, privacy Moderate  ->  max Severe
     between   Major, Severe  ->  max Severe
-    base      Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
-    residual  Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
+    base      Very Low, Limited Batch keeps the impact at Severe, risk 2
+    residual  Very Low, Limited Batch keeps the impact at Severe, risk 2
   malicious-software-installed  impact Severe
     roaduser  safety Severe, financial Major, operational Severe, privacy Major  ->  max Severe
     oem       safety Major, financial Severe, operational Severe, privacy Major  ->  max Severe
     between   Severe, Severe  ->  max Severe
-    base      Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
-    residual  Very Low, matrix cell 2, Limited Batch +1 (cap 5), risk 3
+    base      Very Low, Limited Batch keeps the impact at Severe, risk 2
+    residual  Very Low, Limited Batch keeps the impact at Severe, risk 2
 
-risk of this threat scenario (the highest of its damage scenarios): 3 -> 3
-type: Goal (the base risk 3 is above the risk affinity 2)
+risk of this threat scenario (the highest of its damage scenarios): 2 -> 2
+type: Claim (the base risk 2 is at or below the risk affinity 2)

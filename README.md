@@ -338,14 +338,16 @@ combines the four categories of one stakeholder. `impact.between` combines the s
 worst level wins. With `sum`, assess adds the points you give each level (`impact.points`) and looks the total
 up in your bands (`impact.levels`).
 
-`scalability.mode` says whether scalability changes the risk:
+Scalability is how far one run of an attack reaches, so it changes the impact and not the feasibility. A damage scenario is rated
+for one vehicle. The scalability of a path is its narrowest step, because one run of a path reaches no more vehicles than its
+narrowest step does. `scalability.shift` says by how many levels (Negligible, Moderate, Major, Severe) the impact goes up for a path
+that reaches a Limited Batch of vehicles, or the Fleet-Wide. The impact stops at Severe. The matrix is then read at the raised
+impact and the feasibility of that path. So the feasibility keeps its say: a hard attack stays in the low columns of the matrix however
+far it reaches, and a control still lowers the risk. If you leave the section out, scalability is ignored.
 
-- `ignored` is the default. assess uses the strict matrix.
-- `escalator` raises the matrix value for each scalability, up to a cap. It never lowers a value.
-- `matrix` uses a separate risk matrix for each scalability.
-
-`scalability.of` says which step of a path sets its scalability. It can be the narrowest step, the narrowest
-entry step or the widest step.
+With the matrix of the example, a Major damage that a fleet-wide path reaches at High feasibility is read as Severe, which is 5 and
+not 4. At Very Low feasibility it is 2 and not 1. Severe stays Severe, because the matrix has no level above it. If a loss for the
+whole fleet is worse than anything one vehicle can suffer, rate it as a damage scenario of its own.
 
 assess does not guess. If a step has no `potential`, if a threat scenario has no `steps`, or if a control has
 neither a `reduction` nor a `threatenedby`, the output names the problem and does not calculate that scenario.
@@ -354,7 +356,7 @@ calculated, because assess does not pick a rule for you.
 
 `assess explain` prints the working as a table that you can check by hand. It shows the rating key and the
 points of every element, the rule for each factor, every stage and the total. For each damage scenario it then
-shows the impact stage by stage, and the risk with what scalability added.
+shows the impact stage by stage, and the risk with the impact that scalability raised.
 
 The risk of a threat scenario is the highest risk of its damage scenarios. The risk of the item is the highest
 risk of its threat scenarios. Each of them is given twice, once with the controls ignored (`base`) and once

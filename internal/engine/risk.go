@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/steflokos/assess/internal/model"
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
+	"slices"
 )
 
 // ---- impact ---------------------------------------------------------------------------------
@@ -134,15 +135,11 @@ var scalabilityRank = map[iso21434.Scalability]int{
 	iso21434.ScalabilitySingleVehicle: 1, iso21434.ScalabilityLimitedBatch: 2, iso21434.ScalabilityFleetWide: 3,
 }
 
-// PathScalability is the scalability of a path, read three ways. Value is the one the policy asks for
-// (scalability.of). Missing names the steps of the path that have no scalability. Then nothing is decided.
+// PathScalability is the scalability of a path: its narrowest step, because one run of a path reaches no more vehicles than its
+// narrowest step does. Missing names the steps of the path that have no scalability. Then nothing is decided.
 type PathScalability struct {
-	Initial    string   `json:"initial"`
-	Bottleneck string   `json:"bottleneck"`
-	Broadest   string   `json:"broadest"`
-	Of         string   `json:"of"`
-	Value      string   `json:"value,omitempty"`
-	Missing    []string `json:"missing,omitempty"`
+	Value   string   `json:"value,omitempty"`
+	Missing []string `json:"missing,omitempty"`
 }
 
 func scalabilityName(rank int) string {
@@ -153,22 +150,16 @@ func scalabilityName(rank int) string {
 	return string(names[rank-1])
 }
 
-// pathScalability reads the scalability of the steps of a path: the narrowest
-// (bottleneck), the narrowest of the steps that need nothing before them
-// (initial) and the widest (broadest).
-func (e *enumerator) pathScalability(p path, of iso21434.ScalabilityOf) *PathScalability {
-	if of == "" {
-		of = "bottleneck"
-	}
-	out := &PathScalability{Of: string(of)}
-	narrow, wide, entry := 0, 0, 0
+// pathScalability reads the scalability of the steps of a path and takes the narrowest.
+func (e *enumerator) pathScalability(p path) *PathScalability {
+	out := &PathScalability{}
+	narrow := 0
 	for _, i := range p {
 		el := e.elems[i]
 		if el.kind != kStep {
 			continue
 		}
-		s := e.g.steps[el.id]
-		rank := scalabilityRank[s.Scalability]
+		rank := scalabilityRank[e.g.steps[el.id].Scalability]
 		if rank == 0 {
 			out.Missing = append(out.Missing, el.id)
 			continue
@@ -176,59 +167,42 @@ func (e *enumerator) pathScalability(p path, of iso21434.ScalabilityOf) *PathSca
 		if narrow == 0 || rank < narrow {
 			narrow = rank
 		}
-		if rank > wide {
-			wide = rank
-		}
-		if s.PreparedBy.IsZero() && (entry == 0 || rank < entry) {
-			entry = rank
-		}
 	}
-	if len(out.Missing) > 0 {
-		return out
-	}
-	if entry == 0 {
-		entry = narrow // a path always has an entry step. This only keeps a hand-built one defined
-	}
-	out.Initial, out.Bottleneck, out.Broadest = scalabilityName(entry), scalabilityName(narrow), scalabilityName(wide)
-	switch of {
-	case "initial":
-		out.Value = out.Initial
-	case "broadest":
-		out.Value = out.Broadest
-	default:
-		out.Value = out.Bottleneck
+	if len(out.Missing) == 0 {
+		out.Value = scalabilityName(narrow)
 	}
 	return out
 }
 
 // ---- risk -----------------------------------------------------------------------------------
 
-// Risk is a risk value and how it came about: the cell of the matrix and, when
-// scalability counts, the scalability and what the escalator added.
+// Risk is a risk value and how it came about: the impact and the feasibility level that the matrix was read at. When scalability
+// counts, Rated is the impact of the damage scenario, as it was rated for one vehicle, and Impact is that impact raised by Shift levels
+// for the Scalability of the path.
 type Risk struct {
+	// Value is the matrix value at Impact and Level.
 	Value int `json:"value"`
 	// Path is the rank in the order of effort (1 is the easiest) of the path that decides the
 	// value and Level the feasibility level of that path. It is not always the easiest path:
 	// the risk is the highest over all of them.
 	Path        int    `json:"path"`
 	Level       string `json:"level"`
-	Cell        int    `json:"cell"`
+	Impact      string `json:"impact"`
+	Rated       string `json:"rated,omitempty"`
 	Scalability string `json:"scalability,omitempty"`
-	Raise       int    `json:"raise,omitempty"`
-	Cap         *int   `json:"cap,omitempty"`
+	Shift       int    `json:"shift,omitempty"`
 }
 
-// highest is the largest value in a matrix.
-func highest(m map[iso21434.ImpactLevel]map[iso21434.FeasibilityLevel]*int) int {
-	top := 0
-	for _, row := range m {
-		for _, v := range row {
-			if v != nil && *v > top {
-				top = *v
-			}
-		}
+// impactOrder lists the impact levels, least severe first.
+var impactOrder = []iso21434.ImpactLevel{iso21434.ImpactLevelNegligible, iso21434.ImpactLevelModerate, iso21434.ImpactLevelMajor, iso21434.ImpactLevelSevere}
+
+// raiseImpact moves an impact level up by n levels. It stops at the most severe one: the matrix has no level above it.
+func raiseImpact(level iso21434.ImpactLevel, n int) iso21434.ImpactLevel {
+	at := slices.Index(impactOrder, level)
+	if at < 0 || n <= 0 {
+		return level
 	}
-	return top
+	return impactOrder[min(at+n, len(impactOrder)-1)]
 }
 
 // riskOf works out the risk of a damage scenario for an outcome: the risk of every path is looked up
@@ -261,13 +235,13 @@ func riskOf(pol model.Policy, impact iso21434.ImpactLevel, o *Outcome) (*Risk, s
 	return best, ""
 }
 
-// pathRisk looks the risk up for one path: the matrix cell of its feasibility level and impact,
-// raised or replaced by its scalability as the policy says.
+// pathRisk looks the risk up for one path. When scalability counts, the impact of the damage scenario is raised first, by the number of
+// levels that the policy gives for the scalability of the path, and the matrix is read at the raised impact and the feasibility level.
+// The feasibility is not touched: a hard attack stays a hard attack, and an impact that is negligible stays small.
 func pathRisk(pol model.Policy, impact iso21434.ImpactLevel, p Path) (*Risk, string) {
 	level := iso21434.FeasibilityLevel(p.Level)
-	sp := pol.Scalability
-	switch sp.Mode {
-	case "escalator", "matrix":
+	r := &Risk{Path: p.Rank, Level: p.Level}
+	if len(pol.Scalability.Shift) > 0 {
 		if p.Scalability == nil || p.Scalability.Value == "" {
 			why := "scalability of the path is not known"
 			if p.Scalability != nil && len(p.Scalability.Missing) > 0 {
@@ -278,35 +252,18 @@ func pathRisk(pol model.Policy, impact iso21434.ImpactLevel, p Path) (*Risk, str
 			}
 			return nil, why
 		}
-	}
-	scal := iso21434.Scalability("")
-	if p.Scalability != nil {
-		scal = iso21434.Scalability(p.Scalability.Value)
-	}
-	if sp.Mode == "matrix" {
-		v := sp.Matrix[scal][impact][level]
-		if v == nil {
-			return nil, ""
+		scal := iso21434.Scalability(p.Scalability.Value)
+		r.Rated, r.Scalability = string(impact), string(scal)
+		if v := pol.Scalability.Shift[scal]; v != nil { // a damage scenario is rated for one vehicle, so Single Vehicle shifts nothing
+			r.Shift = *v
 		}
-		return &Risk{Value: *v, Path: p.Rank, Level: p.Level, Cell: *v, Scalability: string(scal)}, ""
+		impact = raiseImpact(impact, r.Shift)
 	}
 	c := pol.Risk.Matrix[impact][level]
 	if c == nil {
 		return nil, ""
 	}
-	r := &Risk{Value: *c, Path: p.Rank, Level: p.Level, Cell: *c}
-	if sp.Mode == "escalator" {
-		raise := 0
-		if v := sp.Raise[scal]; v != nil {
-			raise = *v
-		}
-		top := highest(pol.Risk.Matrix)
-		if sp.Cap != nil {
-			top = *sp.Cap
-		}
-		r.Scalability, r.Raise, r.Cap = string(scal), raise, &top
-		r.Value = max(*c, min(*c+raise, top)) // never lowers a value
-	}
+	r.Value, r.Impact = *c, string(impact)
 	return r, ""
 }
 

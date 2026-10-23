@@ -136,11 +136,7 @@ attribute Rule.name string req=always min=0 ref=
 attribute Rule.notes map[string]string req= min=0 ref=
 attribute Rule.on iso21434.RuleTarget req=always min=0 ref=
 attribute Rule.severity iso21434.Severity req= min=0 ref=
-attribute ScalabilityPolicy.cap *int req= min=0 ref=
-attribute ScalabilityPolicy.matrix map[iso21434.Scalability]map[iso21434.ImpactLevel]map[iso21434.FeasibilityLevel]*int req= min=0 ref=
-attribute ScalabilityPolicy.mode iso21434.ScalabilityMode req=always min=0 ref=
-attribute ScalabilityPolicy.of iso21434.ScalabilityOf req= min=0 ref=
-attribute ScalabilityPolicy.raise map[iso21434.Scalability]*int req= min=0 ref=
+attribute ScalabilityPolicy.shift map[iso21434.Scalability]*int req=always min=0 ref=
 attribute Source.location string req= min=0 ref=
 attribute Source.name string req=always min=0 ref=
 attribute Source.version string req= min=0 ref=
@@ -204,12 +200,6 @@ enum RuleTarget threat
 enum Scalability Fleet-Wide
 enum Scalability Limited Batch
 enum Scalability Single Vehicle
-enum ScalabilityMode escalator
-enum ScalabilityMode ignored
-enum ScalabilityMode matrix
-enum ScalabilityOf bottleneck
-enum ScalabilityOf broadest
-enum ScalabilityOf initial
 enum Severity Error
 enum Severity Warning
 enum SpecialistExpertise SE0

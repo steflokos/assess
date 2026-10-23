@@ -89,7 +89,7 @@ func TestTheDataOfTheTestProject(t *testing.T) {
 	}
 
 	risk := byID(d.Records["risk"], "update-package-tampering")
-	if risk["base"] != int64(5) || risk["residual"] != int64(4) || risk["type"] != "Goal" || risk["treatment"] != "Reduce" {
+	if risk["base"] != int64(5) || risk["residual"] != int64(2) || risk["type"] != "Goal" || risk["treatment"] != "Reduce" {
 		t.Errorf("%v", risk)
 	}
 	if refs, _ := risk["reference"].([]any); len(refs) != 1 || refs[0] != "TEST-101" {

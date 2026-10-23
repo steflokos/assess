@@ -541,13 +541,6 @@ func (b *builder) riskLevels() Stat {
 			see(v)
 		}
 	}
-	for _, m := range b.ws.Policy.Scalability.Matrix {
-		for _, row := range m {
-			for _, v := range row {
-				see(v)
-			}
-		}
-	}
 	calculated, missing := 0, 0
 	for _, r := range b.rep.Threats {
 		if r.Risk == nil || (r.Risk.Base == nil && r.Risk.Residual == nil) {

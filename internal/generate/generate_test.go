@@ -187,7 +187,7 @@ func values(base, resid int, typ string) generate.Values {
 }
 
 var rightValues = map[string]generate.Values{
-	"update-package-tampering": values(5, 4, "Goal"),
+	"update-package-tampering": values(5, 2, "Goal"),
 	"firmware-image-tampering": values(4, 2, "Goal"),
 	"device-key-disclosure":    values(1, 1, "Claim"),
 	"api-interface-spoofing":   values(1, 1, "Claim"),
@@ -224,7 +224,7 @@ func TestRisksAreCorrectedInPlace(t *testing.T) {
 			done = append(done, c.ID+": "+v.Done())
 		}
 	}
-	want := "update-package-tampering: base 5 -> 4|update-package-tampering: residual 4 -> 3|device-key-disclosure: type Claim -> Goal|device-key-disclosure: base 1 -> 3"
+	want := "update-package-tampering: base 5 -> 4|update-package-tampering: residual 2 -> 3|device-key-disclosure: type Claim -> Goal|device-key-disclosure: base 1 -> 3"
 	if strings.Join(done, "|") != want {
 		t.Errorf("got %v", done)
 	}
@@ -272,7 +272,7 @@ func TestAValueThatIsNotCalculatedAnyMoreIsRemoved(t *testing.T) {
 	for _, v := range p.Changed[0].Values {
 		done = append(done, v.Done())
 	}
-	if strings.Join(done, "|") != "type Goal removed, because it is not calculated|base 5 removed, because it is not calculated|residual 4 removed, because it is not calculated" {
+	if strings.Join(done, "|") != "type Goal removed, because it is not calculated|base 5 removed, because it is not calculated|residual 2 removed, because it is not calculated" {
 		t.Errorf("%v", done)
 	}
 	generate.WriteRisks(dir, p)
@@ -289,12 +289,12 @@ func TestAValueThatIsNotCalculatedAnyMoreIsRemoved(t *testing.T) {
 
 func TestMissingValuesAreWrittenAfterTheNearestOneThatStays(t *testing.T) {
 	dir, res := open(t, nil)
-	testproject.Write(t, dir, "concept/risks.yaml", "risk update-package-tampering:\n  name: Risk\n  residual: 4\n  treatment: Reduce\n\nrisk firmware-image-tampering:\n  name: Risk 2\n  type: Goal\n  base: 4\n  residual: 2\n")
+	testproject.Write(t, dir, "concept/risks.yaml", "risk update-package-tampering:\n  name: Risk\n  residual: 2\n  treatment: Reduce\n\nrisk firmware-image-tampering:\n  name: Risk 2\n  type: Goal\n  base: 4\n  residual: 2\n")
 	res = load.Load(dir)
 	p := plan(t, dir, res, rightValues)
 	generate.WriteRisks(dir, p)
 	text := testproject.Read(t, dir, "concept/risks.yaml")
-	if !strings.HasPrefix(text, "risk update-package-tampering:\n  name: Risk\n  type: Goal\n  base: 5\n  residual: 4\n  treatment: Reduce\n") {
+	if !strings.HasPrefix(text, "risk update-package-tampering:\n  name: Risk\n  type: Goal\n  base: 5\n  residual: 2\n  treatment: Reduce\n") {
 		t.Errorf("type and base are written in their place:\n%s", text)
 	}
 	if got := p.Changed[0].Values[0].Problem(); got != "type is missing, Goal is calculated" {
@@ -336,12 +336,12 @@ func TestARiskThatCannotBeEditedInPlaceIsSkippedAndSaid(t *testing.T) {
 
 func TestCommentsAndOddSpacingOfAValueLineStay(t *testing.T) {
 	dir, res := open(t, nil)
-	testproject.Write(t, dir, "concept/risks.yaml", "risk update-package-tampering:\n  name: Risk # the name\n  type: Goal   # calculated\n  # a note between\n  base:   3 # was 3\n  residual: 4\n  treatment: Reduce\n")
+	testproject.Write(t, dir, "concept/risks.yaml", "risk update-package-tampering:\n  name: Risk # the name\n  type: Goal   # calculated\n  # a note between\n  base:   3 # was 3\n  residual: 2\n  treatment: Reduce\n")
 	res = load.Load(dir)
 	p := plan(t, dir, res, rightValues)
 	generate.WriteRisks(dir, p)
 	got := testproject.Read(t, dir, "concept/risks.yaml")
-	want := "risk update-package-tampering:\n  name: Risk # the name\n  type: Goal   # calculated\n  # a note between\n  base: 5 # was 3\n  residual: 4\n  treatment: Reduce\n"
+	want := "risk update-package-tampering:\n  name: Risk # the name\n  type: Goal   # calculated\n  # a note between\n  base: 5 # was 3\n  residual: 2\n  treatment: Reduce\n"
 	if !strings.HasPrefix(got, want) {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}

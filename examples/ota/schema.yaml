@@ -161,41 +161,16 @@ impact:
     - upto: <number>
       # required. The impact level for this band.
       level: Severe | Major | Moderate | Negligible
-# optional. How scalability (Single Vehicle, Limited Batch, Fleet-Wide) changes the risk. If you
-# leave this section out, scalability is ignored and the risk comes straight from the matrix.
+# optional. How scalability (Single Vehicle, Limited Batch, Fleet-Wide) raises the impact of a
+# damage scenario for a path that reaches more vehicles. If you leave this section out, scalability
+# is ignored and the risk comes straight from the matrix.
 scalability:
-  # required. ignored: scalability does not change the risk. escalator: the risk value from the
-  # matrix goes up for each scalability (see raise). matrix: there is a separate risk matrix for
-  # each scalability (see matrix).
-  mode: ignored | escalator | matrix
-  # optional. Which step of the path sets its scalability. bottleneck is the narrowest step and is
-  # the default. initial is the narrowest step that needs nothing before it. broadest is the widest
-  # step, which is the worst case.
-  of: bottleneck | initial | broadest
-  # optional. Escalator: how much the risk value is raised for each scalability. Write every
-  # scalability.
-  raise: {Single Vehicle: <number>, Limited Batch: <number>, Fleet-Wide: <number>}
-  # optional. Escalator: the risk value does not go above this. If you leave it out, it is the
-  # highest value in risk.matrix. The escalator never lowers a value.
-  cap: <number>
-  # optional. Matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix.
-  # Write every combination.
-  matrix:
-    Single Vehicle:
-      Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-    Limited Batch:
-      Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-    Fleet-Wide:
-      Severe: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Major: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Moderate: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
-      Negligible: {High: <number>, Medium: <number>, Low: <number>, Very Low: <number>}
+  # required. How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage
+  # scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet
+  # (Fleet-Wide). The rating of a damage scenario is for one vehicle, so Single Vehicle is not
+  # written. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole
+  # scalability section out, scalability is ignored.
+  shift: {Single Vehicle: <number>, Limited Batch: <number>, Fleet-Wide: <number>}
 # optional. How impact and feasibility give a risk value.
 risk:
   # optional. Risk value for each impact level and feasibility level. Write every combination.

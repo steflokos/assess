@@ -322,7 +322,6 @@ func TestGenerateRisksWritesCorrectsAndKeepsWhatYouWrote(t *testing.T) {
 	}
 
 	// the policy changes, so a value is out of date. eval says so, and generate corrects it in place.
-	testproject.Replace(t, dir, "policy.yaml", "cap: 5", "cap: 4")
 	testproject.Replace(t, dir, "policy.yaml", "Severe:     {High: 5", "Severe:     {High: 4")
 	r = run(t, "eval", "-strict", dir)
 	if r.code != 1 || !strings.Contains(r.out+r.err, "[stale-risk]") || !strings.Contains(r.out+r.err, "base is 5 but 4 is calculated") {
@@ -335,7 +334,7 @@ func TestGenerateRisksWritesCorrectsAndKeepsWhatYouWrote(t *testing.T) {
 		t.Errorf("%+v", r)
 	}
 	changed := testproject.Read(t, dir, "concept/risks.yaml")
-	want := strings.Replace(original, "  base: 5\n  residual: 4\n  description: A signed package", "  base: 4\n  residual: 4\n  description: A signed package", 1)
+	want := strings.Replace(original, "  base: 5\n  residual: 2\n  description: A signed package", "  base: 4\n  residual: 2\n  description: A signed package", 1)
 	if changed != want {
 		t.Errorf("only the value changes. Treatment, rationale and reference stay:\n%s", changed)
 	}
@@ -352,7 +351,7 @@ func TestGenerateRisksWritesTheFileWhenThereIsNone(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 	text := testproject.Read(t, dir, "concept/risks.yaml")
-	for _, want := range []string{"risk update-package-tampering:", "type: Goal", "base: 5", "residual: 4", "treatment:", "rationale:", "reference:"} {
+	for _, want := range []string{"risk update-package-tampering:", "type: Goal", "base: 5", "residual: 2", "treatment:", "rationale:", "reference:"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the new file lacks %q", want)
 		}
@@ -387,11 +386,11 @@ func TestEvalText(t *testing.T) {
 	for _, want := range []string{
 		"combine steps:    ET sum, SE max, KoIC max, WoO max, Eq max",
 		"combine controls: ET max, SE sum, KoIC sum, WoO sum, Eq sum",
-		"scalability:      escalator, from the bottleneck step",
+		"scalability:      raises the impact by levels, Limited Batch +1, Fleet-Wide +2, from the narrowest step of a path",
 		"risk affinity:    2",
 		"base      5   decided by update-package-tampering",
-		"residual  4   decided by update-package-tampering",
-		"update-package-tampering   High (12)       Very Low (36)   5 -> 4  Goal",
+		"residual  2   decided by update-package-tampering",
+		"update-package-tampering   High (12)       Very Low (36)   5 -> 2  Goal",
 		"device-key-disclosure      Very Low (25)   Very Low (76)   1 -> 1  Claim",
 	} {
 		if !strings.Contains(r.out, want) {
@@ -430,7 +429,7 @@ func TestEvalJSON(t *testing.T) {
 	if err := json.Unmarshal(env.Result, &res); err != nil {
 		t.Fatal(err)
 	}
-	if res.Item.Base != 5 || res.Item.Residual != 4 || res.Item.BaseBy != "update-package-tampering" {
+	if res.Item.Base != 5 || res.Item.Residual != 2 || res.Item.BaseBy != "update-package-tampering" {
 		t.Errorf("item %+v", res.Item)
 	}
 	if len(res.Threats) != 4 || res.Threats[0].Threat != "update-package-tampering" || res.Threats[0].Base.Total != 12 ||
@@ -482,13 +481,19 @@ func TestExplainShowsTheWorksheet(t *testing.T) {
 		"defeat   signed-packages (its reduction)  ET2=4  SE2=6  KoIC2=7  WoO2=4  Eq1=4",
 		"total 36 = 4 + 9 + 10 + 5 + 8  ->  Very Low",
 		"#3  total 44  Very Low  Single Vehicle  modify-package-in-transit + steal-signing-key + bypass signed-packages",
-		"residual  Very Low (path #2, not the easiest), matrix cell 2, Fleet-Wide +2 (cap 5), risk 4",
-		"risk of this threat scenario (the highest of its damage scenarios): 5 -> 4",
+		"base      High, Single Vehicle keeps the impact at Severe, risk 5",
+		"residual  Very Low, Single Vehicle keeps the impact at Severe, risk 2",
+		"risk of this threat scenario (the highest of its damage scenarios): 5 -> 2",
 		"type: Goal (the base risk 5 is above the risk affinity 2)",
 	} {
 		if !strings.Contains(r.out, want) {
 			t.Errorf("the worksheet does not say %q:\n%s", want, r.out)
 		}
+	}
+	// when the damage is Major, the harder path through the build server reaches the fleet, raises the impact to Severe and decides
+	testproject.Replace(t, dir, "policy.yaml", "stakeholders: [roaduser, oem]", "stakeholders: [oem]")
+	if m := run(t, "explain", "update-package-tampering", dir); !strings.Contains(m.out, "residual  Very Low (path #2, not the easiest), Fleet-Wide raises the impact from Major to Severe (+2), risk 2") {
+		t.Errorf("the worksheet says which path decides and what scalability did:\n%s", m.out)
 	}
 	all := run(t, "explain", "-all", "update-package-tampering", dir)
 	if len(all.out) <= len(r.out) || !strings.Contains(all.out, "#2") {
@@ -637,7 +642,9 @@ func TestLint(t *testing.T) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.out, r.err)
 	}
 
-	// an accepted risk above the risk affinity is an error: the rule is part of the starter
+	// an accepted risk above the risk affinity is an error: the rule is part of the starter. The residual risk of the update package
+	// is 2, so the affinity is lowered to 1 for this
+	testproject.Replace(t, dir, "policy.yaml", "affinity: 2", "affinity: 1")
 	testproject.Replace(t, dir, "concept/risks.yaml", "treatment: Reduce\n  rationale: Signing", "treatment: Accept\n  rationale: Signing")
 	r, env := runJSON(t, "lint", dir)
 	if r.code != 1 {

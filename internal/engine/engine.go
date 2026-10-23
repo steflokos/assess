@@ -43,9 +43,9 @@ type Report struct {
 type RiskRules struct {
 	ImpactAcross  string `json:"impactAcross"`
 	ImpactBetween string `json:"impactBetween"`
-	Scalability   string `json:"scalability"`
-	// ScalabilityOf is which step sets the scalability of a path. It is empty when scalability is ignored.
-	ScalabilityOf string `json:"scalabilityOf,omitempty"`
+	// Scalability is "ignored" or "shift". With a shift, Shift says how many impact levels each scalability raises the impact by.
+	Scalability string         `json:"scalability"`
+	Shift       map[string]int `json:"shift,omitempty"`
 	// Affinity is the highest risk value the project accepts without a goal (risk.affinity). It is left out when the
 	// policy sets none.
 	Affinity *int `json:"affinity,omitempty"`
@@ -175,34 +175,28 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 		riskable = false
 		rep.Policy = append(rep.Policy, "impact.points and impact.levels are not set in the policy, which a sum needs")
 	}
-	switch pol.Scalability.Mode {
-	case "matrix":
-		if len(pol.Scalability.Matrix) < len(iso21434.ScalabilityValues()) {
-			riskable = false
-			rep.Policy = append(rep.Policy, "scalability.matrix is not set in the policy, which matrix mode needs")
-		}
-	case "escalator":
-		if len(pol.Scalability.Raise) < len(iso21434.ScalabilityValues()) {
-			riskable = false
-			rep.Policy = append(rep.Policy, "scalability.raise is not set in the policy, which the escalator needs")
-		}
-		fallthrough
-	default:
-		if len(pol.Risk.Matrix) == 0 {
-			riskable = false
-			rep.Policy = append(rep.Policy, "risk.matrix is not set in the policy")
+	if len(pol.Risk.Matrix) == 0 {
+		riskable = false
+		rep.Policy = append(rep.Policy, "risk.matrix is not set in the policy")
+	}
+	if len(pol.Scalability.Shift) > 0 {
+		for _, sv := range []iso21434.Scalability{iso21434.ScalabilityLimitedBatch, iso21434.ScalabilityFleetWide} {
+			if pol.Scalability.Shift[sv] == nil {
+				riskable = false
+				rep.Policy = append(rep.Policy, "scalability.shift is not set for "+string(sv)+" in the policy")
+			}
 		}
 	}
 	if riskable {
 		ir := newImpactRules(pol.Impact)
-		rep.Risk = &RiskRules{ImpactAcross: string(ir.across), ImpactBetween: string(ir.between), Scalability: string(pol.Scalability.Mode), Affinity: pol.Risk.Affinity}
-		if rep.Risk.Scalability == "" {
-			rep.Risk.Scalability = "ignored"
-		}
-		if pol.Scalability.Mode == "escalator" || pol.Scalability.Mode == "matrix" {
-			rep.Risk.ScalabilityOf = string(pol.Scalability.Of)
-			if rep.Risk.ScalabilityOf == "" {
-				rep.Risk.ScalabilityOf = "bottleneck"
+		rep.Risk = &RiskRules{ImpactAcross: string(ir.across), ImpactBetween: string(ir.between), Scalability: "ignored", Affinity: pol.Risk.Affinity}
+		if len(pol.Scalability.Shift) > 0 {
+			rep.Risk.Scalability = "shift"
+			rep.Risk.Shift = map[string]int{}
+			for sv, n := range pol.Scalability.Shift {
+				if n != nil {
+					rep.Risk.Shift[string(sv)] = *n
+				}
 			}
 		}
 	}
@@ -302,13 +296,13 @@ func outcome(e *enumerator, id string, pol model.Policy, others int) (*Outcome, 
 	if len(ent.paths) == 0 {
 		return nil, []string{id + " has no path"}
 	}
-	needScalability := pol.Scalability.Mode == "escalator" || pol.Scalability.Mode == "matrix"
+	needScalability := len(pol.Scalability.Shift) > 0
 	paths := make([]Path, len(ent.paths))
 	for i, p := range ent.paths {
 		paths[i] = e.cost(p, pol.Feasibility)
 		paths[i].Level = levelOf(paths[i].Total, pol.Feasibility.Levels)
 		if needScalability {
-			paths[i].Scalability = e.pathScalability(p, pol.Scalability.Of)
+			paths[i].Scalability = e.pathScalability(p)
 		}
 	}
 	order := make([]int, len(paths))

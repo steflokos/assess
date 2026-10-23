@@ -530,7 +530,7 @@
               "type": "null"
             }
           ],
-          "description": "How scalability (Single Vehicle, Limited Batch, Fleet-Wide) changes the risk. If you leave this section out, scalability is ignored and the risk comes straight from the matrix."
+          "description": "How scalability (Single Vehicle, Limited Batch, Fleet-Wide) raises the impact of a damage scenario for a path that reaches more vehicles. If you leave this section out, scalability is ignored and the risk comes straight from the matrix."
         }
       },
       "type": "object"
@@ -641,318 +641,27 @@
     },
     "scalabilityPolicy": {
       "additionalProperties": false,
-      "description": "How scalability changes the risk. If you leave this section out, scalability is ignored.",
+      "description": "How scalability raises the impact. If you leave this section out, scalability is ignored.",
       "properties": {
-        "cap": {
-          "anyOf": [
-            {
+        "shift": {
+          "additionalProperties": false,
+          "description": "How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet (Fleet-Wide). The rating of a damage scenario is for one vehicle, so Single Vehicle is not written. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole scalability section out, scalability is ignored.",
+          "properties": {
+            "Fleet-Wide": {
               "type": "integer"
             },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Escalator: the risk value does not go above this. If you leave it out, it is the highest value in risk.matrix. The escalator never lowers a value."
-        },
-        "matrix": {
-          "anyOf": [
-            {
-              "additionalProperties": false,
-              "properties": {
-                "Fleet-Wide": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "Major": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Moderate": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Negligible": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Severe": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  },
-                  "type": "object"
-                },
-                "Limited Batch": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "Major": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Moderate": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Negligible": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Severe": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  },
-                  "type": "object"
-                },
-                "Single Vehicle": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "Major": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Moderate": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Negligible": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "Severe": {
-                      "additionalProperties": false,
-                      "properties": {
-                        "High": {
-                          "type": "integer"
-                        },
-                        "Low": {
-                          "type": "integer"
-                        },
-                        "Medium": {
-                          "type": "integer"
-                        },
-                        "Very Low": {
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  },
-                  "type": "object"
-                }
-              },
-              "type": "object"
+            "Limited Batch": {
+              "type": "integer"
             },
-            {
-              "type": "null"
+            "Single Vehicle": {
+              "type": "integer"
             }
-          ],
-          "description": "Matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix. Write every combination."
-        },
-        "mode": {
-          "description": "ignored: scalability does not change the risk. escalator: the risk value from the matrix goes up for each scalability (see raise). matrix: there is a separate risk matrix for each scalability (see matrix).",
-          "enum": [
-            "ignored",
-            "escalator",
-            "matrix"
-          ],
-          "type": "string"
-        },
-        "of": {
-          "anyOf": [
-            {
-              "enum": [
-                "bottleneck",
-                "initial",
-                "broadest"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Which step of the path sets its scalability. bottleneck is the narrowest step and is the default. initial is the narrowest step that needs nothing before it. broadest is the widest step, which is the worst case."
-        },
-        "raise": {
-          "anyOf": [
-            {
-              "additionalProperties": false,
-              "properties": {
-                "Fleet-Wide": {
-                  "type": "integer"
-                },
-                "Limited Batch": {
-                  "type": "integer"
-                },
-                "Single Vehicle": {
-                  "type": "integer"
-                }
-              },
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Escalator: how much the risk value is raised for each scalability. Write every scalability."
+          },
+          "type": "object"
         }
       },
       "required": [
-        "mode"
+        "shift"
       ],
       "type": "object"
     }

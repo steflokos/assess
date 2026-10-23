@@ -80,8 +80,8 @@ func TestCover(t *testing.T) {
 	for _, r := range levels.Rows {
 		rows[r.Label] = r.Counts
 	}
-	// base 5, 4, 1, 1 and residual 4, 2, 1, 1
-	if fmt.Sprint(rows["Before any control"]) != "[1 1 0 0 2]" || fmt.Sprint(rows["With the controls"]) != "[0 1 0 1 2]" {
+	// base 5, 4, 1, 1 and residual 2, 2, 1, 1
+	if fmt.Sprint(rows["Before any control"]) != "[1 1 0 0 2]" || fmt.Sprint(rows["With the controls"]) != "[0 0 0 2 2]" {
 		t.Errorf("rows %v", rows)
 	}
 
@@ -117,7 +117,7 @@ func TestValuesATemplateCanPlace(t *testing.T) {
 	want := map[string]string{
 		"title": "Test gateway", "date": "2026-01-15", "standards": "ISO/SAE 21434:2021", "assessors": "Test engineer",
 		"item": "Test gateway", "tool": "assess v0.1.0", "fingerprint": "sha256:test", "open": "0",
-		"risk.base": "5", "risk.residual": "4", "iteration": "none", "iteration.hash": "none",
+		"risk.base": "5", "risk.residual": "2", "iteration": "none", "iteration.hash": "none",
 	}
 	for k, w := range want {
 		if v.Values[k] != w {

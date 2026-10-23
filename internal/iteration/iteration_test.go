@@ -435,7 +435,7 @@ func TestDecisionsOfTheTestProject(t *testing.T) {
 		t.Fatalf("one decision for each risk, got %v", got)
 	}
 	for id, want := range map[string]string{
-		"update-package-tampering": "Reduce 5>4 ",
+		"update-package-tampering": "Reduce 5>2 ",
 		"firmware-image-tampering": "Reduce 4>2 ",
 		"device-key-disclosure":    "Accept 1>1 ",
 		"api-interface-spoofing":   "Share 1>1 ",

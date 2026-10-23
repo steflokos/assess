@@ -5,7 +5,7 @@
 # How to read a step
 #   potential     the effort of one execution, in the five factors of ISO/SAE 21434 (the policy turns the keys into points)
 #   scalability   how far one successful execution reaches: Single Vehicle, Limited Batch (a region, a plant, a batch)
-#                 or Fleet-Wide. The policy raises the risk value with the narrowest step of a path.
+#                 or Fleet-Wide. The policy raises the impact with the narrowest step of a path.
 #   preparedby    what must be done before: a step, or another threat scenario whose attack path is used as a step
 #   mitigatedby   the controls that make this step harder. The attacker has to get past every one of them
 #

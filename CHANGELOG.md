@@ -30,6 +30,10 @@ What is in it:
   written as it was.
 - `assess help <command>` says how a command is written. A flag that comes after the folder is said to be in the wrong place, and a typo
   in the name of a command is met with the one that was meant. `verify` shows the start of each key and flags a key that signs twice.
+- Scalability raises the impact of a damage scenario, per path, and not the risk value. `scalability.shift` in the policy gives the levels for a
+  Limited Batch and the Fleet-Wide. A hard attack stays small however far it reaches, and a control still lowers the risk. This replaces
+  `mode`, `of`, `raise`, `cap` and `matrix`, which could give a negligible damage a risk above the affinity. A policy that has them is
+  refused with the name of the key, and the format baseline in `internal/schema/testdata` was recorded again for it.
 - `examples/ota`, a finished example project.
 
 Known limits of this beta:

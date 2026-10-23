@@ -20,7 +20,7 @@ easiest path (#1)
   stage 1  steps combined by                     sum    max    max      max     max
            result                                1      3      3        4       0
   total 11 = 1 + 3 + 3 + 4 + 0  ->  High
-  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+  scalability of this path: Fleet-Wide  (the narrowest step of the path)
 
 next easiest paths and the ones that decide a risk (explain -all shows each as a table)
   #2  total 12  High  Fleet-Wide  approve-release-with-stolen-identity + aitm-phish-staff
@@ -39,7 +39,7 @@ easiest path (#1)
   stage 1  steps combined by        sum    max    max      max      max
            result                   4      3      7        10       0
   total 24 = 4 + 3 + 7 + 10 + 0  ->  Low
-  scalability of this path: Fleet-Wide  (taken from the bottleneck. Initial Fleet-Wide, bottleneck Fleet-Wide, broadest Fleet-Wide)
+  scalability of this path: Fleet-Wide  (the narrowest step of the path)
 
 next easiest paths and the ones that decide a risk (explain -all shows each as a table)
   #2  total 39  Very Low  Fleet-Wide  approve-release-with-stolen-identity + aitm-phish-staff + exploit-portal-self-approval-flaw + defeat phishing-resistant-mfa + bypass four-eyes-approval
@@ -47,19 +47,20 @@ next easiest paths and the ones that decide a risk (explain -all shows each as a
   #4  total 48  Very Low  Fleet-Wide  approve-release-with-stolen-identity + steal-session-token-with-infostealer + exploit-portal-self-approval-flaw + defeat device-bound-sessions + bypass four-eyes-approval
 
 risk per damage scenario
-the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path
+the impact is raised for the scalability of each path, and the risk of every path is looked up from the raised impact and its feasibility. The highest decides, and a tie goes to the easier path
   wrong-software-installed  impact Major
     roaduser  safety Major, financial Moderate, operational Major, privacy Negligible  ->  max Major
     oem       safety Moderate, financial Major, operational Major, privacy Negligible  ->  max Major
     between   Major, Major  ->  max Major
-    base      High, matrix cell 4, Fleet-Wide +2 (cap 5), risk 5
-    residual  Low, matrix cell 2, Fleet-Wide +2 (cap 5), risk 4
+    base      High, Fleet-Wide raises the impact from Major to Severe (+2), risk 5
+    residual  Low, Fleet-Wide raises the impact from Major to Severe (+2), risk 3
   evidence-lost  impact Major
     roaduser  safety Negligible, financial Moderate, operational Negligible, privacy Negligible  ->  max Moderate
     oem       safety Negligible, financial Major, operational Moderate, privacy Negligible  ->  max Major
     between   Moderate, Major  ->  max Major
-    base      High, matrix cell 4, Fleet-Wide +2 (cap 5), risk 5
-    residual  Low, matrix cell 2, Fleet-Wide +2 (cap 5), risk 4
+    base      High, Fleet-Wide raises the impact from Major to Severe (+2), risk 5
+    residual  Low, Fleet-Wide raises the impact from Major to Severe (+2), risk 3
 
-risk of this threat scenario (the highest of its damage scenarios): 5 -> 4
+risk of this threat scenario (the highest of its damage scenarios): 5 -> 3
 type: Goal (the base risk 5 is above the risk affinity 2)
+it decides the base risk of the item (5)

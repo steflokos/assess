@@ -11,8 +11,8 @@
 risk supplier-delivery-tampering:
   name: Risk of tampering with Supplier delivery
   type: Goal
-  base: 5
-  residual: 4
+  base: 3
+  residual: 2
   description: Malicious code arrives in a supplier delivery and is built, signed and installed like any other.
   treatment: Reduce
   rationale: Review, binary comparison and the account hardening bring it to 4. What remains is a supplier who delivers bad code on purpose, which no review can exclude.
@@ -21,8 +21,8 @@ risk supplier-delivery-tampering:
 risk release-candidate-tampering:
   name: Risk of tampering with Release candidate
   type: Goal
-  base: 5
-  residual: 4
+  base: 4
+  residual: 2
   description: The images that are signed are not the ones that were reviewed, because a library poisons the build or an image is changed after approval.
   treatment: Reduce
   rationale: Pinned dependencies, isolated runners and the digest check in the signing service bring it to 4. What remains is an upstream library that is poisoned for a long time before it is used.
@@ -32,7 +32,7 @@ risk approval-record-tampering:
   name: Risk of tampering with Approval record
   type: Goal
   base: 5
-  residual: 4
+  residual: 3
   description: A release or a campaign is approved by someone who should not have been able to, and the next steps act on it.
   treatment: Reduce
   rationale: Second approver, device-bound sessions and the callback of the helpdesk bring it to 4. Two colluding approvers are what remains, and the audit log and the signing alerts watch for them.
@@ -42,7 +42,7 @@ risk backoffice-portal-spoofing:
   name: Risk of spoofing of Back-office portal
   type: Goal
   base: 5
-  residual: 4
+  residual: 2
   description: Someone acts in the portal as a release manager or a campaign manager.
   treatment: Reduce
   rationale: Hardware tokens, the helpdesk callback and device-bound sessions bring it to 4. What remains takes weeks and a foothold inside.
@@ -50,9 +50,9 @@ risk backoffice-portal-spoofing:
 
 risk signing-service-tampering:
   name: Risk of tampering with Software signing service
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: The signing service signs something that was not approved.
   treatment: Reduce
   rationale: Both ways need a foothold in the build network and a pipeline identity, or two insiders. The monitoring raises an alarm on every signature outside a release. The controls leave 4 for an attack of this effort, which is high only because it reaches the whole fleet.
@@ -60,9 +60,9 @@ risk signing-service-tampering:
 
 risk software-signing-private-key-disclosure:
   name: Risk of information disclosure of Software signing private key
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: The key that vehicles accept for software is taken.
   treatment: Reduce
   rationale: The key is in a certified HSM at two sites, with the backups in split custody. What is left needs a laboratory of a state or an insider with a quorum. The value is 4 because the attack reaches the whole fleet.
@@ -70,9 +70,9 @@ risk software-signing-private-key-disclosure:
 
 risk software-signing-private-key-denial:
   name: Risk of denial of service of Software signing private key
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: The signing key and all its backups are destroyed.
   treatment: Reduce
   rationale: It takes an insider with rights at both sites and the backups. The new key would have to be put into the vehicles by a campaign that the old key signed first, so the plan is to keep a second signing key ready.
@@ -81,8 +81,8 @@ risk software-signing-private-key-denial:
 risk software-signing-certificate-spoofing:
   name: Risk of spoofing of Software signing certificate
   type: Goal
-  base: 5
-  residual: 4
+  base: 4
+  residual: 2
   description: The attacker gets a signing certificate for their own key, and vehicles accept their software.
   treatment: Reduce
   rationale: Two approvals, key attestation and the segmentation of the PKI network bring it to 4. A taken-over registration authority together with a colluding approver is what remains.
@@ -90,9 +90,9 @@ risk software-signing-certificate-spoofing:
 
 risk secure-boot-private-key-disclosure:
   name: Risk of information disclosure of Secure boot private key
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: The key that signs bootloaders is taken.
   treatment: Reduce
   rationale: The key is offline and used a few times a year. A bootloader signed with it still has to be put on a vehicle by hand, so the reach in practice is small.
@@ -102,7 +102,7 @@ risk campaign-definition-tampering:
   name: Risk of tampering with Campaign definition
   type: Goal
   base: 5
-  residual: 4
+  residual: 2
   description: A campaign sends valid software to vehicles that it does not fit, in one wave.
   treatment: Reduce
   rationale: The second approval and the staged roll-out with an automatic stop keep a bad campaign from reaching the fleet. It stays at 4 because the stop acts only after the first wave.
@@ -111,8 +111,8 @@ risk campaign-definition-tampering:
 risk update-director-tampering:
   name: Risk of tampering with Update director
   type: Goal
-  base: 5
-  residual: 4
+  base: 3
+  residual: 2
   description: The director authorises installations that no campaign asked for.
   treatment: Reduce
   rationale: Hardening of the cloud administrator accounts and the policy in the director HSM on what it may sign bring it to 4.
@@ -121,8 +121,8 @@ risk update-director-tampering:
 risk authorisation-signing-private-key-disclosure:
   name: Risk of information disclosure of Authorisation signing private key
   type: Goal
-  base: 4
-  residual: 3
+  base: 3
+  residual: 2
   description: The key that signs authorisations is taken.
   treatment: Reduce
   rationale: The key is in an HSM and its backup is in split custody. It cannot sign software, so the attacker can only direct valid packages.
@@ -131,8 +131,8 @@ risk authorisation-signing-private-key-disclosure:
 risk vehicle-configuration-tampering:
   name: Risk of tampering with Vehicle configuration
   type: Goal
-  base: 5
-  residual: 3
+  base: 4
+  residual: 2
   description: The registry holds a wrong inventory for a vehicle, so it gets a package for another variant or none.
   treatment: Reduce
   rationale: Authorisation per VIN, rate limits and detection bring it to 3.
@@ -142,7 +142,7 @@ risk vehicle-configuration-disclosure:
   name: Risk of information disclosure of Vehicle configuration
   type: Goal
   base: 5
-  residual: 3
+  residual: 2
   description: The inventory of the fleet is read through the API or from the database.
   treatment: Reduce
   rationale: The same controls, and the hardening of the cloud accounts, bring it to 3.
@@ -151,8 +151,8 @@ risk vehicle-configuration-disclosure:
 risk update-package-tampering:
   name: Risk of tampering with Update package
   type: Goal
-  base: 5
-  residual: 4
+  base: 4
+  residual: 2
   description: A package that was changed is served to vehicles at the content delivery network or at the origin.
   treatment: Reduce
   rationale: The verification in the vehicle and the lock on the repository bring it to 4. What remains is the theft of the signing key or a flaw in the verifier, which have their own risks.
@@ -162,7 +162,7 @@ risk update-package-disclosure:
   name: Risk of information disclosure of Update package
   type: Goal
   base: 5
-  residual: 4
+  residual: 3
   description: Anyone who owns a vehicle, or has a workshop login, can read the firmware of the whole line, and so can see where to attack it.
   treatment: Reduce
   rationale: 'The images are encrypted for the vehicles, which closes the workshop path and the download link: they give ciphertext. The owner of a vehicle can still read the images from the unit after decryption, with a debug interface or a memory dump, so what is left is one owner with the skill. The value stays at 4 because what one owner reads is known for the whole line.'
@@ -172,7 +172,7 @@ risk vehicle-api-gateway-denial:
   name: Risk of denial of service of Vehicle API gateway
   type: Goal
   base: 5
-  residual: 3
+  residual: 2
   description: The vehicle interface is flooded and no vehicle can check in.
   treatment: Reduce
   rationale: The protection in front of the interface absorbs floods. Vehicles retry, so a delay is the worst that remains.
@@ -191,8 +191,8 @@ risk vehicle-api-gateway-spoofing:
 risk backend-tls-private-key-disclosure:
   name: Risk of information disclosure of Backend TLS private key
   type: Goal
-  base: 4
-  residual: 3
+  base: 3
+  residual: 2
   description: The TLS key of the gateway is exported from the key store.
   treatment: Reduce
   rationale: The key store does not export, and changing its policy needs a cloud administrator and raises an alarm.
@@ -211,8 +211,8 @@ risk workshop-interface-spoofing:
 risk audit-log-tampering:
   name: Risk of tampering with Audit log
   type: Goal
-  base: 4
-  residual: 3
+  base: 3
+  residual: 2
   description: Entries of the audit log are deleted or changed.
   treatment: Reduce
   rationale: The log is in write-once storage with a hash chain that the security operations centre holds.
@@ -222,7 +222,7 @@ risk audit-log-repudiation:
   name: Risk of repudiation of Audit log
   type: Goal
   base: 5
-  residual: 3
+  residual: 2
   description: A person who acted denies it, because the log cannot tell who used a shared account or the entry is gone.
   treatment: Reduce
   rationale: The immutable storage of the log, named accounts and the sealed emergency account bring it to 3.
@@ -230,9 +230,9 @@ risk audit-log-repudiation:
 
 risk root-ca-private-key-disclosure:
   name: Risk of information disclosure of Root CA private key
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: The root key is taken and the attacker can certify any CA.
   treatment: Reduce
   rationale: The root is offline, in a certified HSM, with custodians in three places, and is used for ceremonies only. 4 is the lowest value that an attack on the whole fleet can have under this policy.
@@ -240,9 +240,9 @@ risk root-ca-private-key-disclosure:
 
 risk root-ca-private-key-denial:
   name: Risk of denial of service of Root CA private key
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: The root HSM, its backup and the cards are destroyed.
   treatment: Reduce
   rationale: Destroying all of it takes a break-in at two sites. The fallback is a new root, introduced through a workshop campaign, and the plan is in the certificate policy.
@@ -250,9 +250,9 @@ risk root-ca-private-key-denial:
 
 risk registration-authority-tampering:
   name: Risk of tampering with Registration authority
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: The registration authority is taken over through a flaw in its API.
   treatment: Reduce
   rationale: The flaw has to be found in a service that only the gateway reaches, and the CAs still check the profile of every request.
@@ -260,9 +260,9 @@ risk registration-authority-tampering:
 
 risk vehicle-ca-tampering:
   name: Risk of tampering with Vehicle CA (intermediate)
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: Rogue vehicle certificates are issued through the vehicle CA.
   treatment: Reduce
   rationale: It needs a breach of the PKI network and the credentials of the CA host, and the volume of issued certificates is watched.
@@ -270,9 +270,9 @@ risk vehicle-ca-tampering:
 
 risk certificate-revocation-list-denial:
   name: Risk of denial of service of Certificate revocation list
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: After a key is stolen, the revocation does not reach a vehicle.
   treatment: Reduce
   rationale: It needs the stolen key and a presence next to the vehicle for a week. The vehicle limits updates when its list is old.
@@ -280,9 +280,9 @@ risk certificate-revocation-list-denial:
 
 risk provisioning-server-tampering:
   name: Risk of tampering with Plant provisioning server
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: The plant provisioning server is used to get certificates for vehicles that were not built.
   treatment: Reduce
   rationale: It needs a foothold in the production network. The registration authority checks the build record of every VIN and limits the number of requests.
@@ -290,9 +290,9 @@ risk provisioning-server-tampering:
 
 risk provisioning-server-denial:
   name: Risk of denial of service of Plant provisioning server
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: Ransomware stops the provisioning server and the line.
   treatment: Share
   rationale: A stop can last days, and the damage falls on the production of the OEM, not on the road user. The business interruption cover of the group's cyber insurance carries the cost of a stop, and the service agreement with the plant IT provider fixes the restore times. The plant keeps backups and an offline procedure for the rest.
@@ -301,8 +301,8 @@ risk provisioning-server-denial:
 risk trust-anchor-bundle-tampering:
   name: Risk of tampering with Trust anchor bundle
   type: Goal
-  base: 4
-  residual: 3
+  base: 3
+  residual: 2
   description: The bundle that is written into new vehicles holds the attacker's root.
   treatment: Reduce
   rationale: The bundle is signed and the stations check its hash from a second channel, so a change also needs the signatures.
@@ -310,9 +310,9 @@ risk trust-anchor-bundle-tampering:
 
 risk secure-boot-public-key-tampering:
   name: Risk of tampering with Secure boot public key
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: Another secure boot key is fixed into a batch of ECUs.
   treatment: Share
   rationale: It needs an insider at the manufacturer for months. The ECU manufacturer is responsible for the key that it fixes into the ECUs, and the cybersecurity interface agreement asks for dual control of the key, a yearly audit by the OEM and a signed record of every batch. The record shows a substituted key, and the OEM checks it when the batch arrives.
@@ -329,9 +329,9 @@ risk lifecycle-state-tampering:
 
 risk cellular-interface-spoofing:
   name: Risk of spoofing of Cellular interface
-  type: Goal
-  base: 3
-  residual: 3
+  type: Claim
+  base: 2
+  residual: 2
   description: A rogue base station takes the connection of a vehicle.
   treatment: Share
   rationale: The authentication of the network is the job of the mobile operator. The operator contract asks for 4G and 5G with mutual authentication, no fallback to 2G on the profile of the vehicles, and a report of every rogue cell that the operator finds. What is left is a rogue base station that can drop or delay what passes, but the vehicle accepts no software from it, because it accepts only certificates of the pinned backend CA.
@@ -339,9 +339,9 @@ risk cellular-interface-spoofing:
 
 risk ota-client-tampering:
   name: Risk of tampering with OTA client
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: Code of the attacker runs in the OTA client of a telematics unit.
   treatment: Reduce
   rationale: The routes need months of reverse engineering and a taken-over content delivery network, or a modem exploit. Hardened parsing, the separation of the processes and secure boot limit what code in the client can do.
@@ -349,9 +349,9 @@ risk ota-client-tampering:
 
 risk package-verifier-tampering:
   name: Risk of tampering with Package verifier
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: A crafted package makes the verifier accept what it should refuse.
   treatment: Reduce
   rationale: A flaw in the parser is found by fuzzing and is fixed by an update. The parser is memory-safe where possible and runs in a sandbox.
@@ -369,9 +369,9 @@ risk secure-time-tampering:
 
 risk consent-ui-tampering:
   name: Risk of tampering with Update consent screen
-  type: Goal
-  base: 3
-  residual: 2
+  type: Claim
+  base: 2
+  residual: 1
   description: Code on the infotainment unit sends the consent of the driver.
   treatment: Accept
   rationale: The orchestrator accepts only a signed decision for the current update, so code elsewhere on the unit cannot send one.
@@ -389,9 +389,9 @@ risk download-link-denial:
 
 risk update-orchestrator-tampering:
   name: Risk of tampering with Update orchestrator
-  type: Goal
-  base: 4
-  residual: 4
+  type: Claim
+  base: 2
+  residual: 2
   description: An update starts while the vehicle drives.
   treatment: Reduce
   rationale: Faking the parked state needs access to the wiring or code in the telematics unit, and several signals that are authenticated. The orchestrator also stops when the state changes.

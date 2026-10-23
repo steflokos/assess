@@ -18,7 +18,7 @@ type Policy struct {
 	Controls    ControlPolicy     `yaml:"controls,omitempty" doc:"Which controls count in the calculation."`
 	Feasibility Feasibility       `yaml:"feasibility,omitempty" doc:"How attack potential is added up and turned into a feasibility level."`
 	Impact      ImpactPolicy      `yaml:"impact,omitempty" doc:"Which impact counts for the risk and how the impact of a damage scenario is worked out."`
-	Scalability ScalabilityPolicy `yaml:"scalability,omitempty" doc:"How scalability (Single Vehicle, Limited Batch, Fleet-Wide) changes the risk. If you leave this section out, scalability is ignored and the risk comes straight from the matrix."`
+	Scalability ScalabilityPolicy `yaml:"scalability,omitempty" doc:"How scalability (Single Vehicle, Limited Batch, Fleet-Wide) raises the impact of a damage scenario for a path that reaches more vehicles. If you leave this section out, scalability is ignored and the risk comes straight from the matrix."`
 	Risk        RiskPolicy        `yaml:"risk,omitempty" doc:"How impact and feasibility give a risk value."`
 }
 
@@ -101,14 +101,11 @@ type ImpactBand struct {
 	Level iso21434.ImpactLevel `yaml:"level" req:"always" doc:"The impact level for this band."`
 }
 
-// ScalabilityPolicy says how scalability enters the risk. The scalability of a
-// path comes from its steps. The risk is looked up for every path and the highest decides.
+// ScalabilityPolicy says how far scalability raises the impact. The scalability of a path is its narrowest step. A damage scenario is
+// rated for one vehicle, so a path that reaches more vehicles raises its impact by the number of levels written here, to Severe at most.
+// The risk is looked up from the raised impact and the feasibility of the path, and the highest over all paths decides.
 type ScalabilityPolicy struct {
-	Mode   iso21434.ScalabilityMode                                                             `yaml:"mode,omitempty" req:"always" doc:"ignored: scalability does not change the risk. escalator: the risk value from the matrix goes up for each scalability (see raise). matrix: there is a separate risk matrix for each scalability (see matrix)."`
-	Of     iso21434.ScalabilityOf                                                               `yaml:"of,omitempty" doc:"Which step of the path sets its scalability. bottleneck is the narrowest step and is the default. initial is the narrowest step that needs nothing before it. broadest is the widest step, which is the worst case."`
-	Raise  map[iso21434.Scalability]*int                                                        `yaml:"raise,omitempty" doc:"Escalator: how much the risk value is raised for each scalability. Write every scalability."`
-	Cap    *int                                                                                 `yaml:"cap,omitempty" doc:"Escalator: the risk value does not go above this. If you leave it out, it is the highest value in risk.matrix. The escalator never lowers a value."`
-	Matrix map[iso21434.Scalability]map[iso21434.ImpactLevel]map[iso21434.FeasibilityLevel]*int `yaml:"matrix,omitempty" doc:"Matrix mode: a whole risk matrix for each scalability, used instead of risk.matrix. Write every combination."`
+	Shift map[iso21434.Scalability]*int `yaml:"shift,omitempty" req:"always" doc:"How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet (Fleet-Wide). The rating of a damage scenario is for one vehicle, so Single Vehicle is not written. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole scalability section out, scalability is ignored."`
 }
 
 // RiskPolicy holds the risk matrix and the risk the project accepts.
@@ -273,36 +270,25 @@ func (p *Policy) Problems() []Problem {
 			func(i int) *int { return im.Levels[i].Upto }, func(i int) string { return string(im.Levels[i].Level) })
 	}
 
-	// scalability: a mode once any key is written and what the mode needs
-	sc := p.Scalability
-	if sc.Mode != "" || sc.Of != "" || len(sc.Raise) > 0 || sc.Cap != nil || len(sc.Matrix) > 0 {
-		if sc.Mode == "" {
-			add("scalability", "scalability.mode is missing")
-		}
-		if sc.Mode == "escalator" {
-			for _, sv := range iso21434.ScalabilityValues() {
-				switch v, ok := sc.Raise[iso21434.Scalability(sv)]; {
-				case !ok:
-					add("scalability.raise", "scalability.raise is missing %s, which the escalator needs", sv)
-				case v == nil:
-					add("scalability.raise."+sv, "scalability.raise.%s has no value", sv)
-				case *v < 0:
-					add("scalability.raise."+sv, "scalability.raise.%s must not be negative", sv)
-				}
+	// scalability: the shift for a batch and for the fleet, once the section is written
+	if sc := p.Scalability; len(sc.Shift) > 0 {
+		for sv := range sc.Shift {
+			if iso21434.Scalability(sv) == iso21434.ScalabilitySingleVehicle {
+				add("scalability.shift."+string(sv), "scalability.shift.%s is not written. A damage scenario is rated for one vehicle, so it is 0", sv)
 			}
 		}
-		if sc.Cap != nil && *sc.Cap < 0 {
-			add("scalability.cap", "scalability.cap must not be negative")
-		}
-		if sc.Mode == "matrix" {
-			for _, sv := range iso21434.ScalabilityValues() {
-				m, ok := sc.Matrix[iso21434.Scalability(sv)]
-				if !ok {
-					add("scalability.matrix", "scalability.matrix.%s is missing, which matrix mode needs", sv)
-					continue
-				}
-				checkMatrix("scalability.matrix."+sv, m)
+		for _, sv := range []iso21434.Scalability{iso21434.ScalabilityLimitedBatch, iso21434.ScalabilityFleetWide} {
+			switch v, ok := sc.Shift[sv]; {
+			case !ok:
+				add("scalability.shift", "scalability.shift is missing %s", sv)
+			case v == nil:
+				add("scalability.shift."+string(sv), "scalability.shift.%s has no value", sv)
+			case *v < 0 || *v > 3:
+				add("scalability.shift."+string(sv), "scalability.shift.%s is a number of impact levels, from 0 to 3", sv)
 			}
+		}
+		if lb, fw := sc.Shift[iso21434.ScalabilityLimitedBatch], sc.Shift[iso21434.ScalabilityFleetWide]; lb != nil && fw != nil && *fw < *lb {
+			add("scalability.shift.Fleet-Wide", "scalability.shift.Fleet-Wide is less than Limited Batch. An attack that reaches the fleet reaches a batch too")
 		}
 	}
 

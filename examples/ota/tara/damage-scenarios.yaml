@@ -5,7 +5,7 @@
 #
 # Each damage scenario is written for what it means once, to one vehicle or to the system. How far a
 # single attack reaches is not rated here. That is the scalability of the attack steps, and the policy
-# raises the risk value with it. So the same damage scenario serves an attack on one vehicle and an
+# raises the impact with it. So the same damage scenario serves an attack on one vehicle and an
 # attack on the fleet.
 #
 # The stakeholders that count for the risk are the road user and the OEM (policy.yaml).

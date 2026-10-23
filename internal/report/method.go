@@ -120,34 +120,18 @@ func (b *builder) impactPolicy() Section {
 func (b *builder) riskPolicy() Section {
 	pol := b.ws.Policy
 	s := Section{ID: "method-risk", Title: "Risk: matrix and scalability",
-		Lead: "The risk value is read from the matrix at the impact and the feasibility level. Scalability can raise it, or select a different matrix."}
-	if pol.Scalability.Mode == "matrix" {
-		for _, sc := range iso21434.ScalabilityValues() {
-			s.Blocks = append(s.Blocks, Block{Table: matrixTable("Risk matrix for "+sc, pol.Scalability.Matrix[iso21434.Scalability(sc)])})
-		}
-		return s
-	}
+		Lead: "The risk value is read from the matrix at the impact and the feasibility level. When scalability counts, the impact of a damage scenario is raised first for a path that reaches more than one vehicle."}
 	s.Blocks = append(s.Blocks, Block{Table: matrixTable("Risk matrix", pol.Risk.Matrix)})
-	if pol.Scalability.Mode == "escalator" {
-		t := &Table{Caption: "Escalator: how much scalability raises the value", Head: []string{"Scalability", "Raise"}}
+	if len(pol.Scalability.Shift) > 0 {
+		t := &Table{Caption: "How far scalability raises the impact. A damage scenario is rated for one vehicle, and the impact stops at the most severe level", Head: []string{"Scalability", "Levels"}}
 		for _, sc := range iso21434.ScalabilityValues() {
-			t.Rows = append(t.Rows, Row{Cells: []Cell{txt(sc), intPlain(pol.Scalability.Raise[iso21434.Scalability(sc)])}})
-		}
-		cap := open("")
-		if pol.Scalability.Cap != nil {
-			cap = txt(fmt.Sprint(*pol.Scalability.Cap))
-		} else if m := pol.Risk.Matrix; len(m) > 0 {
-			top := 0
-			for _, row := range m {
-				for _, v := range row {
-					if v != nil && *v > top {
-						top = *v
-					}
-				}
+			n := 0
+			if v := pol.Scalability.Shift[iso21434.Scalability(sc)]; v != nil {
+				n = *v
 			}
-			cap = txt(fmt.Sprintf("%d (the highest value of the matrix)", top))
+			t.Rows = append(t.Rows, Row{Cells: []Cell{txt(sc), intPlain(&n)}})
 		}
-		s.Blocks = append(s.Blocks, Block{Table: t}, Block{Facts: []Fact{{"Cap", cap}}})
+		s.Blocks = append(s.Blocks, Block{Table: t})
 	}
 	return s
 }

@@ -18,7 +18,7 @@ easiest path (#1)
   stage 1  steps combined by  sum    max    max      max     max
            result             1      3      3        4       4
   total 15 = 1 + 3 + 3 + 4 + 4  ->  Medium
-  scalability of this path: Single Vehicle  (taken from the bottleneck. Initial Single Vehicle, bottleneck Single Vehicle, broadest Single Vehicle)
+  scalability of this path: Single Vehicle  (the narrowest step of the path)
 
 RESIDUAL (controls applied): Medium, total 15
 1 path. The easiest has the lowest total and a tie goes to the path written first
@@ -32,22 +32,22 @@ easiest path (#1)
   stage 1  steps combined by  sum    max    max      max     max
            result             1      3      3        4       4
   total 15 = 1 + 3 + 3 + 4 + 4  ->  Medium
-  scalability of this path: Single Vehicle  (taken from the bottleneck. Initial Single Vehicle, bottleneck Single Vehicle, broadest Single Vehicle)
+  scalability of this path: Single Vehicle  (the narrowest step of the path)
 
 risk per damage scenario
-the risk of every path is looked up from its feasibility and its scalability. The highest decides, and a tie goes to the easier path
+the impact is raised for the scalability of each path, and the risk of every path is looked up from the raised impact and its feasibility. The highest decides, and a tie goes to the easier path
   update-during-driving  impact Severe
     roaduser  safety Severe, financial Moderate, operational Major, privacy Negligible  ->  max Severe
     oem       safety Major, financial Major, operational Major, privacy Negligible  ->  max Major
     between   Severe, Major  ->  max Severe
-    base      Medium, matrix cell 4, Single Vehicle +0 (cap 5), risk 4
-    residual  Medium, matrix cell 4, Single Vehicle +0 (cap 5), risk 4
+    base      Medium, Single Vehicle keeps the impact at Severe, risk 4
+    residual  Medium, Single Vehicle keeps the impact at Severe, risk 4
   vehicle-bricked  impact Severe
     roaduser  safety Major, financial Major, operational Severe, privacy Negligible  ->  max Severe
     oem       safety Moderate, financial Major, operational Major, privacy Negligible  ->  max Major
     between   Severe, Major  ->  max Severe
-    base      Medium, matrix cell 4, Single Vehicle +0 (cap 5), risk 4
-    residual  Medium, matrix cell 4, Single Vehicle +0 (cap 5), risk 4
+    base      Medium, Single Vehicle keeps the impact at Severe, risk 4
+    residual  Medium, Single Vehicle keeps the impact at Severe, risk 4
 
 risk of this threat scenario (the highest of its damage scenarios): 4 -> 4
 type: Goal (the base risk 4 is above the risk affinity 2)

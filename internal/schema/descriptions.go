@@ -41,7 +41,7 @@ var typeDocs = map[string]string{
 	"FactorRules":       "For each of the five factors, sum adds the numbers and max takes the largest.",
 	"ImpactPolicy":      "Which impact counts for the risk and how the impact of a damage scenario is worked out.",
 	"ImpactBand":        "One band of the table that turns summed points into an impact level: the highest total it covers and its level.",
-	"ScalabilityPolicy": "How scalability changes the risk. If you leave this section out, scalability is ignored.",
+	"ScalabilityPolicy": "How scalability raises the impact. If you leave this section out, scalability is ignored.",
 	"RiskPolicy":        "How impact and feasibility give a risk value. It holds the matrix and the highest risk the project accepts without a goal.",
 	"AttackPotential":   "Effort in the five ISO/SAE 21434 factors, using the rating keys. It is what an attack step takes, or what a control asks from the attacker. Lower numbers mean an easier attack and a weaker control.",
 	"ImpactSet":         "Impact rating per stakeholder. The road user is required.",

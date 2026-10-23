@@ -27,7 +27,7 @@ import (
 //	              controls: time takes the largest, the other four add up (on top of the result for the steps)
 //	risk matrix   Severe  High 5, Medium 4, Low 3, Very Low 2
 //	              Major   High 4, Medium 3, Low 2, Very Low 1
-//	scalability   escalator, bottleneck step, raise 0 / 1 / 2 for Single Vehicle / Limited Batch / Fleet-Wide, cap 5
+//	scalability   the narrowest step of a path, impact raised by 0 / 1 / 2 levels for Single Vehicle / Limited Batch / Fleet-Wide
 
 // pot writes a potential or a reduction from the position of each rating key: pot(1, 0, 0, 0, 0) is ET1 and the rest 0.
 func pot(time, expertise, knowledge, window, equipment int) string {
@@ -141,7 +141,7 @@ func TestTestProjectNumbers(t *testing.T) {
 	// time max(1, 4) = 4 and (14, 10, 5, 11) = 44. device-key-disclosure and api-interface-spoofing are 25 points.
 	// With the secure element the key costs time max(4, 17) = 17 and (14, 18, 11, 16) = 76 points.
 	cases := map[string]want{
-		"update-package-tampering": {12, 36, "High", "Very Low", 5, 4, "Goal"},
+		"update-package-tampering": {12, 36, "High", "Very Low", 5, 2, "Goal"},
 		"firmware-image-tampering": {15, 44, "Medium", "Very Low", 4, 2, "Goal"},
 		"device-key-disclosure":    {25, 76, "Very Low", "Very Low", 1, 1, "Claim"},
 		"api-interface-spoofing":   {25, 76, "Very Low", "Very Low", 1, 1, "Claim"},
@@ -175,17 +175,18 @@ func TestTestProjectNumbers(t *testing.T) {
 	}
 
 	// the item takes the highest risk of its threat scenarios
-	if it := rep.Item; it == nil || it.Base == nil || it.Residual == nil || *it.Base != 5 || *it.Residual != 4 ||
+	if it := rep.Item; it == nil || it.Base == nil || it.Residual == nil || *it.Base != 5 || *it.Residual != 2 ||
 		it.BaseBy != "update-package-tampering" || it.ResidualBy != "update-package-tampering" || len(it.Open) != 0 {
 		t.Errorf("item risk: %+v", rep.Item)
 	}
 }
 
-// The residual risk of update-package-tampering is not the risk of its easiest path. The easiest path with the
-// controls (36 points, Single Vehicle) has risk 2. The path through the build server (39 points, Fleet-Wide) has
-// the cell 2 raised by 2, so the highest, 4, decides. The risk of a threat scenario is the highest over all its paths.
+// The residual risk of update-package-tampering is not the risk of its easiest path. With the OEM as the only stakeholder the damage is
+// Major. The easiest path with the controls (36 points, Single Vehicle, Very Low) has Major at Very Low, which is 1. The path through
+// the build server (39 points, Fleet-Wide, Very Low) raises Major by 2 levels to Severe, which at Very Low is 2. So the highest, 2,
+// decides, and it is on the harder path. The risk of a threat scenario is the highest over all its paths.
 func TestRiskIsTheHighestOverAllPaths(t *testing.T) {
-	rep := run(t, build(t, nil))
+	rep := run(t, build(t, nil, [2]string{"stakeholders: [roaduser, oem]", "stakeholders: [oem]"}))
 	var r engine.Result
 	for _, x := range rep.Threats {
 		if x.Threat == "update-package-tampering" {
@@ -202,14 +203,14 @@ func TestRiskIsTheHighestOverAllPaths(t *testing.T) {
 	if d == nil {
 		t.Fatal("no residual risk")
 	}
-	if d.Value != 4 || d.Cell != 2 || d.Raise != 2 || d.Scalability != "Fleet-Wide" || d.Path != 2 {
-		t.Errorf("the residual risk should be cell 2 raised by 2 on path 2 (Fleet-Wide), got %+v", d)
+	if d.Value != 2 || d.Rated != "Major" || d.Impact != "Severe" || d.Shift != 2 || d.Scalability != "Fleet-Wide" || d.Path != 2 || d.Level != "Very Low" {
+		t.Errorf("the residual risk should be Major raised by 2 to Severe, at Very Low, on path 2 (Fleet-Wide), got %+v", d)
 	}
-	if r.Damages[0].Base == nil || r.Damages[0].Base.Value != 5 || r.Damages[0].Base.Path != 1 {
-		t.Errorf("the base risk should be 5 on path 1, got %+v", r.Damages[0].Base)
+	if b := r.Damages[0].Base; b == nil || b.Value != 4 || b.Path != 1 || b.Impact != "Major" || b.Shift != 0 {
+		t.Errorf("the base risk should be Major at High, 4, on path 1, got %+v", b)
 	}
-	if r.Damages[0].Impact != "Severe" {
-		t.Errorf("impact should be Severe, got %s", r.Damages[0].Impact)
+	if r.Damages[0].Impact != "Major" {
+		t.Errorf("impact should be Major, got %s", r.Damages[0].Impact)
 	}
 }
 
@@ -395,53 +396,86 @@ func TestAnExcludedControlIsLeftOutOfTheResidual(t *testing.T) {
 
 // ---- risk --------------------------------------------------------------------------------------------------
 
+const withShift = "scalability:\n  shift: {Limited Batch: 1, Fleet-Wide: 2}"
+
 func TestRiskWithoutScalability(t *testing.T) {
-	r := run(t, build(t, nil, [2]string{"mode: escalator", "mode: ignored"})).Threats[0]
+	r := run(t, build(t, nil, [2]string{withShift, ""})).Threats[0]
 	// Severe and High is 5 in the matrix, and scalability does not change it
 	d := r.Damages[0].Base
-	if d.Value != 5 || d.Scalability != "" || d.Raise != 0 {
+	if d.Value != 5 || d.Scalability != "" || d.Shift != 0 || d.Rated != "" || d.Impact != "Severe" {
 		t.Errorf("got %+v", d)
 	}
 }
 
-func TestEscalatorRaisesTheCellAndNeverLowersIt(t *testing.T) {
-	// the cap is below the cell: the value stays at the cell
-	r := run(t, build(t, nil, [2]string{"cap: 5", "cap: 3"})).Threats[0]
-	if got := r.Damages[0].Base; got.Value != 5 || got.Cell != 5 {
-		t.Errorf("a cap below the cell must not lower it: %+v", got)
+// Scalability raises the impact that the matrix is read at, and stops at the most severe level. The feasibility is not touched.
+func TestScalabilityRaisesTheImpactToSevereAtMost(t *testing.T) {
+	steps := step("x", timeOnly(1), "Fleet-Wide", "")
+	oem := [2]string{"stakeholders: [roaduser, oem]", "stakeholders: [oem]"}
+	// Major at High is 4. Fleet-Wide raises Major by 2 to Severe, and Severe at High is 5
+	d := one(t, steps, "", "or:\n  - x", oem).Damages[0].Base
+	if d.Value != 5 || d.Rated != "Major" || d.Impact != "Severe" || d.Shift != 2 || d.Level != "High" {
+		t.Errorf("Major raised by 2: %+v", d)
 	}
-	// the cap holds a raised value down: 1 raised by 3 is 4, and the cap is 3
-	capped := run(t, build(t, nil, [2]string{"raise: {Single Vehicle: 0", "raise: {Single Vehicle: 3"}, [2]string{"cap: 5", "cap: 3"})).Threats
-	for _, x := range capped {
-		if x.Threat == "device-key-disclosure" {
-			if v := x.Damages[0].Base; v.Value != 3 || v.Cell != 1 || v.Raise != 3 || v.Cap == nil || *v.Cap != 3 {
-				t.Errorf("1 raised by 3, held at the cap of 3: %+v", v)
-			}
-		}
+	// Severe cannot go higher. The value is the one of the matrix at Severe
+	d = one(t, steps, "", "or:\n  - x").Damages[0].Base
+	if d.Value != 5 || d.Rated != "Severe" || d.Impact != "Severe" {
+		t.Errorf("Severe stays Severe: %+v", d)
 	}
-	// the residual of api-interface-spoofing is Major and Very Low, which is 1, with a Single Vehicle bottleneck
-	all := run(t, build(t, nil, [2]string{"raise: {Single Vehicle: 0", "raise: {Single Vehicle: 3"})).Threats
-	for _, x := range all {
-		if x.Threat == "device-key-disclosure" {
-			if v := x.Damages[0].Base; v.Value != 4 || v.Raise != 3 || v.Cell != 1 {
-				t.Errorf("1 raised by 3 should be 4, got %+v", v)
-			}
+	// a shift of 3 takes Negligible all the way, and 0 takes it nowhere
+	for shift, want := range map[string]string{"3": "Severe", "0": "Major"} {
+		d = one(t, steps, "", "or:\n  - x", oem, [2]string{"Fleet-Wide: 2", "Fleet-Wide: " + shift}).Damages[0].Base
+		if d.Impact != want {
+			t.Errorf("shift %s: impact %s, want %s", shift, d.Impact, want)
 		}
 	}
 }
 
-// The scalability of a path comes from one of its steps, as the policy says. The narrowest step is the bottleneck.
-func TestWhichStepSetsTheScalability(t *testing.T) {
-	for of, want := range map[string]string{"bottleneck": "Single Vehicle", "broadest": "Limited Batch"} {
-		rep := run(t, build(t, nil, [2]string{"of: bottleneck", "of: " + of}))
-		for _, r := range rep.Threats {
-			if r.Threat != "api-interface-spoofing" {
-				continue
-			}
-			// the steps of the path are one that reaches one vehicle and one that reaches a batch
-			if got := r.Base.Best.Scalability.Value; got != want {
-				t.Errorf("of %s: got %s, want %s", of, got, want)
-			}
+// A hard attack stays a hard attack. The risk of a path at Very Low feasibility never rises above the matrix at Very Low for the impact that
+// the path has, and a negligible damage that reaches the whole fleet by a hard attack is not a goal. The escalator that raised the risk
+// value did both: it made 2 into 4 for Severe, and 1 into 3 for Negligible, however hard the attack was.
+func TestAHardAttackStaysSmallWhateverItReaches(t *testing.T) {
+	hard := step("x", pot(4, 3, 3, 3, 3), "Fleet-Wide", "") // 57 points, Very Low
+	easy := step("x", timeOnly(1), "Fleet-Wide", "")        // 1 point, High
+	negligible := "damage unsafe-software-runs:\n  name: Nothing much\n  impact:\n    roaduser:\n" +
+		"      safety: {level: Negligible, rationale: x}\n      financial: {level: Negligible, rationale: x}\n" +
+		"      operational: {level: Negligible, rationale: x}\n      privacy: {level: Negligible, rationale: x}\n"
+	risk := func(steps string, f files) *engine.Risk {
+		f["tara/threat-scenarios.yaml"], f["tara/attack-steps.yaml"], f["tara/controls.yaml"] = threat("or:\n  - x"), steps, ""
+		return run(t, build(t, f)).Threats[0].Damages[0].Base
+	}
+	if d := risk(hard, files{}); d.Level != "Very Low" || d.Value != 2 || d.Impact != "Severe" {
+		t.Errorf("Severe at Very Low is 2, however far it reaches: %+v", d)
+	}
+	if d := risk(hard, files{"tara/damage-scenarios.yaml": negligible}); d.Level != "Very Low" || d.Rated != "Negligible" || d.Impact != "Major" || d.Value != 1 {
+		t.Errorf("Negligible raised by 2 is Major, which is 1 at Very Low: %+v", d)
+	}
+	// the same damage by an easy attack is Major at High: scalability does what it is for
+	if d := risk(easy, files{"tara/damage-scenarios.yaml": negligible}); d.Level != "High" || d.Impact != "Major" || d.Value != 4 {
+		t.Errorf("Major at High is 4: %+v", d)
+	}
+}
+
+// A control still lowers the risk of an attack that reaches the whole fleet, because the shift is on the impact and the feasibility moves
+// the matrix cell. The risk value used to have a floor at the raise.
+func TestAControlLowersTheRiskOfAFleetWideAttack(t *testing.T) {
+	steps := step("x", timeOnly(1), "Fleet-Wide", "mitigatedby: c")
+	r := one(t, steps, control("c", pot(4, 3, 3, 3, 3), ""), "or:\n  - x", [2]string{"stakeholders: [roaduser, oem]", "stakeholders: [oem]"})
+	b, d := r.Damages[0].Base, r.Damages[0].Residual
+	if b.Value != 5 || b.Level != "High" || d.Level != "Very Low" || d.Value != 2 || d.Impact != "Severe" {
+		t.Errorf("base %+v, with the control %+v", b, d)
+	}
+}
+
+// The scalability of a path is its narrowest step: one run of a path reaches no more vehicles than its narrowest step does.
+func TestTheScalabilityOfAPathIsItsNarrowestStep(t *testing.T) {
+	rep := run(t, build(t, nil))
+	for _, r := range rep.Threats {
+		if r.Threat != "api-interface-spoofing" {
+			continue
+		}
+		// the steps of the path are one that reaches one vehicle and one that reaches a batch
+		if got := r.Base.Best.Scalability.Value; got != "Single Vehicle" {
+			t.Errorf("got %s, want Single Vehicle", got)
 		}
 	}
 }
@@ -457,28 +491,6 @@ func TestAStepWithoutScalabilityStopsOnlyTheRisk(t *testing.T) {
 	}
 	if len(r.RiskIssues) != 1 || !strings.Contains(r.RiskIssues[0], "step x has no scalability") {
 		t.Errorf("risk issues %v", r.RiskIssues)
-	}
-}
-
-func TestMatrixModeLooksTheRiskUpPerScalability(t *testing.T) {
-	var m strings.Builder
-	m.WriteString("scalability:\n  mode: matrix\n  matrix:\n")
-	for si, s := range []string{"Single Vehicle", "Limited Batch", "Fleet-Wide"} {
-		m.WriteString("    " + s + ":\n")
-		for _, imp := range []string{"Severe", "Major", "Moderate", "Negligible"} {
-			fmt.Fprintf(&m, "      %s: {High: %d, Medium: %d, Low: %d, Very Low: %d}\n", imp, 1+si, 1+si, 1+si, 1+si)
-		}
-	}
-	policy := testproject.Read(t, testproject.Copy(t), "policy.yaml")
-	tail := policy[strings.Index(policy, "scalability:"):]
-	r := run(t, build(t, nil, [2]string{tail, m.String()})).Threats[0]
-	// the matrix says 1 for a path that reaches one vehicle and 3 for a path that reaches the fleet, whatever the feasibility
-	// and the impact are. The residual risk is decided by the path through the build server, which is Fleet-Wide.
-	if got := r.Damages[0].Residual; got.Value != 3 || got.Scalability != "Fleet-Wide" {
-		t.Errorf("matrix mode: %+v", got)
-	}
-	if got := r.Damages[0].Base; got.Value != 3 {
-		t.Errorf("the base risk is the highest over all paths too, so 3: %+v", got)
 	}
 }
 

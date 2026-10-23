@@ -113,10 +113,10 @@ func TestTheExampleIsAFinishedProject(t *testing.T) {
 	if r := run(t, "generate", "risks", dir); r.code != 0 || !strings.Contains(r.out, "nothing to write: 49 risks already right") {
 		t.Errorf("the risks of the example are as calculated: %s%s", r.out, r.err)
 	}
-	if r := run(t, "verify", "-strict=false", dir); r.code != 0 || !strings.Contains(r.out, "iteration 1") {
-		t.Errorf("the iteration of the example holds: %s%s", r.out, r.err)
+	if r := run(t, "verify", "-strict=false", dir); r.code != 0 || !strings.Contains(r.out, "iteration 2") {
+		t.Errorf("the iterations of the example hold: %s%s", r.out, r.err)
 	}
-	if r := run(t, "finalize", "-dry-run", dir); r.code != 1 || !strings.Contains(r.err, "nothing has changed since iteration 1") {
+	if r := run(t, "finalize", "-dry-run", dir); r.code != 1 || !strings.Contains(r.err, "nothing has changed since iteration 2") {
 		t.Errorf("the example is finalized as it stands: %s%s", r.out, r.err)
 	}
 	if r := run(t, "report", "-strict", "-o", filepath.Join(t.TempDir(), "r.html"), dir); r.code != 0 {
