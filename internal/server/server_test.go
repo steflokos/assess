@@ -575,6 +575,18 @@ func TestWhatFinalizeTakesFromAPage(t *testing.T) {
 	}
 }
 
+func TestTheLimitsOfFinalizeCountCharactersAndNotBytes(t *testing.T) {
+	f := &fake{out: doc}
+	ts := start(t, f, "D")
+	note := strings.Repeat("é", 2500) // 2500 characters, 5000 bytes
+	if code, _, _ := do(t, ts, request{method: "POST", path: "/api/finalize", body: `{"note": "` + note + `"}`}); code != 200 {
+		t.Errorf("a note of 2500 characters: %d", code)
+	}
+	if code, _, _ := do(t, ts, request{method: "POST", path: "/api/finalize", body: `{"note": "` + strings.Repeat("é", 4001) + `"}`}); code != 400 {
+		t.Errorf("a note of 4001 characters: %d", code)
+	}
+}
+
 func TestADiagramThatIsSaidInWordsIsNotAPicture(t *testing.T) {
 	ts := start(t, &fake{out: "nothing to draw: the project has no components\n"}, "D")
 	code, body, h := do(t, ts, request{path: "/diagram.svg?t=" + view, noToken: true})
@@ -590,6 +602,38 @@ func TestAPanicIsLoggedWithItsStackAndNotShownToThePage(t *testing.T) {
 	code, body, _ := do(t, ts, request{path: "/api/open"})
 	if code != 500 || strings.Contains(body, "the command broke") || !strings.Contains(log.String(), "the command broke") || !strings.Contains(log.String(), "goroutine") {
 		t.Errorf("%d %s\n%s", code, body, log.String())
+	}
+}
+
+func TestTheStampFollowsThePolicyAndTheTemplateWhereverAssessYamlPutsThem(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, text string) {
+		t.Helper()
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("assess.yaml", "apiVersion: assess/v1beta1\npolicy: cfg/policy.yaml\ntemplate: cfg/layout.html\n")
+	write("cfg/policy.yaml", "a: 1\n")
+	write("cfg/layout.html", "<html>")
+	ts := start(t, &fake{}, dir)
+	stamp := func() string {
+		t.Helper()
+		_, body, _ := do(t, ts, request{path: "/api/stamp"})
+		return body
+	}
+	first := stamp()
+	write("cfg/policy.yaml", "a: 22\n")
+	second := stamp()
+	write("cfg/layout.html", "<html><body>")
+	if second == first || stamp() == second {
+		t.Error("a change to the policy or to the template changes the stamp")
+	}
+	write("elsewhere/notes.txt", "x")
+	if stamp() == "" {
+		t.Error("a stamp")
 	}
 }
 

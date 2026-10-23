@@ -469,3 +469,67 @@ func TestARecordFileThatIsALinkOutOfTheProjectIsNotReadOrWritten(t *testing.T) {
 		t.Errorf("found the error %v", found)
 	}
 }
+
+func TestAPlainFileOrAFolderThatIsALinkOutOfTheProjectIsRefused(t *testing.T) {
+	for _, rel := range []string{"project.yaml", "policy.yaml", "assess.yaml", "concept"} {
+		dir := testproject.Copy(t)
+		outside := t.TempDir()
+		target := filepath.Join(outside, filepath.Base(rel))
+		data, err := os.ReadFile(filepath.Join(dir, rel))
+		if err == nil {
+			os.WriteFile(target, data, 0o644)
+		} else {
+			os.Mkdir(target, 0o755)
+		}
+		os.RemoveAll(filepath.Join(dir, rel))
+		if err := os.Symlink(target, filepath.Join(dir, rel)); err != nil {
+			t.Skip("links need rights here")
+		}
+		res := load.Load(dir)
+		found := false
+		for _, d := range res.Diags {
+			found = found || (d.Severity == diag.Error && d.Loc.File == rel && strings.Contains(d.Message, "link to a place outside the project"))
+		}
+		if !found || res.Workspace != nil {
+			t.Errorf("%s: the error is there %v, and nothing is read", rel, found)
+		}
+	}
+	// a link inside the project is fine, and so is a path that is not there yet
+	dir := testproject.Copy(t)
+	if load.Escapes(dir, "tara/new-file.yaml") || len(load.LinksOut(dir)) != 0 {
+		t.Error("a project with no links has none that leave")
+	}
+}
+
+func TestManyValuesThatPointAtOneBigValueAreNotManyBigValues(t *testing.T) {
+	// The bomb is written once, and every attribute of the record points at the last of it. A budget for each value would add up to gigabytes.
+	var b strings.Builder
+	b.WriteString("a: &a [x, x, x, x, x, x, x, x, x]\n")
+	prev := "a"
+	for _, name := range []string{"b", "c", "d", "e", "f", "g", "h", "i", "j"} {
+		fmt.Fprintf(&b, "%s: &%s [*%s, *%s, *%s, *%s, *%s, *%s, *%s, *%s, *%s]\n", name, name, prev, prev, prev, prev, prev, prev, prev, prev, prev)
+		prev = name
+	}
+	text := "component c:\n  name: C\n" + "  " + strings.ReplaceAll(strings.TrimSpace(b.String()), "\n", "\n  ") + "\n"
+	for i := 0; i < 40; i++ {
+		text += fmt.Sprintf("  k%d: *j\n", i)
+	}
+	recs, err := load.Raw("item/x.yaml", []byte(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(recs)
+	if len(data) > 64<<20 {
+		t.Errorf("%d bytes: the file has one budget and not one for each value", len(data))
+	}
+}
+
+func TestAPathBelowALinkThatPointsAtNothingLeavesTheProject(t *testing.T) {
+	dir := testproject.Copy(t)
+	if err := os.Symlink(filepath.Join(t.TempDir(), "not-there"), filepath.Join(dir, "tara", "sub")); err != nil {
+		t.Skip("links need rights here")
+	}
+	if !load.Escapes(dir, "tara/sub/new.yaml") {
+		t.Error("a write below it would make the folder that the link points at")
+	}
+}

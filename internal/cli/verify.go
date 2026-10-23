@@ -144,7 +144,14 @@ func loadIterations(o *output, dir string) (*model.Workspace, bool) {
 		}
 		broken.Sort()
 		o.show(broken)
-		fmt.Fprintf(o.stderr, "assess %s: %s cannot be read. Fix it first\n", o.cmd, load.IterationsFile)
+		bad := load.IterationsFile
+		if broken[0].Loc.File != load.IterationsFile {
+			bad = broken[0].Loc.File
+		}
+		if bad == "" {
+			bad = load.ConfigFile
+		}
+		fmt.Fprintf(o.stderr, "assess %s: %s cannot be read. Fix it first\n", o.cmd, bad)
 		o.finish(exitFindings, broken, nil)
 		return nil, false
 	}

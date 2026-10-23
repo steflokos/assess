@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 	"github.com/steflokos/assess/internal/theme"
@@ -153,12 +154,12 @@ func (s *Server) Handler() http.Handler {
 			writeError(w, http.StatusBadRequest, "body", "the body has to be JSON like {\"note\": \"…\", \"by\": [\"…\"]}, or empty")
 			return
 		}
-		if len(in.Note) > maxNote || len(in.By) > maxNames || badText(in.Note) {
+		if utf8.RuneCountInString(in.Note) > maxNote || len(in.By) > maxNames || badText(in.Note) {
 			writeError(w, http.StatusBadRequest, "body", fmt.Sprintf("the note can have %d characters, without line breaks, and there can be %d names", maxNote, maxNames))
 			return
 		}
 		for _, name := range in.By {
-			if len(name) > maxName || badText(name) {
+			if utf8.RuneCountInString(name) > maxName || badText(name) {
 				writeError(w, http.StatusBadRequest, "body", fmt.Sprintf("a name can have %d characters, without line breaks", maxName))
 				return
 			}
@@ -190,7 +191,7 @@ func (s *Server) Handler() http.Handler {
 			Signature string `json:"signature"`
 		}
 		if !decodeOnly(body, &in) || in.Iteration < 1 || in.Iteration > 9999 || !signatureText.MatchString(in.Signature) ||
-			len(in.Public) == 0 || len(in.Public) > 4096 || len(in.By) > maxName || badText(in.By) {
+			len(in.Public) == 0 || len(in.Public) > 4096 || utf8.RuneCountInString(in.By) > maxName || badText(in.By) {
 			writeError(w, http.StatusBadRequest, "body", "the body has to be JSON like {\"iteration\": 1, \"by\": \"…\", \"public\": \"-----BEGIN PUBLIC KEY-----…\", \"signature\": \"…\"}")
 			return
 		}

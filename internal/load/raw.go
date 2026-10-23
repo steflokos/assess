@@ -32,6 +32,7 @@ type RawRecord struct {
 // reports it.
 func Raw(file string, data []byte) ([]RawRecord, error) {
 	var out []RawRecord
+	left := plainBudget // one budget for the whole file, so that many values that point at one big value are not many big values
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	for {
 		var doc yaml.Node
@@ -45,12 +46,12 @@ func Raw(file string, data []byte) ([]RawRecord, error) {
 		if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
 			continue
 		}
-		out = rawBlock(out, file, doc.Content[0], "")
+		out = rawBlock(out, file, doc.Content[0], "", &left)
 	}
 }
 
 // rawBlock reads the headings of a mapping.
-func rawBlock(out []RawRecord, file string, m *yaml.Node, parent string) []RawRecord {
+func rawBlock(out []RawRecord, file string, m *yaml.Node, parent string, left *int) []RawRecord {
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		key, val := m.Content[i], m.Content[i+1]
 		word, id, ok := heading(key)
@@ -70,10 +71,10 @@ func rawBlock(out []RawRecord, file string, m *yaml.Node, parent string) []RawRe
 				children = append(children, k, v)
 				continue
 			}
-			out[at].Attrs[k.Value] = PlainNode(v)
+			out[at].Attrs[k.Value] = plainNode(v, 0, left)
 		}
 		if len(children) > 0 {
-			out = rawBlock(out, file, &yaml.Node{Kind: yaml.MappingNode, Content: children}, id)
+			out = rawBlock(out, file, &yaml.Node{Kind: yaml.MappingNode, Content: children}, id, left)
 		}
 	}
 	return out

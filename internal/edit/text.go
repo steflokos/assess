@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"reflect"
 	"sort"
 	"strings"
@@ -76,7 +75,7 @@ func parseFile(name string, data []byte) (*fileText, error) {
 	}
 	// go-yaml counts these as the end of a line, and a person who reads the file by lines does not
 	if i := strings.IndexAny(text, "\u0085\u2028\u2029"); i >= 0 {
-		f.unsafe = "has a line separator character (U+0085, U+2028 or U+2029) that editors do not show"
+		f.unsafe = fmt.Sprintf("has a line separator character (U+0085, U+2028 or U+2029) on line %d that editors do not show", strings.Count(text[:i], "\n")+1)
 	}
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	docs := 0
@@ -89,9 +88,11 @@ func parseFile(name string, data []byte) (*fileText, error) {
 		if err != nil {
 			return nil, err
 		}
-		docs++
-		if docs > 1 {
-			f.unsafe = "has more than one YAML document"
+		if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 && !(doc.Content[0].Kind == yaml.ScalarNode && doc.Content[0].Tag == "!!null") {
+			docs++ // a document that is empty, such as a --- at the end of a file, is not a second one
+			if docs > 1 {
+				f.unsafe = fmt.Sprintf("has more than one YAML document, the second one from line %d", doc.Content[0].Line)
+			}
 		}
 		if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 && doc.Content[0].Kind == yaml.MappingNode {
 			f.roots = append(f.roots, f.records(doc.Content[0], nil, len(f.lines))...)
@@ -104,10 +105,11 @@ func blank(s string) bool   { return strings.TrimSpace(s) == "" }
 func comment(s string) bool { return strings.HasPrefix(strings.TrimSpace(s), "#") }
 
 // trim moves end up past the blank lines and the comment lines that follow the last line of a block: they
-// belong to what comes next. A block scalar keeps the comment-looking lines that are part of its text.
-func (f *fileText) trim(start, end int, block bool) int {
-	if block {
-		return f.trimText(start, end)
+// belong to what comes next. A block scalar keeps the comment-looking lines that are part of its text. keyIndent is
+// the number of columns before the key of a block scalar, and -1 for a value that is not one.
+func (f *fileText) trim(start, end, keyIndent int) int {
+	if keyIndent >= 0 {
+		return f.trimText(start, end, keyIndent)
 	}
 	for end > start && (blank(f.lines[end-1]) || comment(f.lines[end-1])) {
 		end--
@@ -115,17 +117,11 @@ func (f *fileText) trim(start, end int, block bool) int {
 	return end
 }
 
-// trimText is trim for a block scalar. Its text is the lines that are indented as deep as its first line. A line
-// that is less deep, such as a comment at the start of the next section, is not part of it.
-func (f *fileText) trimText(start, end int) int {
-	deep := math.MaxInt
-	for i := start; i < end; i++ {
-		if !blank(f.lines[i]) {
-			deep = indentOf(f.lines[i])
-			break
-		}
-	}
-	for end > start && (blank(f.lines[end-1]) || indentOf(f.lines[end-1]) < deep) {
+// trimText is trim for a block scalar. Its text is the lines that are indented deeper than its key. A line that is less deep, such as a
+// comment at the start of the next section, is not part of it. The indent of the first line of the text is not the measure: a text
+// whose first line starts with spaces is written with an indentation indicator (|2-), and its other lines are less deep than the first.
+func (f *fileText) trimText(start, end, keyIndent int) int {
+	for end > start && (blank(f.lines[end-1]) || indentOf(f.lines[end-1]) <= keyIndent) {
 		end--
 	}
 	return end
@@ -133,6 +129,14 @@ func (f *fileText) trimText(start, end int) int {
 
 // indentOf is the number of spaces before the text of a line.
 func indentOf(s string) int { return len(s) - len(strings.TrimLeft(s, " ")) }
+
+// blockIndent is the indent of the key of a block scalar, and -1 when the value is anything else.
+func blockIndent(key, val *yaml.Node) int {
+	if isBlock(val) {
+		return key.Column - 1
+	}
+	return -1
+}
 
 func isBlock(n *yaml.Node) bool {
 	return n.Kind == yaml.ScalarNode && (n.Style&yaml.LiteralStyle != 0 || n.Style&yaml.FoldedStyle != 0)
@@ -171,7 +175,7 @@ func (f *fileText) records(m *yaml.Node, parent *recNode, limit int) []*recNode 
 					continue
 				}
 				a := &attrNode{name: k.Value, key: k, val: v, start: k.Line}
-				a.end = f.trim(a.start, kraw, isBlock(v))
+				a.end = f.trim(a.start, kraw, blockIndent(k, v))
 				r.attrs = append(r.attrs, a)
 				lastEnd = a.end
 			}
@@ -180,7 +184,7 @@ func (f *fileText) records(m *yaml.Node, parent *recNode, limit int) []*recNode 
 			r.end = r.start // an empty record: only its heading
 		default:
 			r.flow = true // the body is written on the heading line, or in flow style: it cannot be edited as lines
-			r.end = f.trim(r.start, raw, false)
+			r.end = f.trim(r.start, raw, -1)
 		}
 		out = append(out, r)
 	}

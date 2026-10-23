@@ -53,6 +53,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"path"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -225,15 +226,29 @@ func badFile(file, folder string) string {
 	if !fs.ValidPath(file) || !nested || top != folder || !(strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml")) {
 		return "."
 	}
-	if strings.ContainsAny(file, "\\:\x00") {
-		return ". Write the path with / and without : in it"
+	if strings.ContainsAny(file, "\\:*?\"<>|\x00") {
+		return ". Write the path with / and without any of : * ? \" < > |"
 	}
 	for _, part := range strings.Split(file, "/")[1:] {
 		if load.Skipped(part) {
 			return ". Assess does not read " + part + ", so the record would be lost"
 		}
+		if reserved(part) {
+			return ". " + part + " is a name that Windows cannot make"
+		}
 	}
 	return ""
+}
+
+// reserved says whether a file name is one that Windows keeps for devices: CON, PRN, AUX, NUL, COM1 to COM9 and LPT1 to LPT9, with or
+// without an extension. A file by that name cannot be made there, and the record would be lost.
+func reserved(name string) bool {
+	base := strings.ToUpper(strings.TrimSuffix(name, path.Ext(name)))
+	switch base {
+	case "CON", "PRN", "AUX", "NUL":
+		return true
+	}
+	return len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) && base[3] >= '1' && base[3] <= '9'
 }
 
 func firstLine(s string) string {

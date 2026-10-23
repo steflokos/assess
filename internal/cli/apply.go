@@ -225,6 +225,11 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	if opt.dry {
 		fmt.Fprint(w, out.Diff)
 	} else {
+		for _, name := range result.Files { // a new file may be inside a folder that is a link out of the project
+			if load.Escapes(dir, name) {
+				return o.fail("%s", load.LinkText(name))
+			}
+		}
 		for _, name := range result.Files {
 			path := filepath.Join(dir, filepath.FromSlash(name))
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -381,7 +386,7 @@ func sortedNames(m map[string][]byte) []string {
 func stagedCheck(dir string, res *load.Result, changed map[string][]byte) (*load.Result, diag.List, error) {
 	stage, err := os.MkdirTemp("", "assess-apply-")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("the change is checked in a copy of the project, and the folder for temporary files, %s, cannot be used: %s. Set TMPDIR to one that can", os.TempDir(), reason(err))
 	}
 	defer os.RemoveAll(stage)
 	copyFile := func(rel string) error {

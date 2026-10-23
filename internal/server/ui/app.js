@@ -189,6 +189,13 @@ async function start() {
     if (!st.stamp || st.stamp === S.stamp) return;
     if (state.dirty) { state.changedOnDisk = true; banner(); return; }
     await load();
+    if (state.dirty) { // the person typed while the project was read: the form stays, and they are told
+      state.changedOnDisk = true;
+      drawNav(S.noProject ? ['none'] : path());
+      drawTop();
+      banner();
+      return;
+    }
     if (S.changed) render(); // a file that was touched and not changed leaves the page as it is
   }, 2000);
 }

@@ -54,9 +54,12 @@ export function openPalette(ui) {
   };
   const draw = () => {
     const q = input.value.trim().toLowerCase();
+    const pages = q ? pagesFor(q) : PAGES.map((p) => ({ go: p.go, icon: p.icon, title: p.label, tag: 'Page' }));
+    const first = q ? pages.filter((p) => p.title.toLowerCase().startsWith(q)) : []; // a page that is named by what was typed comes before the records
     items = [
+      ...first,
       ...find(q).map((r) => ({ go: ['kind', r.kind, r.id], icon: KIND_ICON[r.kind] || 'circle', title: r.name, sub: r.id, tag: kindName(r.kind) })),
-      ...(q ? pagesFor(q) : PAGES.map((p) => ({ go: p.go, icon: p.icon, title: p.label, tag: 'Page' }))),
+      ...pages.filter((p) => !first.includes(p)),
     ];
     at = 0;
     clear(list);

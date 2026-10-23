@@ -632,3 +632,47 @@ func TestARefusalSaysWhyInTheDocumentAndExportOfNoProjectHasNoNullList(t *testin
 		t.Errorf("export takes -format json like the others: %+v", r)
 	}
 }
+
+func TestVerifyNamesTheFileThatIsWrong(t *testing.T) {
+	dir := twoIterations(t)
+	config := testproject.Read(t, dir, "assess.yaml")
+	testproject.Write(t, dir, "assess.yaml", config+"keys: ../keys\n")
+	if r := run(t, "verify", dir); r.code != 1 || !strings.Contains(r.err, "assess.yaml cannot be read") || strings.Contains(r.err, "iterations.yaml cannot be read") {
+		t.Errorf("%+v", r)
+	}
+}
+
+func TestAProjectFileThatIsALinkOutOfTheProjectIsNeverWritten(t *testing.T) {
+	dir := twoIterations(t)
+	outside := filepath.Join(t.TempDir(), "other.yaml")
+	data, _ := os.ReadFile(filepath.Join(dir, "iterations.yaml"))
+	os.WriteFile(outside, data, 0o644)
+	os.Remove(filepath.Join(dir, "iterations.yaml"))
+	if err := os.Symlink(outside, filepath.Join(dir, "iterations.yaml")); err != nil {
+		t.Skip("links need rights here")
+	}
+	jane := newKeys(t, t.TempDir(), "jane")
+	for _, args := range [][]string{{"finalize", dir}, {"sign", "-key", jane.priv, dir}, {"generate", "risks", dir}} {
+		if r := run(t, args...); r.code == 0 || !strings.Contains(r.out+r.err, "link to a place outside the project") {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
+	if got, _ := os.ReadFile(outside); string(got) != string(data) {
+		t.Error("the file outside the project was written")
+	}
+}
+
+func TestANewRecordIsNotWrittenInAFolderThatIsALinkOutOfTheProject(t *testing.T) {
+	dir := testproject.Copy(t)
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(dir, "tara", "sub")); err != nil {
+		t.Skip("links need rights here")
+	}
+	r := run(t, "apply", changeSet(t, "set.json", `{"changes": [{"op": "put", "kind": "control", "id": "new-one", "file": "tara/sub/new.yaml", "attributes": {"name": "New"}}]}`), dir)
+	if r.code == 0 || !strings.Contains(r.err, "link to a place outside the project") {
+		t.Errorf("%+v", r)
+	}
+	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
+		t.Errorf("something was written outside the project: %v", entries)
+	}
+}

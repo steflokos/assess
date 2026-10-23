@@ -238,6 +238,7 @@ details.lines summary { cursor: pointer; color: var(--muted); font-size: .85rem;
 .seg-b { border: 0; border-right: 1px solid var(--line); background: none; padding: 5px var(--s3); font-size: .88rem; font-weight: 500; color: var(--muted); cursor: pointer; }
 .seg-b:last-child { border-right: 0; }
 .seg-b:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 0; }
+.seg-b.on:focus-visible { box-shadow: inset 0 0 0 2px var(--surface), inset 0 0 0 4px var(--accent); }
 .seg-b:hover { background: var(--hover); color: var(--fg); }
 .seg-b.on { background: var(--accent); color: var(--surface); }
 
@@ -289,9 +290,10 @@ select.lvl { font-weight: 600; }
 .treeed .grp { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: var(--s2) var(--s3); }
 .gh { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); font-size: .85rem; }
 .gh .iconbtn { margin-left: auto; }
-.tree { border-left: 2px solid var(--line-2); margin: 0 0 var(--s2) 8px; padding-left: var(--s3); display: grid; gap: 6px; }
+.tree { border-left: 2px solid var(--line-2); margin: 0 0 var(--s2) 8px; padding-left: var(--s3); display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .leaf { display: flex; align-items: center; gap: var(--s2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: 3px 4px 3px var(--s3); }
-.leaf .cp { background: none; padding: 0; flex: 1; }
+.leaf { min-width: 0; }
+.leaf .cp { background: none; padding: 0; flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .lt { font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); min-width: 3.6rem; }
 .tree-add { display: flex; gap: var(--s2); align-items: flex-start; flex-wrap: wrap; }
 .tree-add .picker { flex: 1; min-width: 14rem; }

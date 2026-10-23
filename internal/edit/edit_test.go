@@ -110,8 +110,8 @@ func TestParseSetSaysWhatIsWrongAndWhere(t *testing.T) {
 		{"an id with a slash", `{"changes": [{"op": "put", "kind": "component", "id": "a/b"}]}`, `"a/b" is not a valid id`, 1},
 		{"an alias", "apiVersion: assess/v1beta1\nchanges: &a [*a]\n", "no anchors or aliases", 2},
 		{"a line separator", "{\"changes\": [{\"op\": \"put\", \"kind\": \"component\", \"id\": \"a\", \"attributes\": {\"name\": \"A\u2028B\"}}]}", "line separator", 1},
-		{"a file with a backslash", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/a\\b.yaml"}]}`, "without : in it", 1},
-		{"a file with a colon", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/C:x.yaml"}]}`, "without : in it", 1},
+		{"a file with a backslash", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/a\\b.yaml"}]}`, "without any of : * ?", 1},
+		{"a file with a colon", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/C:x.yaml"}]}`, "without any of : * ?", 1},
 		{"a file in a folder that is not read", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/vendor/x.yaml"}]}`, "does not read vendor", 1},
 		{"a file that is hidden", `{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/.x.yaml"}]}`, "does not read .x.yaml", 1},
 		{"a lone surrogate", `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"name": "\ud83d"}}]}`, "found invalid Unicode character escape code", 1},
@@ -401,6 +401,57 @@ func TestTheCommentAfterABlockScalarIsNotPartOfIt(t *testing.T) {
 	out, probs = applyTo(t, in, `{"changes": [{"op": "delete", "kind": "component", "id": "a"}]}`)
 	if len(probs) != 0 || !strings.Contains(string(out.Files["item/architecture.yaml"]), "# Section B") {
 		t.Errorf("a delete keeps the comment of the next section: %+v\n%s", probs, out.Files["item/architecture.yaml"])
+	}
+}
+
+func TestABlockInWhichOneValueChangesKeepsTheStyleAndTheCommentsOfTheRest(t *testing.T) {
+	text := "damage d:\n  name: D\n  impact:\n    # the road user\n    roaduser:\n      safety: {level: Severe, rationale: short}\n      financial:\n        level: Major # as agreed\n        rationale: Because of B and a sentence that is long enough to keep the block from fitting on one line # kept\n      operational: {level: Major, rationale: also short}\n"
+	out, probs := applyTo(t, map[string]string{"tara/damage-scenarios.yaml": text},
+		"changes:\n  - op: put\n    kind: damage\n    id: d\n    attributes:\n      impact:\n        roaduser:\n          safety:\n            level: Severe\n            rationale: short\n          financial:\n            level: Moderate\n            rationale: Because of B and a sentence that is long enough to keep the block from fitting on one line\n          operational:\n            level: Major\n            rationale: also short\n")
+	if len(probs) != 0 {
+		t.Fatal(probs)
+	}
+	got := string(out.Files["tara/damage-scenarios.yaml"])
+	want := strings.Replace(text, "level: Major # as agreed", "level: Moderate", 1)
+	if got != want {
+		t.Errorf("only the value that changed is different, and the comment on that line goes with it:\n%s", got)
+	}
+}
+
+func TestAFileNameThatWindowsCannotMakeIsRefused(t *testing.T) {
+	for _, name := range []string{"item/NUL.yaml", "item/con.yaml", "item/sub/COM3.yaml", "item/a*b.yaml", "item/a?.yaml", "item/a|b.yaml"} {
+		_, probs := edit.ParseSet([]byte(`{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "` + name + `"}]}`))
+		if len(probs) == 0 {
+			t.Errorf("%s is accepted", name)
+		}
+	}
+	if _, probs := edit.ParseSet([]byte(`{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "item/console.yaml"}]}`)); len(probs) != 0 {
+		t.Errorf("console is not a device name: %v", probs)
+	}
+}
+
+func TestAnEmptyDocumentAtTheEndOfAFileIsNotASecondOne(t *testing.T) {
+	in := map[string]string{"item/architecture.yaml": "component a:\n  name: A\n---\n"}
+	if _, probs := applyTo(t, in, `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"name": "X"}}]}`); len(probs) != 0 {
+		t.Errorf("%v", probs)
+	}
+	in = map[string]string{"item/architecture.yaml": "component a:\n  name: \"A\u2028B\"\n  description: x\n"}
+	_, probs := applyTo(t, in, `{"changes": [{"op": "put", "kind": "component", "id": "a", "attributes": {"description": "y"}}]}`)
+	if len(probs) == 0 || !strings.Contains(probs[0].Msg, "on line 2") {
+		t.Errorf("the line is named: %v", probs)
+	}
+}
+
+func TestABlockScalarWhoseFirstLineIsIndentedMoreIsReplacedWhole(t *testing.T) {
+	// text that starts with spaces is written as |2-, and its other lines are less deep than the first
+	in := map[string]string{"item/assumptions.yaml": "assumption a:\n  name: A\n  description: |2-\n      indented first line\n    second line\n    third line\n\n# Section\nassumption b:\n  name: B\n"}
+	out, probs := applyTo(t, in, `{"changes": [{"op": "put", "kind": "assumption", "id": "a", "attributes": {"description": "replaced"}}]}`)
+	if len(probs) != 0 {
+		t.Fatal(probs)
+	}
+	got := string(out.Files["item/assumptions.yaml"])
+	if got != "assumption a:\n  name: A\n  description: replaced\n\n# Section\nassumption b:\n  name: B\n" {
+		t.Errorf("nothing of the old text is left behind:\n%s", got)
 	}
 }
 

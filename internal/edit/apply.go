@@ -390,10 +390,14 @@ func (a *applier) update(r *recNode, p *put) {
 			return
 		case old != nil:
 			lines := attrLines
+			val := q.val
 			if p.cascaded {
 				lines = attrLinesAsWritten
+			} else if old.val.Kind == yaml.MappingNode && q.val.Kind == yaml.MappingNode {
+				// a block in which one value changes is written again with the other values as they were: their style and their comments
+				val, lines = keepWritten(old.val, q.val), attrLinesAsWritten
 			}
-			f.add(old.start-1, old.end-old.start+1, lines(q.name, q.val, r.indent))
+			f.add(old.start-1, old.end-old.start+1, lines(q.name, val, r.indent))
 			changed = append(changed, q.name)
 		default:
 			inserted = append(inserted, q.name)

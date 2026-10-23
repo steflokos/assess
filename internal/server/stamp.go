@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"go.yaml.in/yaml/v3"
+
+	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 )
 
@@ -38,7 +41,19 @@ func stampOf(dir string) string {
 			add(e.Name(), e)
 		}
 	}
-	for _, name := range watched {
+	// the policy, the template and the keys can be anywhere in the project, and assess.yaml says where
+	names := append([]string(nil), watched...)
+	if data, err := os.ReadFile(filepath.Join(dir, load.ConfigFile)); err == nil {
+		var named struct{ Policy, Template, Keys string }
+		if yaml.Unmarshal(data, &named) == nil {
+			for _, rel := range []string{named.Policy, named.Template, named.Keys} {
+				if rel != "" && !load.Outside(rel) {
+					names = append(names, filepath.Clean(filepath.FromSlash(rel)))
+				}
+			}
+		}
+	}
+	for _, name := range names {
 		root := filepath.Join(dir, name)
 		filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {

@@ -759,7 +759,7 @@ shape:
   program never has to read text.
 - `result` is what the command found. It is left out when there is nothing to say.
 
-In this mode the human text of a command goes to stderr. A wrong call is a document too, with the reason in `diagnostics`. The exit code is `0` when all is well, `1` when the project
+In this mode the human text of a command goes to stderr. A wrong number of arguments, or a value that is not valid, is a document too, with the reason in `diagnostics`. A flag that does not exist is not: the parser of the flags stops before the command knows the format. The exit code is `0` when all is well, `1` when the project
 has findings (errors, or warnings under `-strict`) and `2` when the command line is wrong or something failed.
 
 ### Reading a project
@@ -831,7 +831,9 @@ Before assess writes anything, it checks the result as a project, in a copy. If 
 written. The errors say which file, line and column they are at in the files as they would be. When an error is
 caused by a record that still refers to something you deleted, the result lists that record under `blocked`. The
 files are edited as text: only the lines that change are different, and the comments, the blank lines and the
-way the author wrote everything else stay as they are.
+way the author wrote everything else stay as they are. When one value of a block changes, such as one cell of the impact of a damage
+scenario, the rest of that block is written as it was, with its style and its comments, and the lines of the value that changed get the
+style of the project files.
 
 `assess apply` does not run the rules. A record that a rule flags is not an error, and it is not meant to be.
 `assess lint` and `assess open` list those.
@@ -966,7 +968,8 @@ Three more things that the page does:
 The page has no login, so `assess serve` listens on this computer only and refuses any other address. A web page that is open in
 the same browser cannot use it, because every request has to carry the token. The report and the diagrams are loaded by a frame and an
 image, which cannot send a header, so they get a token of their own in the address. It opens those two pages and nothing else. The token
-of the API is never in an address, so a script in a report template cannot use it. The page runs the same commands as the command line,
+of the API is in an address once, after the `#`, which a browser does not send to the server and the page removes at once. It is never
+in an address that a frame or an image loads, so a script in a report template cannot use it. The page runs the same commands as the command line,
 so what it writes passes the same checks as `assess apply`.
 
 ## Versions and compatibility

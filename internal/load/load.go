@@ -86,6 +86,12 @@ func Skipped(name string) bool { return strings.HasPrefix(name, ".") || skipDirs
 // Load reads the project rooted at root.
 func Load(root string) *Result {
 	r := &Result{Index: source.NewIndex()}
+	if links := LinksOut(root); len(links) > 0 { // before anything is read through a link
+		for _, rel := range links {
+			r.Diags.Errorf(CodeUnreadable, source.Loc{File: rel}, "%s", LinkText(rel))
+		}
+		return r
+	}
 	cfgPath := filepath.Join(root, ConfigFile)
 	cfgBytes, err := os.ReadFile(cfgPath)
 	if err != nil {
@@ -123,7 +129,7 @@ func Load(root string) *Result {
 	r.Files = nil
 	for _, rel := range files {
 		if leavesProject(rootReal, filepath.Join(root, filepath.FromSlash(rel))) {
-			r.Diags.Errorf(CodeUnreadable, source.Loc{File: rel}, "%s is a link to a place outside the project. Assess does not read it, and does not write to it", rel)
+			r.Diags.Errorf(CodeUnreadable, source.Loc{File: rel}, "%s", LinkText(rel))
 			continue
 		}
 		r.Files = append(r.Files, rel)
@@ -136,20 +142,6 @@ func Load(root string) *Result {
 	}
 	markIncomplete(ws)
 	return r
-}
-
-// leavesProject says whether a file is a link that ends outside the folder of the project, given as its real path. A project
-// that someone else sent must not be able to make assess read or replace a file of yours.
-func leavesProject(rootReal, path string) bool {
-	if rootReal == "" {
-		return false
-	}
-	real, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return false
-	}
-	rel, err := filepath.Rel(rootReal, real)
-	return err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // ignoredText says why a yaml file outside the record folders is not read. A policy file gets
@@ -328,6 +320,10 @@ func (r *Result) loadPolicy(ws *model.Workspace, root string) {
 		r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "policy must name a file inside the project, got %q", rel)
 		return
 	}
+	if Escapes(root, clean) {
+		r.Diags.Errorf(CodeUnreadable, source.Loc{File: clean}, "%s", LinkText(clean))
+		return
+	}
 	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(clean)))
 	if err != nil {
 		switch {
@@ -363,6 +359,10 @@ func (r *Result) loadTemplate(ws *model.Workspace, root string) {
 	clean := filepath.ToSlash(filepath.Clean(rel))
 	if outsideProject(rel, clean) {
 		r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "template must name a file inside the project, got %q", rel)
+		return
+	}
+	if Escapes(root, clean) {
+		r.Diags.Errorf(CodeUnreadable, source.Loc{File: clean}, "%s", LinkText(clean))
 		return
 	}
 	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(clean)))

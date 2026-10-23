@@ -16,9 +16,11 @@ export async function act(action, ui) {
     const env = await api('/api/generate?what=' + action.generate, { method: 'POST', body: {} });
     await ui.refresh();
     // what the command said, without the advice that is about the command line
-    let said = (env.text || '').replace(/\s*Run assess [^.\n]*\.?/g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
-    if (action.generate === 'assets' && /already exists/.test(said)) said = 'The assets are written already, so nothing was changed.';
-    toast(said || (env.ok ? 'Done.' : (env.diagnostics[0] || {}).message || 'It did not work.'), !env.ok ? 'err' : /^nothing/i.test(said) ? 'warn' : 'ok');
+    const raw = (env.text || '').trim();
+    let said = raw.replace(/\s*Run assess [^.\n]*\.?/g, '').replace(/ with assess [a-z -]+$/gm, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+    const nothing = /^nothing/i.test(raw) || (env.result || {}).wrote === false; // the command wrote nothing: that is a warning, and not a success
+    if (action.generate === 'assets' && /already exists/.test(raw)) said = 'The assets are written already, so nothing was changed.';
+    toast(said || (env.ok ? 'Done.' : (env.diagnostics[0] || {}).message || 'It did not work.'), !env.ok ? 'err' : nothing ? 'warn' : 'ok');
     return;
   }
   if (action.finalize) await finalizeDialog(ui);

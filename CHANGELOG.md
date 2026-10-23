@@ -25,8 +25,9 @@ What is in it:
 - In the web interface: edit the settings, sign in the browser, a warning when someone else changed what you are editing, and create a
   project in an empty folder.
 - A project is checked more than once before it is written: a change set cannot hold anchors or aliases, a file with more than one YAML
-  document or a line separator that an editor does not show is not edited, a record file that is a link out of the project is not read,
-  and the report and the diagrams have a token of their own.
+  document or a line separator that an editor does not show is not edited, a file or a folder of the project that is a link out of it is not
+  read or written, and the report and the diagrams have a token of their own. When one value of a block changes, the rest of the block is
+  written as it was.
 - `assess help <command>` says how a command is written. A flag that comes after the folder is said to be in the wrong place, and a typo
   in the name of a command is met with the one that was meant. `verify` shows the start of each key and flags a key that signs twice.
 - `examples/ota`, a finished example project.

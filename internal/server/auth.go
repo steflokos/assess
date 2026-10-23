@@ -94,9 +94,9 @@ func (s *Server) protected(next http.HandlerFunc, inAddress bool) http.Handler {
 type diagnostic struct {
 	Severity string `json:"severity"`
 	Code     string `json:"code"`
-	File     string `json:"file"`
-	Line     int    `json:"line"`
-	Column   int    `json:"column"`
+	File     string `json:"file,omitempty"`
+	Line     int    `json:"line,omitempty"`
+	Column   int    `json:"column,omitempty"`
 	Message  string `json:"message"`
 }
 
