@@ -34,9 +34,6 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 		exists = true
 	}
 	dir, base := filepath.Split(path)
-	if dir == "" {
-		dir = "." // a bare name, so that the temporary file is next to it and not in the folder for temporary files
-	}
 	tmp, name, err := create(dir, base, perm)
 	if err != nil {
 		return err
@@ -69,7 +66,8 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	return nil
 }
 
-// create makes the temporary file next to the file it will replace. It is made with perm, which the umask
+// create makes the temporary file next to the file it will replace. A name with no folder in it gives the current folder, and not the
+// folder for temporary files, where the rename could fail because that is another disk. It is made with perm, which the umask
 // narrows, so a new file is not more open than the person asked the system to allow.
 func create(dir, base string, perm os.FileMode) (*os.File, string, error) {
 	var err error
