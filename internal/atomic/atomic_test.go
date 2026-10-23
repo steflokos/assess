@@ -130,6 +130,22 @@ func TestWriteFileKeepsThePermissionsOfAFileThatExists(t *testing.T) {
 	}
 }
 
+func TestWriteFileWritesABareNameNextToTheFolderItIsIn(t *testing.T) {
+	// The temporary file used to go to the folder for temporary files, and the rename failed when that was another disk.
+	gone := filepath.Join(t.TempDir(), "no-such-folder")
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, gone)
+	}
+	t.Chdir(t.TempDir())
+	if err := atomic.WriteFile("assess.yaml", []byte("one"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile("assess.yaml")
+	if string(got) != "one" {
+		t.Errorf("got %q", got)
+	}
+}
+
 func TestWriteFileFollowsASymbolicLink(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symbolic links need rights here")
@@ -260,6 +276,30 @@ func TestLockInOneProcessJoinsTheLockThatIsHeld(t *testing.T) {
 		t.Fatal("the same process waited for its own lock")
 	}
 	un1()
+}
+
+func TestTheLockGoesWhenTheLastOneGivesItBackWhoeverTookItFirst(t *testing.T) {
+	// The server runs commands side by side. The one that took the lock may be done before the ones that joined it.
+	old := atomic.Wait
+	atomic.Wait = 300 * time.Millisecond
+	t.Cleanup(func() { atomic.Wait = old })
+	dir := t.TempDir()
+	first, err := atomic.Lock(dir, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := atomic.Lock(dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first()
+	second()
+	second() // giving it back twice must not take from somebody else
+	again, err := atomic.Lock(dir, true)
+	if err != nil {
+		t.Fatalf("the lock was not let go: %v", err)
+	}
+	again()
 }
 
 func TestAWriterKeepsOtherProcessesOut(t *testing.T) {

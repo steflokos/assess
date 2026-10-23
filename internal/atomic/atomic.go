@@ -6,13 +6,16 @@
 package atomic
 
 import (
+	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 )
 
 // WriteFile writes data to path as a whole: it writes a temporary file in the same folder and then
 // renames it over path, so another process sees either the old file or the new one and never a
-// part of it. The folder must exist. An existing file keeps its permissions, and a new one gets perm.
+// part of it. The folder must exist. An existing file keeps its permissions, and a new one gets perm
+// as the umask of the process allows it.
 //
 // A path that is not a regular file, such as /dev/null or a named pipe, is written as it is: there is
 // nothing to replace. A symbolic link is followed, so the file it points to is the one replaced.
@@ -22,18 +25,22 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 	if real, err := filepath.EvalSymlinks(path); err == nil {
 		path = real
 	}
+	exists := false
 	if info, err := os.Stat(path); err == nil {
 		if !info.Mode().IsRegular() {
 			return os.WriteFile(path, data, perm)
 		}
 		perm = info.Mode().Perm()
+		exists = true
 	}
 	dir, base := filepath.Split(path)
-	tmp, err := os.CreateTemp(dir, "."+base+".*.tmp")
+	if dir == "" {
+		dir = "." // a bare name, so that the temporary file is next to it and not in the folder for temporary files
+	}
+	tmp, name, err := create(dir, base, perm)
 	if err != nil {
 		return err
 	}
-	name := tmp.Name()
 	fail := func(err error) error {
 		tmp.Close()
 		os.Remove(name)
@@ -49,13 +56,33 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 		os.Remove(name)
 		return err
 	}
-	if err := os.Chmod(name, perm); err != nil {
-		os.Remove(name)
-		return err
+	if exists {
+		if err := os.Chmod(name, perm); err != nil {
+			os.Remove(name)
+			return err
+		}
 	}
 	if err := rename(name, path); err != nil {
 		os.Remove(name)
 		return err
 	}
 	return nil
+}
+
+// create makes the temporary file next to the file it will replace. It is made with perm, which the umask
+// narrows, so a new file is not more open than the person asked the system to allow.
+func create(dir, base string, perm os.FileMode) (*os.File, string, error) {
+	var err error
+	for range 100 {
+		name := filepath.Join(dir, fmt.Sprintf(".%s.%d.tmp", base, rand.Uint64()))
+		var f *os.File
+		f, err = os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, perm)
+		if err == nil {
+			return f, name, nil
+		}
+		if !os.IsExist(err) {
+			break
+		}
+	}
+	return nil, "", err
 }

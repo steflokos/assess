@@ -25,38 +25,31 @@ var Wait = 30 * time.Second
 // ErrBusy says that the lock did not become free in time.
 var ErrBusy = errors.New("another assess command is changing this project, and did not finish in time")
 
+// entry is the lock that this process holds on one folder, and how many callers use it.
+type entry struct {
+	n  int
+	un func()
+}
+
 var (
 	heldMu sync.Mutex
-	held   = map[string]int{} // the folders this process holds the lock of, and how many times
+	held   = map[string]*entry{}
 )
 
 // Lock takes the lock of the project in dir, for writing when write is true and for reading otherwise, and
 // returns the function that gives it back. Taking it again in the same process, for example a command that
-// writes and then loads the project, is not waiting for itself: it joins the lock that is held.
+// writes and then loads the project, is not waiting for itself: it joins the lock that is held. The last one
+// to give it back lets it go, whichever of them took it first.
 func Lock(dir string, write bool) (unlock func(), err error) {
 	abs, e := filepath.Abs(dir)
 	if e != nil {
 		abs = dir
 	}
-	release := func(un func()) func() {
-		return func() {
-			heldMu.Lock()
-			held[abs]--
-			last := held[abs] == 0
-			if last {
-				delete(held, abs)
-			}
-			heldMu.Unlock()
-			if last && un != nil {
-				un()
-			}
-		}
-	}
 	heldMu.Lock()
-	if held[abs] > 0 {
-		held[abs]++
+	if cur := held[abs]; cur != nil {
+		cur.n++
 		heldMu.Unlock()
-		return release(nil), nil
+		return release(abs, cur), nil
 	}
 	heldMu.Unlock()
 	un, err := lockDir(abs, write)
@@ -64,7 +57,33 @@ func Lock(dir string, write bool) (unlock func(), err error) {
 		return nil, err
 	}
 	heldMu.Lock()
-	held[abs]++
-	heldMu.Unlock()
-	return release(un), nil
+	defer heldMu.Unlock()
+	if cur := held[abs]; cur != nil {
+		// somebody in this process took it while this call was waiting: use theirs and give this one back
+		un()
+		cur.n++
+		return release(abs, cur), nil
+	}
+	cur := &entry{n: 1, un: un}
+	held[abs] = cur
+	return release(abs, cur), nil
+}
+
+// release gives one use of the lock back. Giving it back twice counts once.
+func release(abs string, cur *entry) func() {
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			heldMu.Lock()
+			cur.n--
+			last := cur.n == 0
+			if last {
+				delete(held, abs)
+			}
+			heldMu.Unlock()
+			if last {
+				cur.un()
+			}
+		})
+	}
 }
