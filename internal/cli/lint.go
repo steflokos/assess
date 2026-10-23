@@ -35,7 +35,7 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "lint", stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}

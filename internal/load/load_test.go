@@ -445,3 +445,27 @@ func TestAValueThatPointsAtItselfOrGrowsWithoutEndIsReadAsFarAsItGoes(t *testing
 		load.PlainNode(&doc) // it returns
 	}
 }
+
+func TestARecordFileThatIsALinkOutOfTheProjectIsNotReadOrWritten(t *testing.T) {
+	dir := testproject.Copy(t)
+	outside := filepath.Join(t.TempDir(), "other.yaml")
+	if err := os.WriteFile(outside, []byte("control stolen:\n  name: Stolen\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "tara", "extra.yaml")); err != nil {
+		t.Skip("links need rights here")
+	}
+	res := load.Load(dir)
+	for _, f := range res.Files {
+		if f == "tara/extra.yaml" {
+			t.Error("a file outside the project is not one of the files of the project")
+		}
+	}
+	found := false
+	for _, d := range res.Diags {
+		found = found || (d.Severity == diag.Error && d.Loc.File == "tara/extra.yaml" && strings.Contains(d.Message, "link to a place outside the project"))
+	}
+	if !found || res.Index.Lookup("stolen") != nil {
+		t.Errorf("found the error %v", found)
+	}
+}

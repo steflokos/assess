@@ -120,6 +120,15 @@ func usedIDs(ws *model.Workspace) map[string]bool {
 	for _, co := range ws.Controls {
 		used[co.ID] = true
 	}
+	for _, a := range ws.Assumptions {
+		used[a.ID] = true
+	}
+	for _, r := range ws.Rules {
+		used[r.ID] = true
+	}
+	for _, r := range ws.Risks {
+		used[r.ID] = true
+	}
 	return used
 }
 

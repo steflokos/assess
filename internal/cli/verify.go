@@ -40,7 +40,7 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "verify", stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
@@ -84,7 +84,7 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(w, "iteration %d  %s  %s  %s\n", st.Number, iteration.Show(st.Date), shortHash(st.Hash), state)
 		for _, s := range st.Signatures {
-			fmt.Fprintf(w, "  signed by %s: %s\n", s.By, s.State)
+			fmt.Fprintf(w, "  signed by %s (key %s): %s\n", s.By, shortHash(s.Key), s.State)
 		}
 		for _, m := range problems[st.Number] {
 			fmt.Fprintf(w, "  %s\n", m)

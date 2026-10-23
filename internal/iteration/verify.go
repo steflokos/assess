@@ -55,8 +55,19 @@ func Verify(its []model.Iteration, keys []Key, head string) Result {
 	}
 	for _, it := range its {
 		st := Status{Number: it.Number, Date: it.Date, Hash: it.Hash}
+		used := map[string]bool{}
 		for _, s := range it.Signatures {
 			ss := SigStatus{By: s.By, Key: s.Key, State: Unchecked}
+			if used[s.Key] {
+				// the name is a label that anyone who can edit the file can change, so a signature copied under another name
+				// would otherwise show as a second person who signed
+				ss.State = Invalid
+				bad[it.Number] = true
+				res.Problems = append(res.Problems, Problem{it.Number, CodeSignature, fmt.Sprintf("the signature of %s uses a key that signed this iteration already. One key is one person", s.By)})
+				st.Signatures = append(st.Signatures, ss)
+				continue
+			}
+			used[s.Key] = true
 			if k, ok := byKey[s.Key]; ok {
 				ss.State = Valid
 				if !Check(k.Pub, it.Hash, s.Sig) {

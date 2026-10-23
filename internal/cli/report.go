@@ -50,11 +50,17 @@ func runReport(args []string, stdout, stderr io.Writer) int {
 		}
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "report", stderr)
+	o := textOutput("report", stdout, stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
-	res, ok := loadChecked(textOutput("report", stdout, stderr), dir)
+	unlock, err := atomic.Lock(dir, false) // the files are read again for the fingerprint, so nobody may change them in between
+	if err != nil {
+		return o.fail("%v", err)
+	}
+	defer unlock()
+	res, ok := loadChecked(o, dir)
 	if !ok {
 		return exitFindings
 	}

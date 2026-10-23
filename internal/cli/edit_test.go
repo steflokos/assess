@@ -572,3 +572,63 @@ func TestAPlainFileThatChangedSinceItWasReadIsAConflictAndABadOneIsRefused(t *te
 		t.Errorf("the same text is no change: %s", env.Result)
 	}
 }
+
+func TestAWriteCanNameATemplateThatIsInTheProjectAndMayRepairASettingsFile(t *testing.T) {
+	dir := testproject.Copy(t)
+	if r := run(t, "template", "-o", filepath.Join(dir, "layout.html")); r.code != 0 {
+		t.Fatalf("%+v", r)
+	}
+	config := testproject.Read(t, dir, "assess.yaml")
+	if env, _ := applyJSON(t, dir, write("assess.yaml", config+"template: layout.html\n", ""), "-dry-run"); !env.OK {
+		t.Errorf("the staged project holds the template that assess.yaml names now: %+v", env.Diagnostics)
+	}
+
+	// project.yaml does not parse. Only a text that parses is accepted for it, and the check of the project on disk does not stop that.
+	good := testproject.Read(t, dir, "project.yaml")
+	testproject.Write(t, dir, "project.yaml", good+"oops: [\n")
+	if env, _ := applyJSON(t, dir, write("project.yaml", good, ""), "-dry-run"); !env.OK {
+		t.Errorf("a settings file can be repaired by a write: %+v", env.Diagnostics)
+	}
+	if env, _ := applyJSON(t, dir, write("project.yaml", good+"oops: [\n", ""), "-dry-run"); env.OK {
+		t.Error("a text that still does not parse is refused")
+	}
+}
+
+func TestKeysMustBeInsideTheProject(t *testing.T) {
+	dir := testproject.Copy(t)
+	config := testproject.Read(t, dir, "assess.yaml")
+	testproject.Write(t, dir, "assess.yaml", config+"keys: ../keys\n")
+	if r := run(t, "validate", dir); r.code == 0 || !strings.Contains(r.err+r.out, "keys must name a file or a folder inside the project") {
+		t.Errorf("%+v", r)
+	}
+}
+
+func TestAUsageErrorIsAJSONDocumentToo(t *testing.T) {
+	dir := testproject.Copy(t)
+	for _, cmd := range []string{"validate", "lint", "eval", "verify", "open"} {
+		r := run(t, cmd, "-format", "json", dir, "extra")
+		var env envelope
+		if r.code != 2 || json.Unmarshal([]byte(r.out), &env) != nil || env.OK || len(env.Diagnostics) != 1 {
+			t.Errorf("%s: exit %d, stdout %q", cmd, r.code, r.out)
+		}
+	}
+	r := run(t, "validate", dir, "-strict")
+	if r.code != 2 || !strings.Contains(r.err, "-strict comes after the folder") || !strings.Contains(r.err, "Put the flags before the folder") {
+		t.Errorf("%+v", r)
+	}
+}
+
+func TestARefusalSaysWhyInTheDocumentAndExportOfNoProjectHasNoNullList(t *testing.T) {
+	dir := twoIterations(t)
+	r := run(t, "finalize", "-format", "json", dir)
+	var env envelope
+	if err := json.Unmarshal([]byte(r.out), &env); err != nil || r.code != 1 || env.OK || len(env.Diagnostics) != 1 || !strings.Contains(env.Diagnostics[0].Message, "nothing has changed since iteration") {
+		t.Errorf("exit %d: %s", r.code, r.out)
+	}
+	if r := run(t, "export", t.TempDir()); !strings.Contains(r.out, `"transfers": []`) || strings.Contains(r.out, "null") {
+		t.Errorf("a program reads a list: %s", r.out)
+	}
+	if r := run(t, "export", "-format", "json", dir); r.code != 0 {
+		t.Errorf("export takes -format json like the others: %+v", r)
+	}
+}

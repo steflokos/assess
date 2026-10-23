@@ -30,6 +30,7 @@ import (
 // read are there and the results are left out, because they would not be right. The exit code is 1 then.
 func runExport(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("export", stderr)
+	format := fl.String("format", "json", "export always writes json. The flag is here so that it can be given like the other commands")
 	derived := fl.Bool("derived", false, "also give each record with what is worked out about it: the views that rules read, such as what mitigates a step")
 	if err := fl.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -38,7 +39,10 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 		return exitUsage
 	}
 	o := &output{cmd: "export", json: true, stdout: stdout, stderr: stderr}
-	dir, ok := oneDir(fl, "export", stderr)
+	if *format != "json" {
+		return o.fail("export writes json only, not %q", *format)
+	}
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
@@ -49,7 +53,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	}
 	defer unlock()
 	res, diags := checkProject(dir)
-	out := exported{Records: []load.RawRecord{}}
+	out := exported{Records: []load.RawRecord{}, Transfers: []model.Hop{}}
 	if res.Workspace == nil {
 		return o.finish(exitFindings, diags, out)
 	}

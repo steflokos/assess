@@ -105,6 +105,7 @@ func Load(root string) *Result {
 	r.loadIterations(ws, root)
 	r.loadPolicy(ws, root)
 	r.loadTemplate(ws, root)
+	r.checkKeys(ws)
 
 	files, ignored, err := discover(root, ws.PolicyFile)
 	if err != nil {
@@ -114,8 +115,14 @@ func Load(root string) *Result {
 	for _, rel := range ignored {
 		r.Diags.Warnf(CodeIgnoredFile, source.Loc{File: rel}, "%s", ignoredText(rel, ws.PolicyFile))
 	}
-	r.Files = files
+	rootReal, _ := filepath.EvalSymlinks(root)
+	r.Files = nil
 	for _, rel := range files {
+		if leavesProject(rootReal, filepath.Join(root, filepath.FromSlash(rel))) {
+			r.Diags.Errorf(CodeUnreadable, source.Loc{File: rel}, "%s is a link to a place outside the project. Assess does not read it, and does not write to it", rel)
+			continue
+		}
+		r.Files = append(r.Files, rel)
 		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {
 			r.Diags.Errorf(CodeUnreadable, source.Loc{File: rel}, "%v", err)
@@ -125,6 +132,20 @@ func Load(root string) *Result {
 	}
 	markIncomplete(ws)
 	return r
+}
+
+// leavesProject says whether a file is a link that ends outside the folder of the project, given as its real path. A project
+// that someone else sent must not be able to make assess read or replace a file of yours.
+func leavesProject(rootReal, path string) bool {
+	if rootReal == "" {
+		return false
+	}
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(rootReal, real)
+	return err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // ignoredText says why a yaml file outside the record folders is not read. A policy file gets
@@ -280,6 +301,9 @@ func onlyUnknownFields(ds diag.List) bool {
 	return len(ds) > 0
 }
 
+// Outside reports whether a path from assess.yaml leads out of the project.
+func Outside(rel string) bool { return outsideProject(rel, filepath.ToSlash(filepath.Clean(rel))) }
+
 // outsideProject reports whether a path from assess.yaml leads out of the project. clean is the path cleaned and written
 // with slashes. A path that starts with a slash or names a drive is outside on every system, also on Windows, where
 // /etc/passwd is not an absolute path.
@@ -347,6 +371,13 @@ func (r *Result) loadTemplate(ws *model.Workspace, root string) {
 		r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "the template %s is a folder. It must be a file", clean)
 	default:
 		ws.TemplateFile = clean
+	}
+}
+
+// checkKeys sees that the keys that assess.yaml names are inside the project, as the policy and the template are.
+func (r *Result) checkKeys(ws *model.Workspace) {
+	if rel := ws.Config.Keys; rel != "" && Outside(rel) {
+		r.Diags.Errorf(CodeUnreadable, source.Loc{File: ConfigFile}, "keys must name a file or a folder inside the project, got %q", rel)
 	}
 }
 

@@ -87,6 +87,11 @@ func runTemplate(args []string, stdout, stderr io.Writer) int {
 		return o.finish(exitOK, nil, result)
 	}
 	dir := fl.Arg(0)
+	unlock, err := atomic.Lock(dir, false) // the files are read again for the fingerprint, so nobody may change them in between
+	if err != nil {
+		return o.fail("%v", err)
+	}
+	defer unlock()
 	res, ok := loadChecked(o, dir)
 	if !ok {
 		return exitFindings

@@ -35,11 +35,12 @@ func runDiagram(args []string, stdout, stderr io.Writer) int {
 		}
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "diagram", stderr)
+	o := textOutput("diagram", stdout, stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
-	res, ok := loadChecked(textOutput("diagram", stdout, stderr), dir)
+	res, ok := loadChecked(o, dir)
 	if !ok {
 		return exitFindings
 	}

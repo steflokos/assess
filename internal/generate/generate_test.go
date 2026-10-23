@@ -137,6 +137,21 @@ func TestThreatsNeverCoverWhatIsCoveredAndNeverTakeAnIdThatIsUsed(t *testing.T) 
 	}
 }
 
+func TestThreatsDoNotTakeTheIdOfAnAssumptionOrARule(t *testing.T) {
+	_, res := open(t, map[string]string{
+		"tara/assets.yaml":           "asset gateway:\n  name: Gateway\n  properties: [Integrity, Availability]\n",
+		"tara/threat-scenarios.yaml": "",
+		"item/assumptions.yaml":      "assumption gateway-tampering:\n  name: An assumption\n",
+		"rules/rules.yaml":           "rule gateway-denial:\n  on: asset\n  check: 'true'\n",
+		"tara/controls.yaml":         "",
+		"concept/risks.yaml":         "",
+	})
+	got := generate.Threats(res.Workspace)
+	if len(got.Added) != 0 || len(got.Skipped) != 2 {
+		t.Errorf("added %v, skipped %v", got.Added, got.Skipped)
+	}
+}
+
 func TestApplyThreatsAppendsAndNeverTouchesWhatIsThere(t *testing.T) {
 	dir, res := open(t, map[string]string{"tara/threat-scenarios.yaml": "", "concept/risks.yaml": "", "tara/attack-steps.yaml": "", "tara/controls.yaml": ""})
 	os.Remove(filepath.Join(dir, "tara/threat-scenarios.yaml"))

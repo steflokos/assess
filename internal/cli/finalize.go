@@ -60,7 +60,7 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "finalize", stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
@@ -94,15 +94,13 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 	}
 	its := ws.Iterations.Iterations
 	if problems := iteration.Chain(its); len(problems) > 0 {
-		fmt.Fprintf(o.stderr, "assess finalize: the chain in %s is broken at iteration %d. Run assess verify. Nothing was written\n", load.IterationsFile, problems[0].Number)
-		return o.finish(exitFindings, nil, finalizeResult{})
+		return o.refuse(finalizeResult{}, "the chain in %s is broken at iteration %d. Run assess verify. Nothing was written", load.IterationsFile, problems[0].Number)
 	}
 	last := model.Iteration{}
 	if n := len(its); n > 0 {
 		last = its[n-1]
 		if last.Inputs == in.Meta.Inputs {
-			fmt.Fprintf(o.stderr, "assess finalize: nothing has changed since iteration %d. Nothing was written\n", last.Number)
-			return o.finish(exitFindings, nil, finalizeResult{})
+			return o.refuse(finalizeResult{}, "nothing has changed since iteration %d. Nothing was written", last.Number)
 		}
 	}
 
@@ -111,8 +109,7 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 		return o.fail("%v", err)
 	}
 	if len(decisions) == 0 {
-		fmt.Fprintln(o.stderr, "assess finalize: the project has no risk to decide yet. Nothing was written")
-		return o.finish(exitFindings, nil, finalizeResult{})
+		return o.refuse(finalizeResult{}, "the project has no risk to decide yet. Nothing was written")
 	}
 	people := []string(by)
 	if len(people) == 0 {

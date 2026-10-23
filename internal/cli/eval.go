@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/steflokos/assess/internal/attack"
 	"github.com/steflokos/assess/internal/diag"
@@ -34,7 +35,7 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "eval", stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
@@ -110,14 +111,22 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 }
 
 // oneDir returns the directory argument, "." when there is none.
-func oneDir(fl *flag.FlagSet, cmd string, stderr io.Writer) (string, bool) {
+func oneDir(fl *flag.FlagSet, o *output) (string, bool) {
 	switch fl.NArg() {
 	case 0:
 		return ".", true
 	case 1:
+		if strings.HasPrefix(fl.Arg(0), "-") {
+			o.fail("%s is read as the folder. Put the flags before the folder", fl.Arg(0))
+			return "", false
+		}
 		return fl.Arg(0), true
 	}
-	fmt.Fprintf(stderr, "assess %s: expected at most one directory\n", cmd)
+	if strings.HasPrefix(fl.Arg(1), "-") {
+		o.fail("%s comes after the folder, where it is not a flag. Put the flags before the folder", fl.Arg(1))
+	} else {
+		o.fail("expected at most one folder")
+	}
 	return "", false
 }
 

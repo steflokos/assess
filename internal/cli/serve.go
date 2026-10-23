@@ -33,7 +33,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "serve", stderr)
+	dir, ok := oneDir(fl, textOutput("serve", stdout, stderr))
 	if !ok {
 		return exitUsage
 	}

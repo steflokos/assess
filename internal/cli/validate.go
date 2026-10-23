@@ -32,13 +32,8 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir := "."
-	switch fs.NArg() {
-	case 0:
-	case 1:
-		dir = fs.Arg(0)
-	default:
-		fmt.Fprintln(stderr, "assess validate: expected at most one directory")
+	dir, ok := oneDir(fs, o)
+	if !ok {
 		return exitUsage
 	}
 

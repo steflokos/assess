@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/steflokos/assess/internal/atomic"
 	"io"
 
 	"github.com/steflokos/assess/internal/report"
@@ -31,10 +32,16 @@ func runOpen(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "open", stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
+	// the files are read again for the fingerprint, so nobody may change them in between
+	unlock, err := atomic.Lock(dir, false)
+	if err != nil {
+		return o.fail("%v", err)
+	}
+	defer unlock()
 	res, ok := loadChecked(o, dir)
 	if !ok {
 		return exitFindings

@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -464,7 +465,7 @@ func TestSignAndVerify(t *testing.T) {
 
 	// without keys the signatures are listed and not checked
 	v := run(t, "verify", dir)
-	if v.code != 0 || !strings.Contains(v.out, "signed by Jane Doe: not checked") || !strings.Contains(v.err, "3 signatures not checked") && !strings.Contains(v.err, "2 signatures not checked") {
+	if v.code != 0 || !signedBy(v.out, "Jane Doe", "not checked") || !strings.Contains(v.err, "3 signatures not checked") && !strings.Contains(v.err, "2 signatures not checked") {
 		t.Errorf("exit %d\n%s%s", v.code, v.out, v.err)
 	}
 	if v := run(t, "verify", "-strict", dir); v.code != 1 || !strings.Contains(v.err, "could not be checked") {
@@ -477,14 +478,14 @@ func TestSignAndVerify(t *testing.T) {
 		data, _ := os.ReadFile(k.pub)
 		os.WriteFile(filepath.Join(pubs, filepath.Base(k.pub)), data, 0o644)
 	}
-	if v := run(t, "verify", "-strict", "-keys", pubs, dir); v.code != 0 || !strings.Contains(v.out, "signed by Jane Doe: valid") || !strings.Contains(v.out, "signed by Ops: valid") {
+	if v := run(t, "verify", "-strict", "-keys", pubs, dir); v.code != 0 || !signedBy(v.out, "Jane Doe", "valid") || !signedBy(v.out, "Ops", "valid") {
 		t.Errorf("exit %d\n%s%s", v.code, v.out, v.err)
 	}
 	// with one key only, the other signature is not checked
 	if v := run(t, "verify", "-strict", "-keys", jane.pub, dir); v.code != 1 {
 		t.Errorf("exit %d\n%s", v.code, v.out)
 	}
-	if v := run(t, "verify", "-keys", jane.pub, dir); v.code != 0 || !strings.Contains(v.out, "signed by Ops: not checked") {
+	if v := run(t, "verify", "-keys", jane.pub, dir); v.code != 0 || !signedBy(v.out, "Ops", "not checked") {
 		t.Errorf("exit %d\n%s", v.code, v.out)
 	}
 
@@ -512,8 +513,26 @@ func TestAWrongSignatureIsFound(t *testing.T) {
 	raw[0] ^= 0xff
 	testproject.Write(t, dir, "iterations.yaml", text[:i]+base64.StdEncoding.EncodeToString(raw)+text[i+strings.Index(text[i:], "\n"):])
 	r := run(t, "verify", "-keys", jane.pub, dir)
-	if r.code != 1 || !strings.Contains(r.out, "signed by Jane: invalid") || !strings.Contains(r.out, "the signature of Jane does not match the hash") {
+	if r.code != 1 || !signedBy(r.out, "Jane", "invalid") || !strings.Contains(r.out, "the signature of Jane does not match the hash") {
 		t.Errorf("exit %d\n%s", r.code, r.out)
+	}
+}
+
+func TestASignatureCopiedUnderAnotherNameIsNotASecondPerson(t *testing.T) {
+	dir := twoIterations(t)
+	jane := newKeys(t, t.TempDir(), "jane")
+	mustRun(t, "sign", "-key", jane.priv, "-by", "Jane", dir)
+	text := iterationsFile(t, dir)
+	start := strings.Index(text, "- by: Jane")
+	end := start + strings.Index(text[start:], "sig: ")
+	end += strings.Index(text[end:], "\n") + 1
+	entry := text[start:end]
+	indent := text[strings.LastIndex(text[:start], "\n")+1 : start]
+	copied := strings.Replace(entry, "Jane", "Bob", 1)
+	testproject.Write(t, dir, "iterations.yaml", text[:end]+indent+copied+text[end:])
+	r := run(t, "verify", "-keys", jane.pub, dir)
+	if r.code != 1 || !strings.Contains(r.out, "uses a key that signed this iteration already") || !signedBy(r.out, "Bob", "invalid") {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }
 
@@ -674,7 +693,7 @@ func TestASignatureMadeElsewhereIsCheckedAndWritten(t *testing.T) {
 	if code != 0 || !strings.Contains(out.String(), "signed iteration 2 as Jane Doe") {
 		t.Fatalf("exit %d\n%s%s", code, out.String(), errb.String())
 	}
-	if r := run(t, "verify", "-keys", jane.pub, "-strict", dir); r.code != 0 || !strings.Contains(r.out, "signed by Jane Doe: valid") {
+	if r := run(t, "verify", "-keys", jane.pub, "-strict", dir); r.code != 0 || !signedBy(r.out, "Jane Doe", "valid") {
 		t.Errorf("verify reads the signature that was made elsewhere: %+v", r)
 	}
 }
@@ -701,4 +720,9 @@ func TestASignatureThatDoesNotFitIsRefusedAndNothingIsWritten(t *testing.T) {
 			t.Errorf("%s: a refused signature writes nothing", name)
 		}
 	}
+}
+
+// signedBy says whether the output of verify has the line of a signature: who, the start of the key and the state.
+func signedBy(out, who, state string) bool {
+	return regexp.MustCompile(`signed by ` + regexp.QuoteMeta(who) + ` \(key [0-9a-f]+\): ` + state).MatchString(out)
 }

@@ -55,7 +55,7 @@ func runSignFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, "sign", stderr)
+	dir, ok := oneDir(fl, o)
 	if !ok {
 		return exitUsage
 	}
@@ -107,8 +107,7 @@ func runSignFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 		return o.fail("there is no iteration to sign. Run assess finalize first")
 	}
 	if problems := iteration.Chain(its); len(problems) > 0 {
-		fmt.Fprintf(o.stderr, "assess sign: the chain is broken at iteration %d. Run assess verify. Nothing was signed\n", problems[0].Number)
-		return o.finish(exitFindings, nil, nil)
+		return o.refuse(nil, "the chain is broken at iteration %d. Run assess verify. Nothing was signed", problems[0].Number)
 	}
 	n := *number
 	if n == 0 {

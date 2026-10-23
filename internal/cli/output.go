@@ -120,3 +120,13 @@ func (o *output) fail(format string, args ...any) int {
 	}
 	return exitUsage
 }
+
+// refuse ends a command that did nothing on purpose. The message goes to stderr, and in JSON mode the document says why too, so
+// that a program is not left with ok false and no reason. It returns exitFindings.
+func (o *output) refuse(result any, format string, args ...any) int {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Fprintf(o.stderr, "assess %s: %s\n", o.cmd, msg)
+	var ds diag.List
+	ds.Errorf("refused", source.Loc{}, "%s", msg)
+	return o.finish(exitFindings, ds, result)
+}

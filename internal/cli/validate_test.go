@@ -250,7 +250,7 @@ func TestUnknownFlagAndTooManyDirectories(t *testing.T) {
 	if r := run(t, "validate", "-no-such-flag"); r.code != 2 {
 		t.Errorf("a wrong flag is a wrong call: exit %d", r.code)
 	}
-	if r := run(t, "validate", "a", "b"); r.code != 2 || !strings.Contains(r.err, "at most one directory") {
+	if r := run(t, "validate", "a", "b"); r.code != 2 || !strings.Contains(r.err, "at most one folder") {
 		t.Errorf("exit %d: %s", r.code, r.err)
 	}
 	if r := run(t, "validate", "-format", "yaml", t.TempDir()); r.code != 2 || !strings.Contains(r.err, "text or json") {

@@ -62,7 +62,7 @@ func TestTheScriptsOfTheInterface(t *testing.T) {
 	if err := os.WriteFile(pub, []byte(made.Public), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if r := run(t, "verify", "-keys", pub, "-strict", dir); r.code != 0 || !strings.Contains(r.out, "signed by Jane Doe: valid") {
+	if r := run(t, "verify", "-keys", pub, "-strict", dir); r.code != 0 || !signedBy(r.out, "Jane Doe", "valid") {
 		t.Errorf("the signature is valid: %s%s", r.out, r.err)
 	}
 }

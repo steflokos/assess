@@ -16,6 +16,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/steflokos/assess/internal/atomic"
 	"github.com/steflokos/assess/internal/diag"
 	"github.com/steflokos/assess/internal/edit"
@@ -127,7 +129,9 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	}
 	defer unlock()
 	res, before := checkProject(dir)
-	if before.Count(diag.Error) > 0 || res.Workspace == nil {
+	// A change set that only writes the plain files may be the one that repairs them, so errors in the project do not stop
+	// it. What it would leave is judged below, on the project as it would be.
+	if res.Workspace == nil || (before.Count(diag.Error) > 0 && !writesOnly(set)) {
 		o.show(before)
 		fmt.Fprintf(o.stderr, "assess %s: the project has errors. Run assess validate and fix them first\n", o.cmd)
 		return o.finish(exitFindings, before, nil)
@@ -140,7 +144,11 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 		}
 		files[rel] = b
 	}
-	out, ps := edit.Apply(files, set, opt.source)
+	records := files
+	if writesOnly(set) {
+		records = map[string][]byte{} // there is no record to change, and a record file may be the one that does not parse
+	}
+	out, ps := edit.Apply(records, set, opt.source)
 	if len(ps) > 0 {
 		return changeProblems(o, opt.label, ps)
 	}
@@ -237,6 +245,11 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 			len(out.Created), len(out.Updated), len(out.Deleted), len(out.Unchanged), plural(len(result.Files), "file"))
 	}
 	return o.finish(exitOK, diags, result)
+}
+
+// writesOnly says whether a change set only writes plain files, such as assess.yaml and the policy.
+func writesOnly(set *edit.Set) bool {
+	return len(set.Changes) > 0 && len(set.Writes()) == len(set.Changes)
 }
 
 // usedBy works out what deleting a record would take with it, for a person who did not ask for that. It is nil when
@@ -391,6 +404,22 @@ func stagedCheck(dir string, res *load.Result, changed map[string][]byte) (*load
 	for rel := range names {
 		if err := copyFile(rel); err != nil {
 			return nil, nil, err
+		}
+	}
+	// The files that a new assess.yaml names are in the project, and may not be the ones that the old one named.
+	if text, ok := changed[load.ConfigFile]; ok {
+		var cfg model.Config
+		if yaml.Unmarshal(text, &cfg) == nil {
+			for _, rel := range []string{cfg.Policy, cfg.Template} {
+				if rel == "" || load.Outside(rel) {
+					continue
+				}
+				if rel = filepath.ToSlash(filepath.Clean(rel)); !names[rel] {
+					if err := copyFile(rel); err != nil && !errors.Is(err, fs.ErrNotExist) { // a file that is not there is reported by the check
+						return nil, nil, err
+					}
+				}
+			}
 		}
 	}
 	staged, diags := checkProject(stage)
