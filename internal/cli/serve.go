@@ -46,12 +46,15 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		abs = dir
 	}
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = real // the folder is a link: the records are read from the folder it points to, and so is the list of files
+	}
 	ln, err := server.Listen(*addr)
 	if err != nil {
 		fmt.Fprintf(stderr, "assess serve: %v\n", err)
 		return exitUsage
 	}
-	srv, err := server.New(server.Options{Dir: abs, Run: RunWith, Listener: ln})
+	srv, err := server.New(server.Options{Dir: abs, Run: RunWith, Listener: ln, Log: stderr})
 	if err != nil {
 		fmt.Fprintf(stderr, "assess serve: %v\n", err)
 		return exitUsage

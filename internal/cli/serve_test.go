@@ -30,7 +30,7 @@ func web(t *testing.T) (*httptest.Server, string) {
 func webAt(t *testing.T, dir string) (*httptest.Server, string) {
 	t.Helper()
 	ts := httptest.NewUnstartedServer(nil)
-	s, err := server.New(server.Options{Dir: dir, Run: cli.RunWith, Listener: ts.Listener, Token: "t0k3n"})
+	s, err := server.New(server.Options{Dir: dir, Run: cli.RunWith, Listener: ts.Listener, Token: "t0k3n", View: "v1ew"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,6 +42,13 @@ func webAt(t *testing.T, dir string) (*httptest.Server, string) {
 
 func call(t *testing.T, ts *httptest.Server, method, path, body string) (int, string) {
 	t.Helper()
+	if strings.HasPrefix(path, "/report") || strings.HasPrefix(path, "/diagram.svg") { // pages that a frame or an image loads
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		path += sep + "t=v1ew"
+	}
 	req, _ := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
 	req.Header.Set("X-Assess-Token", "t0k3n")
 	if method == "POST" {

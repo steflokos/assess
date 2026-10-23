@@ -3,7 +3,7 @@
 // run of assess apply first. The page shows the errors with their place in the files, the lines that would change and what the change
 // does to the calculation. Only apply writes.
 
-import { h, put, clear, plural, debounce, ask, toast, api, chip, tokenValue, upper } from './lib.js';
+import { h, put, clear, plural, debounce, ask, toast, api, chip, upper } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
 import { S, rec, nameOf, kindName, kindTitle } from './data.js';
 import { recordForm, chipPicker, readOnly, inSchemaOrder, shell } from './form.js';
@@ -199,7 +199,7 @@ function context(kind, id) {
   }
   if (kind === 'threat') {
     aside.append(h('div', { class: 'card' }, h('div', { class: 'label', text: 'Attack tree' }),
-      h('a', { href: hrefOf('diagram', id), class: 'pic', title: 'Open the picture' }, h('img', { alt: 'The attack tree of ' + id, src: '/diagram.svg?t=' + encodeURIComponent(tokenValue()) + '&threat=' + encodeURIComponent(id) }))));
+      h('a', { href: hrefOf('diagram', id), class: 'pic', title: 'Open the picture' }, h('img', { alt: 'The attack tree of ' + id, src: '/diagram.svg?t=' + encodeURIComponent(S.view) + '&threat=' + encodeURIComponent(id) }))));
   }
   const uses = S.uses.get(kind + ':' + id) || [], usedBy = S.usedBy.get(kind + ':' + id) || [];
   aside.append(h('div', { class: 'card' }, h('div', { class: 'label', text: 'Uses' }), uses.length ? group(uses) : h('p', { class: 'muted small', text: 'Nothing yet.' })),

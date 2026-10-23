@@ -153,6 +153,21 @@ func TestInitWritesAStarterThatIsValid(t *testing.T) {
 	}
 }
 
+func TestInitQuotesTheNameOfAFolderThatNeedsIt(t *testing.T) {
+	for _, name := range []string{"Q3: plan", "TARA #2", "true", "[draft]"} {
+		dir := filepath.Join(t.TempDir(), name)
+		if r := run(t, "init", dir); r.code != 0 {
+			t.Fatalf("%s: exit %d: %s", name, r.code, r.err)
+		}
+		if r, env := runJSON(t, "validate", dir); r.code != 0 || len(env.Diagnostics) != 0 {
+			t.Errorf("%s: %+v", name, env.Diagnostics)
+		}
+		if got := testproject.Read(t, dir, "project.yaml"); !strings.Contains(got, "\nname: ") || strings.Contains(got, "\nname: "+name+"\n") {
+			t.Errorf("%s is quoted in project.yaml:\n%s", name, got)
+		}
+	}
+}
+
 func TestInitDoesNotTouchAProjectThatExists(t *testing.T) {
 	dir := testproject.Copy(t)
 	before := testproject.Read(t, dir, "project.yaml")

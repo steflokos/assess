@@ -10,39 +10,55 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 )
 
-// skipped are the folders that change without the author touching the project: the files assess writes for the editor, the
-// reports, and the version control.
-var skipped = map[string]bool{".assess": true, "out": true, ".git": true, "vendor": true, "node_modules": true}
+// watched are the folders that can hold files of a project: the record folders, the one for the policy and the one for keys. The
+// files at the top of the project are watched too. Nothing else is looked at, so a project folder with other things in it, such as
+// the source of a program, does not slow the page down or make it reload.
+var watched = append(append([]string(nil), iso21434.Folders...), "policy", "keys")
 
 // stampOf is a hash of the names, sizes and times of the files of the project. When it changes, a file changed. The page asks for
-// it every few seconds, so it only looks at the folder and reads no file.
-func stampOf(dir string) (string, error) {
+// it every few seconds, so it only looks at the folders and reads no file. A file or a folder that cannot be looked at is left out,
+// and a project that is not there has a stamp too, which is the stamp of nothing.
+func stampOf(dir string) string {
 	h := sha256.New()
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if path != dir && skipped[d.Name()] {
-				return filepath.SkipDir
-			}
-			return nil
-		}
+	add := func(rel string, d fs.DirEntry) {
 		info, err := d.Info()
-		if err != nil {
-			if os.IsNotExist(err) {
+		if err != nil || !info.Mode().IsRegular() {
+			return
+		}
+		fmt.Fprintf(h, "%s\x00%d\x00%d\n", filepath.ToSlash(rel), info.Size(), info.ModTime().UnixNano())
+	}
+	top, _ := os.ReadDir(dir)
+	for _, e := range top {
+		if !e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+			add(e.Name(), e)
+		}
+	}
+	for _, name := range watched {
+		root := filepath.Join(dir, name)
+		filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				if d != nil && d.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil
 			}
-			return err
-		}
-		rel, _ := filepath.Rel(dir, path)
-		fmt.Fprintf(h, "%s\x00%d\x00%d\n", filepath.ToSlash(rel), info.Size(), info.ModTime().UnixNano())
-		return nil
-	})
-	if err != nil {
-		return "", err
+			if strings.HasPrefix(d.Name(), ".") && path != root {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil // the temporary file of a write in progress
+			}
+			if !d.IsDir() {
+				rel, _ := filepath.Rel(dir, path)
+				add(rel, d)
+			}
+			return nil
+		})
 	}
-	return hex.EncodeToString(h.Sum(nil)[:12]), nil
+	return hex.EncodeToString(h.Sum(nil)[:12])
 }

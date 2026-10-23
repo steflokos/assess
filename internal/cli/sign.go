@@ -59,6 +59,9 @@ func runSignFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
+	if err := iteration.CheckText("name", *by); err != nil {
+		return o.fail("%v", err)
+	}
 	var priv ed25519.PrivateKey
 	var pub ed25519.PublicKey
 	switch {

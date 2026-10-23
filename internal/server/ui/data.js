@@ -9,13 +9,16 @@ export const S = {
   desc: null, kinds: {}, apiVersion: 'assess/v1beta1',
   exp: null, diag: [], recs: [], of: {}, byKey: new Map(), threats: new Map(), byFile: new Map(),
   uses: new Map(), usedBy: new Map(), index: [], points: {}, open: [],
-  stamp: '', fatal: '', noProject: false,
+  stamp: '', view: '', fatal: '', noProject: false,
 };
 
 // load reads the format once and the project every time.
 export async function load() {
-  const [exp, desc] = await Promise.all([api('/api/export'), S.desc ? null : api('/api/describe')]);
+  // The stamp is read first. A file that changes while the rest is read then shows as a change at the next look, and is not lost.
+  const st = await api('/api/stamp');
+  const [exp, desc, view] = await Promise.all([api('/api/export'), S.desc ? null : api('/api/describe'), S.view ? null : api('/api/view')]);
   if (exp.status === 401 || (desc && desc.status === 401)) { S.fatal = 'token'; return; }
+  if (view && view.view) S.view = view.view;
   if (desc) {
     if (!desc.result) { S.fatal = (desc.diagnostics[0] || {}).message || 'The description of the format could not be read.'; return; }
     S.desc = desc.result;
@@ -38,7 +41,6 @@ export async function load() {
   S.points = ((S.exp.policy || {}).feasibility || {}).points || {};
   relate();
   S.index = S.recs.map((r) => ({ kind: r.kind, id: r.id, name: nameOf(r.kind, r.id), hay: (r.id + ' ' + nameOf(r.kind, r.id) + ' ' + kindName(r.kind)).toLowerCase() }));
-  const st = await api('/api/stamp');
   S.stamp = st.stamp || '';
 }
 

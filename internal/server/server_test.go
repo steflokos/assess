@@ -22,7 +22,10 @@ import (
 	"github.com/steflokos/assess/internal/server"
 )
 
-const token = "0123456789abcdef0123456789abcdef"
+const (
+	token = "0123456789abcdef0123456789abcdef"
+	view  = "fedcba9876543210fedcba9876543210"
+)
 
 // fake is a runner that records the commands and answers with what it is told.
 type fake struct {
@@ -68,8 +71,13 @@ func start(t *testing.T, f *fake, dir string) *httptest.Server {
 
 func startRunner(t *testing.T, run server.Runner, dir string) *httptest.Server {
 	t.Helper()
+	return startLogged(t, run, dir, nil)
+}
+
+func startLogged(t *testing.T, run server.Runner, dir string, log io.Writer) *httptest.Server {
+	t.Helper()
 	ts := httptest.NewUnstartedServer(nil)
-	s, err := server.New(server.Options{Dir: dir, Run: run, Listener: ts.Listener, Token: token})
+	s, err := server.New(server.Options{Dir: dir, Run: run, Listener: ts.Listener, Token: token, View: view, Log: log})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +151,7 @@ func TestTheTokenIsRequiredForTheAPIButNotForTheInterface(t *testing.T) {
 		h.Get("X-Content-Type-Options") != "nosniff" {
 		t.Errorf("the interface has its headers: %v", h)
 	}
-	if _, _, h := do(t, ts, request{path: "/report?t=" + token, noToken: true}); !strings.Contains(h.Get("Content-Security-Policy"), "frame-ancestors http://127.0.0.1:"+port+" http://localhost:"+port) {
+	if _, _, h := do(t, ts, request{path: "/report?t=" + view, noToken: true}); !strings.Contains(h.Get("Content-Security-Policy"), "frame-ancestors http://127.0.0.1:"+port+" http://localhost:"+port) {
 		t.Errorf("only the interface may frame the report: %v", h)
 	}
 	if code, _, _ := do(t, ts, request{path: "/etc/passwd", noToken: true}); code != 404 {
@@ -152,10 +160,10 @@ func TestTheTokenIsRequiredForTheAPIButNotForTheInterface(t *testing.T) {
 }
 
 func TestAFrameOrAnImageMayGiveTheTokenInTheAddress(t *testing.T) {
-	f := &fake{out: "<html></html>"}
+	f := &fake{out: "<html></html><svg></svg>"}
 	ts := start(t, f, "D")
 	for _, path := range []string{"/report", "/diagram.svg"} {
-		if code, _, _ := do(t, ts, request{path: path + "?t=" + token, noToken: true}); code != 200 {
+		if code, _, _ := do(t, ts, request{path: path + "?t=" + view, noToken: true}); code != 200 {
 			t.Errorf("%s with the token in the address: %d", path, code)
 		}
 		if code, _, _ := do(t, ts, request{path: path + "?t=wrong", noToken: true}); code != 401 {
@@ -188,7 +196,7 @@ func TestOtherSitesAreRefused(t *testing.T) {
 		t.Errorf("a refused request runs nothing: %d commands", f.count())
 	}
 	// the interface shows the report from the other name of the server, which the browser calls another site
-	if code, _, _ := do(t, ts, request{path: "/report?t=" + token, noToken: true, header: map[string]string{"Sec-Fetch-Site": "cross-site"}}); code != 200 {
+	if code, _, _ := do(t, ts, request{path: "/report?t=" + view, noToken: true, header: map[string]string{"Sec-Fetch-Site": "cross-site"}}); code != 200 {
 		t.Errorf("the report in a frame: %d", code)
 	}
 	if code, _, _ := do(t, ts, request{path: "/report?t=wrong", noToken: true, header: map[string]string{"Sec-Fetch-Site": "cross-site"}}); code != 401 {
@@ -239,11 +247,14 @@ func TestEveryRouteRunsTheCommandItShould(t *testing.T) {
 		{"sign", request{method: "POST", path: "/api/sign", body: `{"iteration": 2, "by": "Jane Doe", "public": "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n", "signature": "` + sig + `"}`},
 			[]string{"sign", "-format", "json", "-iteration=2", "-by=Jane Doe", "-signature=" + sig, "-public", "-", "D"}, "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----\n"},
 		{"init", request{method: "POST", path: "/api/init", body: "{}"}, []string{"init", "D"}, ""},
-		{"report", request{path: "/report?t=" + token, noToken: true}, []string{"report", "-o", "-", "D"}, ""},
-		{"diagram", request{path: "/diagram.svg?t=" + token + "&threat=a-b", noToken: true}, []string{"diagram", "-o", "-", "-threat", "a-b", "D"}, ""},
+		{"report", request{path: "/report?t=" + view, noToken: true}, []string{"report", "-o", "-", "D"}, ""},
+		{"diagram", request{path: "/diagram.svg?t=" + view + "&threat=a-b", noToken: true}, []string{"diagram", "-o", "-", "-threat", "a-b", "D"}, ""},
 	}
 	for _, c := range cases {
 		f := &fake{out: doc}
+		if strings.HasPrefix(c.req.path, "/diagram") {
+			f.out = "<svg></svg>"
+		}
 		ts := start(t, f, "D")
 		if code, _, _ := do(t, ts, c.req); code != 200 {
 			t.Errorf("%s: status %d", c.name, code)
@@ -264,7 +275,7 @@ func TestBadInputNeverReachesACommand(t *testing.T) {
 		{path: "/api/explain?id=../../x"},
 		{path: "/api/explain?id=a%20b"},
 		{path: "/api/explain-text?id=--help"},
-		{path: "/diagram.svg?t=" + token + "&threat=-o", noToken: true},
+		{path: "/diagram.svg?t=" + view + "&threat=-o", noToken: true},
 		{method: "POST", path: "/api/generate"},
 		{method: "POST", path: "/api/generate?what=everything"},
 		{method: "POST", path: "/api/generate?what=threats&force=1"},
@@ -302,7 +313,7 @@ func TestACommandThatWritesNoDocumentGetsOne(t *testing.T) {
 func TestAReportThatCannotBeBuiltIsSaidInWordsAndEscaped(t *testing.T) {
 	f := &fake{code: 1, out: "item/a.yaml:3:1: error: <script>alert(1)</script>\n"}
 	ts := start(t, f, "D")
-	code, body, h := do(t, ts, request{path: "/report?t=" + token, noToken: true})
+	code, body, h := do(t, ts, request{path: "/report?t=" + view, noToken: true})
 	if code != 409 || strings.Contains(body, "<script>") || !strings.Contains(body, "&lt;script&gt;") || !strings.HasPrefix(h.Get("Content-Type"), "text/html") {
 		t.Errorf("%d %s", code, body)
 	}
@@ -321,7 +332,8 @@ func TestACommandThatPanicsIsOneFailedRequest(t *testing.T) {
 }
 
 func TestOnlyThisComputerIsServed(t *testing.T) {
-	for _, addr := range []string{"0.0.0.0:0", ":0", "192.0.2.1:0", "example.com:80", "[::]:0"} {
+	// 127.0.0.2 is a loopback address too, but the server answers only to the three names it knows
+	for _, addr := range []string{"0.0.0.0:0", ":0", "192.0.2.1:0", "example.com:80", "[::]:0", "127.0.0.2:0", "127.1.2.3:0"} {
 		if _, err := server.Listen(addr); !errors.Is(err, server.ErrNotLocal) {
 			t.Errorf("%s: %v", addr, err)
 		}
@@ -329,11 +341,17 @@ func TestOnlyThisComputerIsServed(t *testing.T) {
 	if _, err := server.Listen("nonsense"); err == nil {
 		t.Error("an address without a port")
 	}
-	ln, err := server.Listen("localhost:0")
-	if err != nil {
-		t.Fatal(err)
+	for _, addr := range []string{"localhost:0", "127.0.0.1:0", "[::1]:0"} {
+		ln, err := server.Listen(addr)
+		if errors.Is(err, server.ErrNotLocal) {
+			t.Errorf("%s is this computer: %v", addr, err)
+		} else if err != nil && addr != "[::1]:0" { // a computer may have no IPv6
+			t.Fatal(err)
+		}
+		if ln != nil {
+			ln.Close()
+		}
 	}
-	ln.Close()
 }
 
 func TestTheStampFollowsTheFilesOfTheProject(t *testing.T) {
@@ -482,5 +500,102 @@ func TestWhatTheCommandSaidForAPersonGoesAlongAsText(t *testing.T) {
 	f.err = ""
 	if _, body, _ := do(t, ts, request{path: "/api/open"}); strings.Contains(body, `"text"`) {
 		t.Errorf("a command that said nothing adds nothing: %s", body)
+	}
+}
+
+func TestTheReportAndTheAPIHaveTheirOwnTokens(t *testing.T) {
+	f := &fake{out: "<svg></svg>"}
+	ts := start(t, f, "D")
+	code, body, _ := do(t, ts, request{path: "/api/view"})
+	if code != 200 || !strings.Contains(body, `"view":"`+view+`"`) {
+		t.Errorf("the view token is given to the page that has the token: %d %s", code, body)
+	}
+	for name, r := range map[string]request{
+		"the view token for the API":                         {path: "/api/view", header: map[string]string{"X-Assess-Token": view}},
+		"the view token in the address of the API":           {path: "/api/open?t=" + view, noToken: true},
+		"the view token in a header of the report":           {path: "/report", noToken: true, header: map[string]string{"X-Assess-Token": view}},
+		"the token of the API in the address of the report":  {path: "/report?t=" + token, noToken: true},
+		"the token of the API in a header of the report":     {path: "/report", header: map[string]string{"X-Assess-Token": token}},
+		"the token of the API in the address of the diagram": {path: "/diagram.svg?t=" + token, noToken: true},
+	} {
+		if code, _, _ := do(t, ts, r); code != 401 {
+			t.Errorf("%s: %d, want 401", name, code)
+		}
+	}
+	if f.count() != 0 {
+		t.Errorf("none of them ran a command: %d", f.count())
+	}
+}
+
+func TestAnAddressThatNothingTakesAnswersWithADocument(t *testing.T) {
+	ts := start(t, &fake{out: doc}, "D")
+	for name, c := range map[string]struct {
+		r    request
+		want int
+	}{
+		"an unknown path":   {request{path: "/nothing"}, 404},
+		"the wrong method":  {request{method: "DELETE", path: "/api/open"}, 405},
+		"options":           {request{method: "OPTIONS", path: "/api/open"}, 405},
+		"head of a command": {request{method: "HEAD", path: "/api/open"}, 405},
+	} {
+		code, body, h := do(t, ts, c.r)
+		if code != c.want {
+			t.Errorf("%s: %d, want %d", name, code, c.want)
+		}
+		if c.r.method != "HEAD" && !strings.HasPrefix(h.Get("Content-Type"), "application/json") || (c.r.method != "HEAD" && !strings.Contains(body, `"ok":false`)) {
+			t.Errorf("%s: %s %q", name, h.Get("Content-Type"), body)
+		}
+	}
+}
+
+func TestWhatFinalizeTakesFromAPage(t *testing.T) {
+	f := &fake{out: doc}
+	ts := start(t, f, "D")
+	for name, body := range map[string]string{
+		"nothing at all":  "",
+		"an empty object": "{}",
+	} {
+		if code, _, _ := do(t, ts, request{method: "POST", path: "/api/finalize", body: body}); code != 200 {
+			t.Errorf("%s: %d", name, code)
+		}
+	}
+	for name, body := range map[string]string{
+		"something after the object": `{"note": "a"} {"note": "b"}`,
+		"a note that is too long":    `{"note": "` + strings.Repeat("x", 5000) + `"}`,
+		"a line separator in a note": `{"note": "a\u2028b"}`,
+		"a control character":        `{"by": ["a\u0007"]}`,
+		"too many names":             `{"by": ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"]}`,
+	} {
+		if code, _, _ := do(t, ts, request{method: "POST", path: "/api/finalize", body: body}); code != 400 {
+			t.Errorf("%s: %d, want 400", name, code)
+		}
+	}
+	if f.count() != 2 {
+		t.Errorf("only the two good bodies ran a command: %d", f.count())
+	}
+}
+
+func TestADiagramThatIsSaidInWordsIsNotAPicture(t *testing.T) {
+	ts := start(t, &fake{out: "nothing to draw: the project has no components\n"}, "D")
+	code, body, h := do(t, ts, request{path: "/diagram.svg?t=" + view, noToken: true})
+	if code != 404 || !strings.HasPrefix(h.Get("Content-Type"), "text/plain") || !strings.Contains(body, "nothing to draw") {
+		t.Errorf("%d %q %q", code, h.Get("Content-Type"), body)
+	}
+}
+
+func TestAPanicIsLoggedWithItsStackAndNotShownToThePage(t *testing.T) {
+	var log strings.Builder
+	f := &fake{out: doc, boom: true}
+	ts := startLogged(t, f.run, "D", &log)
+	code, body, _ := do(t, ts, request{path: "/api/open"})
+	if code != 500 || strings.Contains(body, "the command broke") || !strings.Contains(log.String(), "the command broke") || !strings.Contains(log.String(), "goroutine") {
+		t.Errorf("%d %s\n%s", code, body, log.String())
+	}
+}
+
+func TestTheStampOfAProjectThatIsNotThereIsAStampToo(t *testing.T) {
+	ts := start(t, &fake{}, filepath.Join(t.TempDir(), "gone"))
+	if code, body, _ := do(t, ts, request{path: "/api/stamp"}); code != 200 || !strings.Contains(body, `"stamp"`) {
+		t.Errorf("%d %s", code, body)
 	}
 }

@@ -71,6 +71,14 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 		return o.fail("%q is not a date and time. Use RFC 3339, such as 2026-10-20T09:30:00Z", when)
 	}
 
+	if err := iteration.CheckText("note", *note); err != nil {
+		return o.fail("%v", err)
+	}
+	for _, name := range by {
+		if err := iteration.CheckText("name", name); err != nil {
+			return o.fail("%v", err)
+		}
+	}
 	unlock, err := atomic.Lock(dir, true)
 	if err != nil {
 		return o.fail("%v", err)

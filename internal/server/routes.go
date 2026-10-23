@@ -6,19 +6,28 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
 	"io/fs"
 	"net/http"
+	"path"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 	"github.com/steflokos/assess/internal/theme"
 )
+
+// types are the content types of the files of the interface.
+var types = map[string]string{
+	".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml",
+}
 
 // uiPolicy is what the page of the interface may load: its own files and nothing else, and frames from the two names of this
 // server.
@@ -37,6 +46,11 @@ func (s *Server) Handler() http.Handler {
 	static := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Security-Policy", s.uiPolicy())
 		w.Header().Set("Cache-Control", "no-store")
+		// The type is set here, because the file server asks the system for it, and a system may say text/plain for a script that
+		// a browser then refuses to run as a module.
+		if t, ok := types[path.Ext(r.URL.Path)]; ok {
+			w.Header().Set("Content-Type", t)
+		}
 		files.ServeHTTP(w, r)
 	}
 	mux.HandleFunc("GET /{$}", static)
@@ -52,6 +66,12 @@ func (s *Server) Handler() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		io.WriteString(w, theme.CSS())
 	})
+
+	// the token of the report and the diagrams, which a frame or an image loads with the token in its address
+	mux.Handle("GET /api/view", s.api(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"view": s.view})
+	}))
 
 	// what the project says, as the JSON that every command gives
 	mux.Handle("GET /api/describe", s.api(func(w http.ResponseWriter, r *http.Request) {
@@ -107,13 +127,13 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/generate", s.api(func(w http.ResponseWriter, r *http.Request) {
 		what := r.URL.Query().Get("what")
 		if !slices.Contains([]string{"assets", "threats", "risks"}, what) {
-			writeError(w, http.StatusBadRequest, "what", "what is assets, threats or risks")
+			writeError(w, http.StatusBadRequest, "what", "what has to be assets, threats or risks")
 			return
 		}
 		args := []string{"generate", "-format", "json"}
 		if on(r, "force") {
 			if what != "assets" {
-				writeError(w, http.StatusBadRequest, "force", "force applies only to assets")
+				writeError(w, http.StatusBadRequest, "force", "force is for assets only")
 				return
 			}
 			args = append(args, "-force")
@@ -129,11 +149,19 @@ func (s *Server) Handler() http.Handler {
 			Note string   `json:"note"`
 			By   []string `json:"by"`
 		}
-		dec := json.NewDecoder(bytes.NewReader(body))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&in); err != nil {
-			writeError(w, http.StatusBadRequest, "body", "the body is {\"note\": \"…\", \"by\": [\"…\"]}")
+		if len(bytes.TrimSpace(body)) > 0 && !decodeOnly(body, &in) {
+			writeError(w, http.StatusBadRequest, "body", "the body has to be JSON like {\"note\": \"…\", \"by\": [\"…\"]}, or empty")
 			return
+		}
+		if len(in.Note) > maxNote || len(in.By) > maxNames || badText(in.Note) {
+			writeError(w, http.StatusBadRequest, "body", fmt.Sprintf("the note can have %d characters, without line breaks, and there can be %d names", maxNote, maxNames))
+			return
+		}
+		for _, name := range in.By {
+			if len(name) > maxName || badText(name) {
+				writeError(w, http.StatusBadRequest, "body", fmt.Sprintf("a name can have %d characters, without line breaks", maxName))
+				return
+			}
 		}
 		args := []string{"finalize", "-format", "json"}
 		if on(r, "dry") {
@@ -161,11 +189,9 @@ func (s *Server) Handler() http.Handler {
 			Public    string `json:"public"`
 			Signature string `json:"signature"`
 		}
-		dec := json.NewDecoder(bytes.NewReader(body))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&in); err != nil || in.Iteration < 1 || in.Iteration > 9999 || !signatureText.MatchString(in.Signature) ||
-			len(in.Public) == 0 || len(in.Public) > 4096 || len(in.By) > 200 || strings.ContainsAny(in.By, "\r\n") {
-			writeError(w, http.StatusBadRequest, "body", "the body is {\"iteration\": 1, \"by\": \"…\", \"public\": \"-----BEGIN PUBLIC KEY-----…\", \"signature\": \"…\"}")
+		if !decodeOnly(body, &in) || in.Iteration < 1 || in.Iteration > 9999 || !signatureText.MatchString(in.Signature) ||
+			len(in.Public) == 0 || len(in.Public) > 4096 || len(in.By) > maxName || badText(in.By) {
+			writeError(w, http.StatusBadRequest, "body", "the body has to be JSON like {\"iteration\": 1, \"by\": \"…\", \"public\": \"-----BEGIN PUBLIC KEY-----…\", \"signature\": \"…\"}")
 			return
 		}
 		args := []string{"sign", "-format", "json", "-iteration=" + strconv.Itoa(in.Iteration)}
@@ -181,11 +207,7 @@ func (s *Server) Handler() http.Handler {
 
 	// a cheap way to see that the files changed
 	mux.Handle("GET /api/stamp", s.api(func(w http.ResponseWriter, r *http.Request) {
-		stamp, err := stampOf(s.dir)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "stamp", err.Error())
-			return
-		}
+		stamp := stampOf(s.dir)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"stamp": stamp})
 	}))
@@ -202,7 +224,7 @@ func (s *Server) Handler() http.Handler {
 		args := []string{"diagram", "-o", "-"}
 		if id := r.URL.Query().Get("threat"); id != "" {
 			if !iso21434.ValidID(id) {
-				writeError(w, http.StatusBadRequest, "id", "the id of a threat scenario is lower case words with hyphens")
+				writeError(w, http.StatusBadRequest, "id", badID)
 				return
 			}
 			args = append(args, "-threat", id)
@@ -210,8 +232,40 @@ func (s *Server) Handler() http.Handler {
 		s.textCommand(w, r, "image/svg+xml", append(args, s.dir)...)
 	}))
 
-	return s.guard(mux)
+	return s.guard(jsonErrors(mux))
 }
+
+// jsonErrors answers a request that no route takes with a document, like every other answer of the API, and not with the plain
+// text of the standard library.
+func jsonErrors(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, pattern := mux.Handler(r); pattern == "" {
+			seen := &probe{h: http.Header{}}
+			mux.ServeHTTP(seen, r)
+			if seen.status == http.StatusMethodNotAllowed {
+				w.Header().Set("Allow", seen.h.Get("Allow"))
+				writeError(w, http.StatusMethodNotAllowed, "method", "this address does not take "+r.Method)
+				return
+			}
+			writeError(w, http.StatusNotFound, "route", "there is nothing at this address")
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+}
+
+// probe takes the answer of the mux to a request that no route takes, to see which answer it is.
+type probe struct {
+	h      http.Header
+	status int
+}
+
+func (p *probe) Header() http.Header         { return p.h }
+func (p *probe) Write(b []byte) (int, error) { return len(b), nil }
+func (p *probe) WriteHeader(code int)        { p.status = code }
+
+// badID is what the server says to an id that is not one. It is the rule of iso21434.ValidID.
+const badID = "an id is letters, digits, '.', '_' and '-', and starts with a letter or digit"
 
 // on says whether a flag of the query is set.
 func on(r *http.Request, name string) bool {
@@ -224,7 +278,7 @@ func on(r *http.Request, name string) bool {
 func idOf(w http.ResponseWriter, r *http.Request) (string, bool) {
 	id := r.URL.Query().Get("id")
 	if !iso21434.ValidID(id) {
-		writeError(w, http.StatusBadRequest, "id", "the id is lower case words with hyphens")
+		writeError(w, http.StatusBadRequest, "id", badID)
 		return "", false
 	}
 	return id, true
@@ -234,11 +288,39 @@ func idOf(w http.ResponseWriter, r *http.Request) (string, bool) {
 func readBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBody))
 	if err != nil {
-		writeError(w, http.StatusRequestEntityTooLarge, "size", fmt.Sprintf("the body is larger than %d MB", maxBody>>20))
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeError(w, http.StatusRequestEntityTooLarge, "size", fmt.Sprintf("the body is larger than %d MB", maxBody>>20))
+		} else {
+			writeError(w, http.StatusBadRequest, "body", "the body could not be read to the end")
+		}
 		return nil, false
 	}
 	return body, true
 }
+
+// decodeOnly reads a body that holds one JSON object with the fields of v and nothing else.
+func decodeOnly(body []byte, v any) bool {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.DisallowUnknownFields()
+	if dec.Decode(v) != nil {
+		return false
+	}
+	_, err := dec.Token() // nothing may follow
+	return err == io.EOF
+}
+
+// badText says whether a line of text from a page has a control character or a line separator in it.
+func badText(s string) bool {
+	return strings.ContainsFunc(s, unicode.IsControl) || strings.ContainsAny(s, "\u2028\u2029")
+}
+
+// The longest note and name that a page may give to finalize and sign, and how many names finalize takes.
+const (
+	maxNote  = 4000
+	maxName  = 200
+	maxNames = 20
+)
 
 // exec runs one command. It waits for a free place, and a command that panics is an error of this request only.
 func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, out, errb []byte, err error) {
@@ -258,7 +340,10 @@ func (s *Server) exec(r *http.Request, in io.Reader, args []string) (code int, o
 	var o, e bytes.Buffer
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("the command stopped: %v", p)
+			if s.log != nil {
+				fmt.Fprintf(s.log, "assess serve: %s stopped: %v\n%s\n", args[0], p, debug.Stack())
+			}
+			err = errors.New("the command stopped. The terminal where assess serve runs has the details")
 		}
 	}()
 	if in == nil {
@@ -361,6 +446,13 @@ func (s *Server) textCommand(w http.ResponseWriter, r *http.Request, contentType
 		return
 	}
 	if code == 0 {
+		if contentType == "image/svg+xml" && !bytes.Contains(out[:min(len(out), 512)], []byte("<svg")) {
+			// the command said in words that there is nothing to draw
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write(append(bytes.TrimSpace(append(out, errb...)), '\n'))
+			return
+		}
 		w.Header().Set("Content-Type", contentType)
 		w.Write(out)
 		return

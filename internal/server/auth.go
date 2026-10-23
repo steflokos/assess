@@ -29,7 +29,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		if !s.hosts[strings.ToLower(r.Host)] {
-			writeError(w, http.StatusForbidden, "host", "this server answers only to its own address")
+			writeError(w, http.StatusForbidden, "host", "this server answers only to its own address. Use the address that assess serve printed")
 			return
 		}
 		if o := r.Header.Get("Origin"); o != "" && !strings.EqualFold(o, "http://"+r.Host) {
@@ -40,14 +40,15 @@ func (s *Server) guard(next http.Handler) http.Handler {
 	})
 }
 
-// tokenOK says whether the request carries the token. A request can only carry it in a header, except a GET of a page that
-// is shown in a frame or an image, which cannot set headers and may give it as t in the address.
+// tokenOK says whether the request carries the token it needs. The API needs the token in a header. A page that a frame or an
+// image loads cannot set headers, so it gives the token of the view as t in the address. That token opens the report and the
+// diagrams, and the API refuses it. The token of the API is never in an address.
 func (s *Server) tokenOK(r *http.Request, inAddress bool) bool {
-	got := r.Header.Get("X-Assess-Token")
-	if got == "" && inAddress && r.Method == http.MethodGet {
-		got = r.URL.Query().Get("t")
+	got, want := r.Header.Get("X-Assess-Token"), s.token
+	if inAddress {
+		got, want = r.URL.Query().Get("t"), s.view
 	}
-	return subtle.ConstantTimeCompare([]byte(got), []byte(s.token)) == 1
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }
 
 // api wraps a handler of the API: it needs the token in the header, and a POST has to be JSON.
@@ -63,6 +64,11 @@ func (s *Server) page(next http.HandlerFunc) http.Handler {
 func (s *Server) protected(next http.HandlerFunc, inAddress bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
+		if r.Method == http.MethodHead { // it would run the whole command and throw the answer away
+			w.Header().Set("Allow", "GET")
+			writeError(w, http.StatusMethodNotAllowed, "method", "use GET for this address")
+			return
+		}
 		// A page of this server may use the other name of the server for the report, which a browser calls another site. So that
 		// is allowed for what a frame or an image loads, which needs the token in its address. The API is only for this origin.
 		if !inAddress && r.Header.Get("Sec-Fetch-Site") == "cross-site" {

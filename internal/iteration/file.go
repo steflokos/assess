@@ -13,6 +13,15 @@ import (
 	"github.com/steflokos/assess/internal/model"
 )
 
+// CheckText says what is wrong with a note or a name that goes into iterations.yaml. go-yaml writes U+0085, U+2028 and U+2029 as
+// they are, and counts them as the end of a line, which an editor does not show and a line by line edit gets wrong.
+func CheckText(what, text string) error {
+	if i := strings.IndexAny(text, "\u0085\u2028\u2029"); i >= 0 {
+		return fmt.Errorf("the %s has a line separator character (U+%04X). Take it out", what, []rune(text[i:])[0])
+	}
+	return nil
+}
+
 // Header starts a new iterations.yaml.
 const Header = `# yaml-language-server: $schema=.assess/schema-iterations.json
 # The closed iterations of the assessment. assess finalize writes them and assess sign adds signatures.

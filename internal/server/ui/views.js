@@ -2,7 +2,7 @@
 // The pages that are not the page of one record: the overview with the next step, the lists, the decisions, what is open, the
 // calculation, the report, the diagram, the iterations and the files.
 
-import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, tokenValue, short, firstSentence, upper } from './lib.js';
+import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, short, firstSentence, upper } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
 import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow } from './data.js';
 import { choice } from './form.js';
@@ -361,7 +361,7 @@ export function explain(id) {
 // the report cannot read anything that this page keeps. A sandbox attribute would do the same, but a browser may refuse to load a
 // sandboxed frame from the local computer.
 const otherHost = () => (location.hostname === 'localhost' ? '127.0.0.1' : 'localhost');
-const reportURL = (more) => location.protocol + '//' + otherHost() + ':' + location.port + '/report?t=' + encodeURIComponent(tokenValue()) + (more || '');
+const reportURL = (more) => location.protocol + '//' + otherHost() + ':' + location.port + '/report?t=' + encodeURIComponent(S.view) + (more || '');
 
 export function reportView() {
   const frame = h('iframe', { class: 'frame', title: 'The report', src: reportURL('&v=' + Date.now()) });
@@ -374,7 +374,7 @@ export function reportView() {
 export function diagramView(id, ui) {
   const picture = h('div', { class: 'diagram' });
   picture.append(h('img', { alt: id ? 'The attack tree of ' + id : 'The architecture of the item',
-    src: '/diagram.svg?t=' + encodeURIComponent(tokenValue()) + (id ? '&threat=' + encodeURIComponent(id) : '') + '&v=' + Date.now() }));
+    src: '/diagram.svg?t=' + encodeURIComponent(S.view) + (id ? '&threat=' + encodeURIComponent(id) : '') + '&v=' + Date.now() }));
   const pick = h('select', { 'aria-label': 'What to draw', onchange: () => ui.go('diagram', ...(pick.value ? [pick.value] : [])) },
     h('option', { value: '', text: 'The architecture' }), [...S.threats.keys()].map((t) => h('option', { value: t, text: 'Attack tree: ' + nameOf('threat', t) })));
   pick.value = id || '';

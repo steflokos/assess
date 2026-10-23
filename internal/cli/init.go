@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/model"
 	"github.com/steflokos/assess/internal/schema"
@@ -47,8 +49,13 @@ func scaffold(dir string, now time.Time) ([]starter, error) {
 	if abs, err := filepath.Abs(dir); err == nil {
 		base = filepath.Base(abs)
 	}
+	// the name of the folder is written as a yaml scalar, quoted when it has to be: a folder called "Q3: plan" or "TARA #2" or "true"
+	name := base
+	if b, err := yaml.Marshal(base); err == nil {
+		name = strings.TrimSpace(string(b))
+	}
 	fill := strings.NewReplacer(
-		"{{project-name}}", base,
+		"{{project-name}}", name,
 		"{{item-id}}", itemID(base),
 		"{{date}}", now.Format("2006-01-02"),
 		"{{version}}", model.ToolVersion,
