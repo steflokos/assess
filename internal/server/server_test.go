@@ -533,10 +533,12 @@ func TestAnAddressThatNothingTakesAnswersWithADocument(t *testing.T) {
 		r    request
 		want int
 	}{
-		"an unknown path":   {request{path: "/nothing"}, 404},
-		"the wrong method":  {request{method: "DELETE", path: "/api/open"}, 405},
-		"options":           {request{method: "OPTIONS", path: "/api/open"}, 405},
-		"head of a command": {request{method: "HEAD", path: "/api/open"}, 405},
+		"an unknown path":    {request{path: "/nothing"}, 404},
+		"two slashes":        {request{path: "//api/open"}, 404},
+		"a slash at the end": {request{path: "/api/open/"}, 404},
+		"the wrong method":   {request{method: "DELETE", path: "/api/open"}, 405},
+		"options":            {request{method: "OPTIONS", path: "/api/open"}, 405},
+		"head of a command":  {request{method: "HEAD", path: "/api/open"}, 405},
 	} {
 		code, body, h := do(t, ts, c.r)
 		if code != c.want {

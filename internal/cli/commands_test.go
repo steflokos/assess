@@ -38,6 +38,12 @@ func TestNoArgumentsAndUnknownCommands(t *testing.T) {
 	}
 }
 
+func TestVersionTakesNoArgument(t *testing.T) {
+	if r := run(t, "version", "foo"); r.code != 2 || !strings.Contains(r.err, "takes no argument") {
+		t.Errorf("%+v", r)
+	}
+}
+
 func TestHelpOfACommandSaysHowItIsWritten(t *testing.T) {
 	for cmd, want := range map[string]string{"apply": "usage: assess apply [flags] <change set file, or - for standard input> [dir]", "delete": "usage: assess delete [flags] <kind> <id> [dir]", "validate": "usage: assess validate [flags] [dir]"} {
 		for _, args := range [][]string{{"help", cmd}, {cmd, "-h"}} {

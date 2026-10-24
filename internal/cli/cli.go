@@ -176,6 +176,9 @@ func runVersion(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
+	if fl.NArg() > 0 {
+		return o.fail("version takes no argument, got %q", fl.Arg(0))
+	}
 	if o.json {
 		return o.finish(exitOK, nil, nil)
 	}

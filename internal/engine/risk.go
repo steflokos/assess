@@ -176,11 +176,12 @@ func (e *enumerator) pathScalability(p path) *PathScalability {
 
 // ---- risk -----------------------------------------------------------------------------------
 
-// Risk is a risk value and how it came about: the impact and the feasibility level that the matrix was read at. When scalability
-// counts, Rated is the impact of the damage scenario, as it was rated for one vehicle, and Impact is that impact raised by Shift levels
-// for the Scalability of the path.
+// Risk is a risk value and how it came about. Impact is the impact of the damage scenario as it was rated, for one vehicle, and is the
+// same as the impact of the damage scenario in the result. When scalability counts, Scalability is the scalability of the path, Shift
+// the levels that the policy gives for it, and Raised the impact after the shift, which is the impact that the matrix was read at.
+// Without scalability the matrix is read at Impact.
 type Risk struct {
-	// Value is the matrix value at Impact and Level.
+	// Value is the matrix value at the impact and the feasibility level.
 	Value int `json:"value"`
 	// Path is the rank in the order of effort (1 is the easiest) of the path that decides the
 	// value and Level the feasibility level of that path. It is not always the easiest path:
@@ -188,9 +189,9 @@ type Risk struct {
 	Path        int    `json:"path"`
 	Level       string `json:"level"`
 	Impact      string `json:"impact"`
-	Rated       string `json:"rated,omitempty"`
 	Scalability string `json:"scalability,omitempty"`
-	Shift       int    `json:"shift,omitempty"`
+	Shift       int    `json:"shift,omitempty"` // left out when 0. Raised is then the same as Impact
+	Raised      string `json:"raised,omitempty"`
 }
 
 // impactOrder lists the impact levels, least severe first.
@@ -240,7 +241,7 @@ func riskOf(pol model.Policy, impact iso21434.ImpactLevel, o *Outcome) (*Risk, s
 // The feasibility is not touched: a hard attack stays a hard attack, and an impact that is negligible stays small.
 func pathRisk(pol model.Policy, impact iso21434.ImpactLevel, p Path) (*Risk, string) {
 	level := iso21434.FeasibilityLevel(p.Level)
-	r := &Risk{Path: p.Rank, Level: p.Level}
+	r := &Risk{Path: p.Rank, Level: p.Level, Impact: string(impact)}
 	if len(pol.Scalability.Shift) > 0 {
 		if p.Scalability == nil || p.Scalability.Value == "" {
 			why := "scalability of the path is not known"
@@ -253,17 +254,18 @@ func pathRisk(pol model.Policy, impact iso21434.ImpactLevel, p Path) (*Risk, str
 			return nil, why
 		}
 		scal := iso21434.Scalability(p.Scalability.Value)
-		r.Rated, r.Scalability = string(impact), string(scal)
+		r.Scalability = string(scal)
 		if v := pol.Scalability.Shift[iso21434.Reach(scal)]; v != nil { // a damage scenario is rated for one vehicle, so Single Vehicle shifts nothing
 			r.Shift = *v
 		}
 		impact = raiseImpact(impact, r.Shift)
+		r.Raised = string(impact)
 	}
 	c := pol.Risk.Matrix[impact][level]
 	if c == nil {
 		return nil, ""
 	}
-	r.Value, r.Impact = *c, string(impact)
+	r.Value = *c
 	return r, ""
 }
 

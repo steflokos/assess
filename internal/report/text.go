@@ -383,14 +383,14 @@ func riskDerivation(r *engine.Risk) string {
 		return "risk not calculated"
 	}
 	switch {
-	case r.Scalability != "" && r.Impact == r.Rated:
+	case r.Scalability != "" && r.Raised == r.Impact:
 		return fmt.Sprintf("%s keeps the impact at %s, risk %d", r.Scalability, r.Impact, r.Value)
 	case r.Scalability != "":
-		from, to := slices.Index(impactSteps, r.Rated), slices.Index(impactSteps, r.Impact)
+		from, to := slices.Index(impactSteps, r.Impact), slices.Index(impactSteps, r.Raised)
 		if to-from < r.Shift { // the shift is more than there is room for
-			return fmt.Sprintf("%s raises the impact from %s to %s (shift %d, stops at the most severe level), risk %d", r.Scalability, r.Rated, r.Impact, r.Shift, r.Value)
+			return fmt.Sprintf("%s raises the impact from %s to %s (shift %d, stops at the most severe level), risk %d", r.Scalability, r.Impact, r.Raised, r.Shift, r.Value)
 		}
-		return fmt.Sprintf("%s raises the impact from %s to %s (+%d), risk %d", r.Scalability, r.Rated, r.Impact, r.Shift, r.Value)
+		return fmt.Sprintf("%s raises the impact from %s to %s (+%d), risk %d", r.Scalability, r.Impact, r.Raised, r.Shift, r.Value)
 	}
 	return fmt.Sprintf("impact %s, risk %d", r.Impact, r.Value)
 }

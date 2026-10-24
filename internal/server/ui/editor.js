@@ -247,7 +247,7 @@ async function deleteRecord(kind, id, ui) {
     const proceed = await ask({
       title: nameOf(kind, id) + ' is used by other records', ok: 'Show what goes with it',
       body: h('div', {}, h('p', { text: 'These records refer to it:' }),
-        h('ul', {}, blocked.map((b) => h('li', {}, h('strong', { text: nameOf(b.kind, b.id) }), ' ', h('span', { class: 'muted', text: kindName(b.kind) + ': ' + b.message }))))),
+        h('ul', {}, blocked.map((b) => h('li', {}, h('strong', { text: nameOf(b.kind, b.id) }), h('span', { class: 'muted', text: ' (' + kindName(b.kind) + '): ' + b.message }))))),
     });
     if (!proceed) return;
     cascade = true;
@@ -255,7 +255,7 @@ async function deleteRecord(kind, id, ui) {
     if (!env.ok) { await ask({ title: 'Cannot delete', body: problem(env), noCancel: true }); return; }
   }
   const r = env.result || {};
-  const line = (d) => h('li', {}, h('strong', { text: nameOf(d.kind, d.id) }), ' ', h('span', { class: 'muted', text: kindName(d.kind) + (d.reason ? ': ' + d.reason : '') }));
+  const line = (d) => h('li', {}, h('strong', { text: nameOf(d.kind, d.id) }), h('span', { class: 'muted', text: ' (' + kindName(d.kind) + ')' + (d.reason ? ': ' + d.reason : '') }));
   const body = h('div', {}, h('p', { text: 'This removes:' }), h('ul', {}, (r.deleted || []).map(line)),
     (r.updated || []).length ? h('p', { text: 'And it changes:' }) : null, (r.updated || []).length ? h('ul', {}, r.updated.map(line)) : null,
     effects(r.effects), h('p', { class: 'muted small', text: 'A delete cannot be undone here. The files are in your version control.' }));

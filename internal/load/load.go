@@ -342,11 +342,44 @@ func (r *Result) loadPolicy(ws *model.Workspace, root string) {
 	if broken := r.strictDecode(clean, data, func() any { return &ws.Policy }); len(broken) > 0 && broken[0] {
 		return
 	}
+	r.checkPolicyShape(clean, nodes[0])
 	locs := source.FieldLocs(clean, nodes[0])
 	r.Index.SetPolicy(clean, locs)
 	for _, p := range ws.Policy.Problems() {
 		r.Diags.Errorf(CodePolicy, source.Nearest(locs, p.Path, source.Loc{File: clean, Line: 1}), "%s", p.Msg)
 	}
+}
+
+// policySections are the sections of the policy file. One that is written has to have something in it.
+var policySections = []string{"controls", "feasibility", "impact", "scalability", "risk"}
+
+// checkPolicyShape finds what the decoder lets through and a policy cannot hold. Every number of the policy is a whole number, and the
+// decoder cuts 1.5 to 1 without a word. A section that is written with nothing in it is not the same as a section that is left out: it
+// looks as if it were set, and it is ignored.
+func (r *Result) checkPolicyShape(file string, doc *yaml.Node) {
+	top := doc
+	if top.Kind == yaml.DocumentNode && len(top.Content) > 0 {
+		top = top.Content[0]
+	}
+	if top.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(top.Content); i += 2 {
+			key, val := top.Content[i], top.Content[i+1]
+			empty := (val.Kind == yaml.ScalarNode && val.Tag == "!!null") || (val.Kind == yaml.MappingNode && len(val.Content) == 0)
+			if empty && slices.Contains(policySections, key.Value) {
+				r.Diags.Errorf(CodePolicy, source.Loc{File: file, Line: key.Line, Col: key.Column}, "%s is empty. Write its values, or take the section out", key.Value)
+			}
+		}
+	}
+	var walk func(n *yaml.Node)
+	walk = func(n *yaml.Node) {
+		if n.Kind == yaml.ScalarNode && n.Tag == "!!float" {
+			r.Diags.Errorf(CodePolicy, source.Loc{File: file, Line: n.Line, Col: n.Column}, "%s is not a whole number. Every number of the policy is a whole number", n.Value)
+		}
+		for _, c := range n.Content {
+			walk(c)
+		}
+	}
+	walk(doc)
 }
 
 // loadTemplate checks the report template that assess.yaml names. It must be a file inside the project. The page

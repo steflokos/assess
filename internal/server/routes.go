@@ -240,6 +240,10 @@ func (s *Server) Handler() http.Handler {
 // text of the standard library.
 func jsonErrors(mux *http.ServeMux) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if path.Clean(r.URL.Path) != r.URL.Path { // //x and /x/ : the mux would redirect, in plain text, to a path that exists
+			writeError(w, http.StatusNotFound, "route", "there is nothing at this address")
+			return
+		}
 		if _, pattern := mux.Handler(r); pattern == "" {
 			seen := &probe{h: http.Header{}}
 			mux.ServeHTTP(seen, r)

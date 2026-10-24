@@ -203,7 +203,7 @@ func TestRiskIsTheHighestOverAllPaths(t *testing.T) {
 	if d == nil {
 		t.Fatal("no residual risk")
 	}
-	if d.Value != 2 || d.Rated != "Major" || d.Impact != "Severe" || d.Shift != 2 || d.Scalability != "Fleet-Wide" || d.Path != 2 || d.Level != "Very Low" {
+	if d.Value != 2 || d.Impact != "Major" || d.Raised != "Severe" || d.Shift != 2 || d.Scalability != "Fleet-Wide" || d.Path != 2 || d.Level != "Very Low" {
 		t.Errorf("the residual risk should be Major raised by 2 to Severe, at Very Low, on path 2 (Fleet-Wide), got %+v", d)
 	}
 	if b := r.Damages[0].Base; b == nil || b.Value != 4 || b.Path != 1 || b.Impact != "Major" || b.Shift != 0 {
@@ -402,7 +402,7 @@ func TestRiskWithoutScalability(t *testing.T) {
 	r := run(t, build(t, nil, [2]string{withShift, ""})).Threats[0]
 	// Severe and High is 5 in the matrix, and scalability does not change it
 	d := r.Damages[0].Base
-	if d.Value != 5 || d.Scalability != "" || d.Shift != 0 || d.Rated != "" || d.Impact != "Severe" {
+	if d.Value != 5 || d.Scalability != "" || d.Shift != 0 || d.Raised != "" || d.Impact != "Severe" {
 		t.Errorf("got %+v", d)
 	}
 }
@@ -413,19 +413,19 @@ func TestScalabilityRaisesTheImpactToSevereAtMost(t *testing.T) {
 	oem := [2]string{"stakeholders: [roaduser, oem]", "stakeholders: [oem]"}
 	// Major at High is 4. Fleet-Wide raises Major by 2 to Severe, and Severe at High is 5
 	d := one(t, steps, "", "or:\n  - x", oem).Damages[0].Base
-	if d.Value != 5 || d.Rated != "Major" || d.Impact != "Severe" || d.Shift != 2 || d.Level != "High" {
+	if d.Value != 5 || d.Impact != "Major" || d.Raised != "Severe" || d.Shift != 2 || d.Level != "High" {
 		t.Errorf("Major raised by 2: %+v", d)
 	}
 	// Severe cannot go higher. The value is the one of the matrix at Severe
 	d = one(t, steps, "", "or:\n  - x").Damages[0].Base
-	if d.Value != 5 || d.Rated != "Severe" || d.Impact != "Severe" {
+	if d.Value != 5 || d.Impact != "Severe" || d.Raised != "Severe" {
 		t.Errorf("Severe stays Severe: %+v", d)
 	}
 	// a shift of 3 takes Negligible all the way, and 0 takes it nowhere
 	for shift, want := range map[string]string{"3": "Severe", "0": "Major"} {
 		d = one(t, steps, "", "or:\n  - x", oem, [2]string{"Fleet-Wide: 2", "Fleet-Wide: " + shift}).Damages[0].Base
-		if d.Impact != want {
-			t.Errorf("shift %s: impact %s, want %s", shift, d.Impact, want)
+		if d.Raised != want {
+			t.Errorf("shift %s: raised to %s, want %s", shift, d.Raised, want)
 		}
 	}
 }
@@ -443,14 +443,14 @@ func TestAHardAttackStaysSmallWhateverItReaches(t *testing.T) {
 		f["tara/threat-scenarios.yaml"], f["tara/attack-steps.yaml"], f["tara/controls.yaml"] = threat("or:\n  - x"), steps, ""
 		return run(t, build(t, f)).Threats[0].Damages[0].Base
 	}
-	if d := risk(hard, files{}); d.Level != "Very Low" || d.Value != 2 || d.Impact != "Severe" {
+	if d := risk(hard, files{}); d.Level != "Very Low" || d.Value != 2 || d.Impact != "Severe" || d.Raised != "Severe" {
 		t.Errorf("Severe at Very Low is 2, however far it reaches: %+v", d)
 	}
-	if d := risk(hard, files{"tara/damage-scenarios.yaml": negligible}); d.Level != "Very Low" || d.Rated != "Negligible" || d.Impact != "Major" || d.Value != 1 {
+	if d := risk(hard, files{"tara/damage-scenarios.yaml": negligible}); d.Level != "Very Low" || d.Impact != "Negligible" || d.Raised != "Major" || d.Value != 1 {
 		t.Errorf("Negligible raised by 2 is Major, which is 1 at Very Low: %+v", d)
 	}
 	// the same damage by an easy attack is Major at High: scalability does what it is for
-	if d := risk(easy, files{"tara/damage-scenarios.yaml": negligible}); d.Level != "High" || d.Impact != "Major" || d.Value != 4 {
+	if d := risk(easy, files{"tara/damage-scenarios.yaml": negligible}); d.Level != "High" || d.Raised != "Major" || d.Value != 4 {
 		t.Errorf("Major at High is 4: %+v", d)
 	}
 }
@@ -461,7 +461,7 @@ func TestAControlLowersTheRiskOfAFleetWideAttack(t *testing.T) {
 	steps := step("x", timeOnly(1), "Fleet-Wide", "mitigatedby: c")
 	r := one(t, steps, control("c", pot(4, 3, 3, 3, 3), ""), "or:\n  - x", [2]string{"stakeholders: [roaduser, oem]", "stakeholders: [oem]"})
 	b, d := r.Damages[0].Base, r.Damages[0].Residual
-	if b.Value != 5 || b.Level != "High" || d.Level != "Very Low" || d.Value != 2 || d.Impact != "Severe" {
+	if b.Value != 5 || b.Level != "High" || d.Level != "Very Low" || d.Value != 2 || d.Raised != "Severe" {
 		t.Errorf("base %+v, with the control %+v", b, d)
 	}
 }
