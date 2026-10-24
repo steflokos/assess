@@ -853,7 +853,11 @@ style of the project files.
 8. `assess lint -strict` and `assess report -strict`.
 9. `assess finalize` to close the round. It refuses while anything is open, and `-format json` lists what.
 
-Every command that writes does it in one piece, so an editor never sees half a file. The commands that change the
+Every command that writes does it in one piece, so an editor never sees half a file. A change that reaches several files, such as
+`apply` and `generate risks`, is written as a whole. Every file is written to a temporary file first. Only when all of them are, the
+files are swapped in, one after the other. If a file cannot be written, none is changed. If a swap fails half way, the files that were
+swapped are put back, and the error says so if even that fails. A computer that stops between two swaps can still leave some files
+changed. Your version control shows which. The commands that change the
 records (`apply`, `delete`, `generate`, `finalize` and `sign`) also lock the project while they work. Two of them at the same time take
 turns, so no change is lost. A command that only reads waits until a change is finished, so it never sees one
 half done. A command waits up to 30 seconds for the lock and then stops with an error. The lock is gone when the
@@ -945,9 +949,13 @@ What you can do in the page:
   exist. It shows the fields that are required or have a value, and the others are one click away in "Add a field". An id is a chip that
   opens its record. The attack path of a threat scenario is edited as groups of "all of" and "any one of". A rating is a row of
   selects with the points that the policy gives. The impact of a damage scenario is a grid of stakeholders by categories.
+- **Make an attack step on the way.** Type a name in the picker of an attack path and choose "Make attack step". The page asks for the
+  name, and the effort and the scalability if you know them. The step is not written yet. It is part of the same change, so one check
+  covers both, one Save writes both and one Undo takes both back.
 - **See what a change does before you save it.** Every change is checked first. The errors show where they are in the files, the lines
   that would change are shown as a diff, and the page says which threat scenarios would get a different risk. Save writes only those
-  lines, Ctrl S does the same, and Undo puts the old values back.
+  lines, Ctrl S does the same, and Undo puts the old values back. After a save, the page lists the open items that the change made,
+  such as a step without a rating or a risk that is accepted above the affinity.
 - **Decide the risks in one table.** The decisions page lists every risk with its treatment, and the changes are checked and saved
   together.
 - **See what a record is connected to.** The side of a record page shows its calculation, its attack tree, what it uses and what uses it.

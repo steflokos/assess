@@ -36,6 +36,11 @@ What is in it:
   `eval` and `explain`, a risk has `impact` (as rated, for one vehicle), `scalability`, `shift` and `raised` (the impact after the shift), and not
   `cell`, `raise` and `cap`, and `rules.risk.scalability` is `ignored` or `shift`. The policy refuses a number that is not whole and a section
   that is written with nothing in it.
+- A change that reaches several files is written as a whole. All the files are written to temporary files first, and the files are swapped in
+  only then. When a swap fails, the ones that were swapped are put back. This holds for `apply` and `generate risks`.
+- In the web interface: an attack step is made from the picker of an attack path, and is saved, checked and undone together with the record.
+  After a save, the page lists the open items that the change made.
+- A list that is written one item to a line stays so when an item is taken out or put in. Undo gives the file back as it was.
 - `examples/ota`, a finished example project.
 
 Known limits of this beta:
