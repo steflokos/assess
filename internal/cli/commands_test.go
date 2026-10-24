@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -201,6 +202,9 @@ func TestInitWritesAStarterThatIsValid(t *testing.T) {
 
 func TestInitQuotesTheNameOfAFolderThatNeedsIt(t *testing.T) {
 	for _, name := range []string{"Q3: plan", "TARA #2", "true", "[draft]"} {
+		if runtime.GOOS == "windows" && strings.ContainsAny(name, `:*?"<>|`) {
+			continue // Windows has no folder with this name
+		}
 		dir := filepath.Join(t.TempDir(), name)
 		if r := run(t, "init", dir); r.code != 0 {
 			t.Fatalf("%s: exit %d: %s", name, r.code, r.err)
