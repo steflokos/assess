@@ -44,7 +44,7 @@ func styled(n *yaml.Node) *yaml.Node {
 }
 
 // keepWritten gives the new value of a block as a tree in which what is the same as before is the node that was written, with its style and
-// its comments, and what is new or changed gets the style of the project files. A block that was written in block style stays one. The
+// its comments, and what is new or changed gets the style of the project files. A block or a list that was written in block style stays one. The
 // comments after the last line of a value are not copied: they are not part of the lines that are written again.
 func keepWritten(old, new *yaml.Node) *yaml.Node {
 	switch {
@@ -52,6 +52,23 @@ func keepWritten(old, new *yaml.Node) *yaml.Node {
 		return styled(new)
 	case sameValue(old, new):
 		return withoutFoot(old)
+	case old.Kind == yaml.SequenceNode && new.Kind == yaml.SequenceNode && old.Style&yaml.FlowStyle == 0 && len(old.Content) > 0:
+		// A list that was written one item to a line stays so, whether items were added or taken out. The items that are still
+		// there are the nodes that were written, in the order that the new list has.
+		out := &yaml.Node{Kind: yaml.SequenceNode, Tag: old.Tag, Style: old.Style, HeadComment: old.HeadComment, LineComment: old.LineComment}
+		used := make([]bool, len(old.Content))
+	items:
+		for _, item := range new.Content {
+			for j, o := range old.Content {
+				if !used[j] && sameValue(o, item) {
+					used[j] = true
+					out.Content = append(out.Content, withoutFoot(o))
+					continue items
+				}
+			}
+			out.Content = append(out.Content, styled(item))
+		}
+		return out
 	case old.Kind == yaml.MappingNode && new.Kind == yaml.MappingNode && old.Style&yaml.FlowStyle == 0:
 		out := &yaml.Node{Kind: yaml.MappingNode, Tag: old.Tag, Style: old.Style, HeadComment: old.HeadComment, LineComment: old.LineComment}
 		for i := 0; i+1 < len(new.Content); i += 2 {

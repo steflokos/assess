@@ -418,6 +418,47 @@ func TestABlockInWhichOneValueChangesKeepsTheStyleAndTheCommentsOfTheRest(t *tes
 	}
 }
 
+// A list that a person wrote one item to a line is still written so when an item is taken out or put in, even when it would fit on one
+// line. This is what keeps the file as it was when a change is undone.
+func TestAListWrittenOneItemToALineStaysSoWhenAnItemIsTakenOutOrPutIn(t *testing.T) {
+	text := "threat t:\n  name: T\n  damages:\n    - a # first\n    - b\n    - c\n  steps:\n    or:\n      - one\n      - two\n"
+	change := func(attrs string) string {
+		return "changes:\n  - op: put\n    kind: threat\n    id: t\n    attributes:\n" + attrs
+	}
+	cases := []struct{ name, attrs, want string }{
+		{"an item of a list in a block goes",
+			"      steps: {or: [one]}\n", strings.Replace(text, "      - two\n", "", 1)},
+		{"an item goes from a list, and the comment of the one that stays is kept",
+			"      damages: [a, c]\n", strings.Replace(text, "    - b\n", "", 1)},
+		{"an item is put in at the end",
+			"      damages: [a, b, c, d]\n", strings.Replace(text, "    - c\n", "    - c\n    - d\n", 1)},
+		{"the same item twice is written twice, and not as one node with an anchor",
+			"      damages: [a, a, b, c]\n", strings.Replace(text, "    - a # first\n", "    - a # first\n    - a\n", 1)},
+		{"an item is put in the middle, and the others keep their places",
+			"      damages: [a, x, b, c]\n", strings.Replace(text, "    - b\n", "    - x\n    - b\n", 1)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, probs := applyTo(t, map[string]string{"tara/threat-scenarios.yaml": text}, change(c.attrs))
+			if len(probs) != 0 {
+				t.Fatal(probs)
+			}
+			if got := string(out.Files["tara/threat-scenarios.yaml"]); got != c.want {
+				t.Errorf("got\n%s\nwant\n%s", got, c.want)
+			}
+		})
+	}
+	flow := "threat t:\n  name: T\n  damages: [a, b, c]\n"
+	out, probs := applyTo(t, map[string]string{"tara/threat-scenarios.yaml": flow},
+		change("      damages: [a, c]\n"))
+	if len(probs) != 0 {
+		t.Fatal(probs)
+	}
+	if got := string(out.Files["tara/threat-scenarios.yaml"]); got != strings.Replace(flow, "[a, b, c]", "[a, c]", 1) {
+		t.Errorf("a list in flow style stays in flow style:\n%s", got)
+	}
+}
+
 func TestAFileNameThatWindowsCannotMakeIsRefused(t *testing.T) {
 	for _, name := range []string{"item/NUL.yaml", "item/con.yaml", "item/sub/COM3.yaml", "item/a*b.yaml", "item/a?.yaml", "item/a|b.yaml"} {
 		_, probs := edit.ParseSet([]byte(`{"changes": [{"op": "put", "kind": "component", "id": "a", "file": "` + name + `"}]}`))
