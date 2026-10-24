@@ -27,12 +27,12 @@ software-signing-private-key-disclosure
   risk 2 -> 2 Claim
 software-signing-private-key-denial
   base Very Low (25) in 1 paths, residual Very Low (55) in 1 paths
-  fleet-cannot-be-updated Major: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  vehicle-cannot-be-updated Moderate: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 2 -> 2 Claim
 software-signing-certificate-spoofing
   base Medium (19) in 5 paths, residual Very Low (48) in 9 paths
   malicious-software-installed Severe: base 4 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
-  trust-chain-broken Severe: base 4 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  trust-chain-broken Moderate: base 4 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 4 -> 2 Goal
 secure-boot-private-key-disclosure
   base Very Low (32) in 2 paths, residual Very Low (59) in 2 paths
@@ -58,7 +58,7 @@ vehicle-configuration-tampering
   risk 4 -> 2 Goal
 vehicle-configuration-disclosure
   base High (12) in 2 paths, residual Very Low (25) in 2 paths
-  fleet-data-disclosed Major: base 5 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  owner-data-disclosed Major: base 5 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 5 -> 2 Goal
 update-package-tampering
   base Medium (14) in 2 paths, residual Very Low (59) in 40 paths
@@ -70,16 +70,16 @@ update-package-disclosure
   risk 5 -> 3 Goal
 vehicle-api-gateway-denial
   base High (8) in 1 paths, residual Very Low (26) in 1 paths
-  fleet-cannot-be-updated Major: base 5 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  vehicle-cannot-be-updated Moderate: base 5 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 5 -> 2 Goal
 vehicle-api-gateway-spoofing
   base Low (22) in 1 paths, residual Very Low (47) in 7 paths
-  fleet-data-disclosed Major: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  owner-data-disclosed Major: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
   update-delayed Moderate: base 2 (path 1, Limited Batch), residual 1 (path 1, Limited Batch)
   risk 3 -> 2 Goal
 backend-tls-private-key-disclosure
   base Low (22) in 1 paths, residual Very Low (39) in 1 paths
-  fleet-data-disclosed Major: base 3 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  owner-data-disclosed Major: base 3 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 3 -> 2 Goal
 workshop-interface-spoofing
   base High (8) in 2 paths, residual Medium (18) in 2 paths
@@ -95,15 +95,15 @@ audit-log-repudiation
   risk 5 -> 2 Goal
 root-ca-private-key-disclosure
   base Very Low (41) in 2 paths, residual Very Low (68) in 3 paths
-  trust-chain-broken Severe: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  trust-chain-broken Moderate: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 2 -> 2 Claim
 root-ca-private-key-denial
   base Very Low (29) in 1 paths, residual Very Low (72) in 1 paths
-  trust-chain-broken Severe: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  trust-chain-broken Moderate: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 2 -> 2 Claim
 registration-authority-tampering
   base Very Low (27) in 1 paths, residual Very Low (48) in 1 paths
-  trust-chain-broken Severe: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
+  trust-chain-broken Moderate: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   vehicle-identity-forged Moderate: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Fleet-Wide)
   risk 2 -> 2 Claim
 vehicle-ca-tampering
@@ -112,11 +112,11 @@ vehicle-ca-tampering
   risk 2 -> 2 Claim
 certificate-revocation-list-denial
   base Very Low (39) in 3 paths, residual Very Low (84) in 3 paths
-  trust-chain-broken Severe: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
-  risk 2 -> 2 Claim
+  trust-chain-broken Moderate: base 1 (path 1, Limited Batch), residual 1 (path 1, Limited Batch)
+  risk 1 -> 1 Claim
 provisioning-server-tampering
   base Very Low (30) in 1 paths, residual Very Low (51) in 2 paths
-  vehicles-built-untrusted Severe: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  vehicle-built-untrusted Major: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
   vehicle-identity-forged Moderate: base 1 (path 1, Limited Batch), residual 1 (path 1, Limited Batch)
   risk 2 -> 2 Claim
 provisioning-server-denial
@@ -125,12 +125,12 @@ provisioning-server-denial
   risk 2 -> 2 Claim
 trust-anchor-bundle-tampering
   base Low (21) in 2 paths, residual Very Low (45) in 3 paths
-  vehicles-built-untrusted Severe: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
-  trust-chain-broken Severe: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  vehicle-built-untrusted Major: base 3 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  trust-chain-broken Moderate: base 2 (path 1, Limited Batch), residual 1 (path 1, Limited Batch)
   risk 3 -> 2 Goal
 secure-boot-public-key-tampering
   base Very Low (33) in 2 paths, residual Very Low (54) in 2 paths
-  vehicles-built-untrusted Severe: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
+  vehicle-built-untrusted Major: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
   malicious-software-installed Severe: base 2 (path 1, Limited Batch), residual 2 (path 1, Limited Batch)
   risk 2 -> 2 Claim
 lifecycle-state-tampering
@@ -144,7 +144,7 @@ cellular-interface-spoofing
 ota-client-tampering
   base Very Low (42) in 4 paths, residual Very Low (68) in 6 paths
   malicious-software-installed Severe: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Limited Batch)
-  fleet-data-disclosed Major: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Limited Batch)
+  owner-data-disclosed Major: base 2 (path 1, Fleet-Wide), residual 2 (path 1, Limited Batch)
   risk 2 -> 2 Claim
 package-verifier-tampering
   base Very Low (38) in 3 paths, residual Very Low (65) in 5 paths
@@ -205,7 +205,7 @@ vehicle-private-key-disclosure
 installed-root-certificate-tampering
   base Very Low (27) in 2 paths, residual Very Low (69) in 16 paths
   malicious-software-installed Severe: base 2 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
-  trust-chain-broken Severe: base 2 (path 1, Single Vehicle), residual 2 (path 1, Single Vehicle)
+  trust-chain-broken Moderate: base 1 (path 1, Single Vehicle), residual 1 (path 1, Single Vehicle)
   risk 2 -> 2 Claim
 vcu-rollback-counter-tampering
   base Very Low (29) in 2 paths, residual Very Low (50) in 4 paths

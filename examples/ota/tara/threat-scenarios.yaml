@@ -67,7 +67,7 @@ threat software-signing-private-key-disclosure:
 threat software-signing-private-key-denial:
   name: Denial of service of Software signing private key
   description: The key and all its backups are destroyed. No release can be signed, security fixes included, until a new key is in all vehicles.
-  damages: fleet-cannot-be-updated
+  damages: vehicle-cannot-be-updated
   steps:
     and:
       - wipe-hsm-keys-by-insider
@@ -129,7 +129,7 @@ threat vehicle-configuration-tampering:
 threat vehicle-configuration-disclosure:
   name: Information disclosure of Vehicle configuration
   description: The inventory of the fleet is read by going through VINs through the API, or from the database with an administrator's rights.
-  damages: fleet-data-disclosed
+  damages: owner-data-disclosed
   steps:
     or:
       - enumerate-vins-via-api
@@ -156,19 +156,19 @@ threat update-package-disclosure:
 threat vehicle-api-gateway-denial:
   name: Denial of service of Vehicle API gateway
   description: The vehicle interface is flooded, so vehicles cannot check in, and no update or fix is delivered.
-  damages: fleet-cannot-be-updated
+  damages: vehicle-cannot-be-updated
   steps: volumetric-ddos-on-gateway
 
 threat vehicle-api-gateway-spoofing:
   name: Spoofing of Vehicle API gateway
   description: A vehicle talks to a false backend that the attacker puts between them with a rogue base station. The vehicle gives away its identity and inventory, or is cut off.
-  damages: [fleet-data-disclosed, update-delayed]
+  damages: [owner-data-disclosed, update-delayed]
   steps: mitm-vehicle-tls-session
 
 threat backend-tls-private-key-disclosure:
   name: Information disclosure of Backend TLS private key
   description: The key of the gateway's certificate is exported from the key store after a takeover of a cloud account.
-  damages: fleet-data-disclosed
+  damages: owner-data-disclosed
   steps: abuse-kms-export-after-cloud-takeover
 
 threat workshop-interface-spoofing:
@@ -238,7 +238,7 @@ threat certificate-revocation-list-denial:
 threat provisioning-server-tampering:
   name: Tampering with Plant provisioning server
   description: The attacker takes over the provisioning server and uses its credential to get certificates for vehicles that were not built, or for keys that the vehicle did not generate.
-  damages: [vehicles-built-untrusted, vehicle-identity-forged]
+  damages: [vehicle-built-untrusted, vehicle-identity-forged]
   steps: request-certificates-through-plant-hsm
 
 threat provisioning-server-denial:
@@ -250,7 +250,7 @@ threat provisioning-server-denial:
 threat trust-anchor-bundle-tampering:
   name: Tampering with Trust anchor bundle
   description: The bundle that is written into new vehicles is replaced with one that holds the attacker's root, from the plant network or by an employee.
-  damages: [vehicles-built-untrusted, trust-chain-broken]
+  damages: [vehicle-built-untrusted, trust-chain-broken]
   steps:
     or:
       - replace-bundle-in-plant-store
@@ -259,7 +259,7 @@ threat trust-anchor-bundle-tampering:
 threat secure-boot-public-key-tampering:
   name: Tampering with Secure boot public key
   description: The ECU manufacturer fixes another key into the hardware of a batch of ECUs, by a bribed employee or on the connection with the plant.
-  damages: [vehicles-built-untrusted, malicious-software-installed]
+  damages: [vehicle-built-untrusted, malicious-software-installed]
   steps:
     or:
       - bribe-ecu-manufacturer-insider
@@ -285,7 +285,7 @@ threat cellular-interface-spoofing:
 threat ota-client-tampering:
   name: Tampering with OTA client
   description: Code of the attacker runs in the OTA client of the telematics unit. It comes either through a package that exploits the parser, delivered from a taken-over content delivery network, or through a flaw in the modem.
-  damages: [malicious-software-installed, fleet-data-disclosed]
+  damages: [malicious-software-installed, owner-data-disclosed]
   steps:
     or:
       - and: [compromise-cdn-account, exploit-verifier-parsing-bug]

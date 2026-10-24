@@ -24,6 +24,6 @@ assess diagram .                          # out/architecture.svg
 - `concept/risks.yaml` holds the risks with the treatment decisions: avoid, reduce, share or accept, each with a reason.
 - `rules/basic.yaml` holds the rules that `assess lint` checks. Two of them are rules of the project's own process:
   every goal is tracked, and a shared risk names its agreement.
-- `policy.yaml` holds the numbers the calculation uses. `project.yaml` holds the information for the report.
+- `policy.yaml` holds the numbers the calculation uses, among them how far scalability raises the impact. `project.yaml` holds the information for the report.
 - `iterations.yaml` holds the two closed iterations of the treatment decisions, with their hashes. Run `assess verify .` to
   check it. It is not signed. `assess sign` adds your signature, and the README of assess explains how.

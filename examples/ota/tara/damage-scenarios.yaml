@@ -3,10 +3,10 @@
 # impact rated per stakeholder. The assets come first: assess generate assets writes tara/assets.yaml.
 # schema.yaml lists every attribute.
 #
-# Each damage scenario is written for what it means once, to one vehicle or to the system. How far a
-# single attack reaches is not rated here. That is the scalability of the attack steps, and the policy
-# raises the impact with it. So the same damage scenario serves an attack on one vehicle and an
-# attack on the fleet.
+# Each damage scenario is rated for what it means once: for one vehicle, one owner or one plant. How far a
+# single attack reaches is not rated here. That is the scalability of the attack steps, and the policy raises the impact
+# with it. So the same damage scenario serves an attack on one vehicle and an attack on the fleet, and what a whole fleet
+# costs is not written into the rating as well.
 #
 # The stakeholders that count for the risk are the road user and the OEM (policy.yaml).
 
@@ -60,8 +60,8 @@ damage malicious-software-installed:
         rationale: Personal data of owners in the vehicles and in the backend is exposed
 
 damage trust-chain-broken:
-  name: The trust anchors or a signing certificate are in the hands of an attacker
-  description: The root key, a certificate for signing or the trust anchor in the vehicles can no longer be relied on. Vehicles cannot tell genuine software from an attacker's, and the OEM cannot say which vehicles to trust. A fix needs new keys in every vehicle.
+  name: A vehicle relies on a trust anchor or a signing certificate that an attacker holds
+  description: The root key, a certificate for signing or the trust anchor that the vehicle holds can no longer be relied on. The vehicle cannot tell genuine software from an attacker's, and the OEM cannot say whether it can be trusted. A fix needs new keys in the vehicle.
   compromises:
     root-ca-private-key: [Confidentiality, Availability]
     software-signing-certificate: [Authenticity]
@@ -73,31 +73,29 @@ damage trust-chain-broken:
     roaduser:
       safety:
         level: Moderate
-        rationale: Software that a vehicle accepts may be an attacker's, but nothing is installed until the attacker uses the position
+        rationale: Software that the vehicle accepts may be an attacker's, but nothing is installed until the attacker uses the position
       financial:
         level: Moderate
-        rationale: Vehicles have to visit a workshop to be re-keyed
+        rationale: The vehicle has to visit a workshop to be re-keyed
       operational:
-        level: Major
-        rationale: Updates stop until the keys are replaced, and a vehicle may refuse to update at all
+        level: Moderate
+        rationale: Updates stop until the keys are replaced, and the vehicle may refuse to update at all
       privacy: {level: Negligible}
     oem:
       safety:
-        level: Major
-        rationale: The OEM cannot prove that the software in a vehicle is its own
-      financial:
-        level: Severe
-        rationale: Re-keying a fleet means a workshop campaign, and the PKI has to be rebuilt
-      operational:
-        level: Severe
-        rationale: No update can be trusted until a new root is in every vehicle
-      privacy:
         level: Moderate
-        rationale: Vehicle identities cannot be told from forged ones until they are replaced
+        rationale: The OEM cannot prove that the software in this vehicle is its own
+      financial:
+        level: Moderate
+        rationale: Re-keying one vehicle is a workshop visit
+      operational:
+        level: Moderate
+        rationale: No update can be trusted for this vehicle until a new root is in it
+      privacy: {level: Negligible}
 
-damage fleet-cannot-be-updated:
-  name: The fleet cannot receive updates
-  description: The update path is cut for all vehicles, because the key that signs software is lost or the door that vehicles use is down. The fix for a vulnerability cannot reach the vehicles that need it, and the OEM cannot meet its duties under UN R156.
+damage vehicle-cannot-be-updated:
+  name: A vehicle cannot receive updates
+  description: The update path is cut for the vehicle, because the key that signs software is lost or the door that the vehicle uses is down. The fix for a vulnerability cannot reach it, and the OEM cannot meet its duties under UN R156 for it.
   compromises:
     software-signing-private-key: [Availability]
     vehicle-api-gateway: [Availability]
@@ -114,13 +112,13 @@ damage fleet-cannot-be-updated:
     oem:
       safety:
         level: Moderate
-        rationale: Vehicles stay exposed to a flaw that the OEM has already fixed
+        rationale: The vehicle stays exposed to a flaw that the OEM has already fixed
       financial:
-        level: Major
-        rationale: Missed deadlines for fixes put the type approval and the software update management system at risk
+        level: Moderate
+        rationale: A vehicle that cannot be updated has to be handled in the workshop, and a missed deadline for a fix counts against the type approval
       operational:
-        level: Major
-        rationale: The release process runs with no way to deliver
+        level: Moderate
+        rationale: The release process has no way to deliver to this vehicle
       privacy: {level: Negligible}
 
 damage update-delayed:
@@ -247,9 +245,9 @@ damage wrong-software-installed:
         rationale: The roll-out is stopped and checked
       privacy: {level: Negligible}
 
-damage fleet-data-disclosed:
-  name: Vehicle identities and inventories of owners are disclosed
-  description: The VINs of vehicles, the versions of their software and what the backend knows of their owners and their connections reach someone who should not have them.
+damage owner-data-disclosed:
+  name: The identity of a vehicle and the data about its owner are disclosed
+  description: The VIN of a vehicle, the versions of its software and what the backend knows of its owner and its connections reach someone who should not have them.
   compromises:
     vehicle-configuration: [Confidentiality]
     vehicle-api-gateway: [Authenticity]
@@ -268,14 +266,12 @@ damage fleet-data-disclosed:
     oem:
       safety: {level: Negligible}
       financial:
-        level: Major
-        rationale: Fines for a breach of data protection law and the cost of informing owners
-      operational:
         level: Moderate
-        rationale: Incident handling and a change of the interfaces
+        rationale: The cost of informing the owner and a share of the fines for a breach of data protection law
+      operational: {level: Negligible}
       privacy:
-        level: Major
-        rationale: Personal data of many owners is exposed
+        level: Moderate
+        rationale: Personal data of an owner is exposed
 
 damage software-ip-lost:
   name: Software and the knowledge of how it is built is lost to others
@@ -356,9 +352,9 @@ damage production-halted:
         rationale: The plant cannot deliver, and the schedule of dealers and suppliers breaks
       privacy: {level: Negligible}
 
-damage vehicles-built-untrusted:
-  name: Vehicles leave the plant with the wrong or an attacker's keys, certificates or trust anchors
-  description: The vehicle starts life trusting something it should not. The fault is in every vehicle of a batch and cannot be seen from outside.
+damage vehicle-built-untrusted:
+  name: A vehicle leaves the plant with the wrong or an attacker's keys, certificates or trust anchors
+  description: The vehicle starts life trusting something it should not. The fault cannot be seen from outside.
   compromises:
     provisioning-server: [Integrity]
     trust-anchor-bundle: [Integrity]
@@ -372,7 +368,7 @@ damage vehicles-built-untrusted:
         level: Moderate
         rationale: A workshop visit to correct the keys
       operational:
-        level: Major
+        level: Moderate
         rationale: The vehicle cannot be updated until it is re-keyed
       privacy:
         level: Moderate
@@ -380,16 +376,14 @@ damage vehicles-built-untrusted:
     oem:
       safety:
         level: Moderate
-        rationale: Vehicles that may not be what they claim
+        rationale: A vehicle that may not be what it claims
       financial:
-        level: Severe
-        rationale: A batch has to be recalled and re-keyed one by one
-      operational:
-        level: Major
-        rationale: Delivery of the batch stops
-      privacy:
         level: Moderate
-        rationale: Owner data may be exposed through the false identities
+        rationale: The vehicle is re-keyed in the workshop
+      operational:
+        level: Moderate
+        rationale: Delivery of the vehicle stops until it is corrected
+      privacy: {level: Negligible}
 
 damage evidence-lost:
   name: Approvals, consent and audit records are lost or can be disputed

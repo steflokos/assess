@@ -33,8 +33,9 @@ What is in it:
 - Scalability raises the impact of a damage scenario, per path, and not the risk value. `scalability.shift` in the policy gives the levels for a
   limited batch and for the whole fleet. A hard attack stays small however far it reaches, and a control still lowers the risk. A policy that
   has the keys of the escalator (`mode`, `of`, `raise`, `cap`, `matrix`) is refused, and the message says what to write now. In the JSON of
-  `eval` and `explain`, a risk has `impact`, `rated`, `scalability` and `shift`, and not `cell`, `raise` and `cap`, and `rules.risk.scalability`
-  is `ignored` or `shift`.
+  `eval` and `explain`, a risk has `impact` (as rated, for one vehicle), `scalability`, `shift` and `raised` (the impact after the shift), and not
+  `cell`, `raise` and `cap`, and `rules.risk.scalability` is `ignored` or `shift`. The policy refuses a number that is not whole and a section
+  that is written with nothing in it.
 - `examples/ota`, a finished example project.
 
 Known limits of this beta:

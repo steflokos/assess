@@ -46,12 +46,12 @@ next easiest paths and the ones that decide a risk (explain -all shows each as a
 
 risk per damage scenario
 the impact is raised for the scalability of each path, and the risk of every path is looked up from the raised impact and its feasibility. The highest decides, and a tie goes to the easier path
-  vehicles-built-untrusted  impact Severe
-    roaduser  safety Major, financial Moderate, operational Major, privacy Moderate  ->  max Major
-    oem       safety Moderate, financial Severe, operational Major, privacy Moderate  ->  max Severe
-    between   Major, Severe  ->  max Severe
-    base      Very Low, Limited Batch keeps the impact at Severe, risk 2
-    residual  Very Low, Limited Batch keeps the impact at Severe, risk 2
+  vehicle-built-untrusted  impact Major
+    roaduser  safety Major, financial Moderate, operational Moderate, privacy Moderate  ->  max Major
+    oem       safety Moderate, financial Moderate, operational Moderate, privacy Negligible  ->  max Moderate
+    between   Major, Moderate  ->  max Major
+    base      Very Low, Limited Batch raises the impact from Major to Severe (+1), risk 2
+    residual  Very Low, Limited Batch raises the impact from Major to Severe (+1), risk 2
   malicious-software-installed  impact Severe
     roaduser  safety Severe, financial Major, operational Severe, privacy Major  ->  max Severe
     oem       safety Major, financial Severe, operational Severe, privacy Major  ->  max Severe

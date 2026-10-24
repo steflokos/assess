@@ -271,8 +271,8 @@ risk vehicle-ca-tampering:
 risk certificate-revocation-list-denial:
   name: Risk of denial of service of Certificate revocation list
   type: Claim
-  base: 2
-  residual: 2
+  base: 1
+  residual: 1
   description: After a key is stolen, the revocation does not reach a vehicle.
   treatment: Reduce
   rationale: It needs the stolen key and a presence next to the vehicle for a week. The vehicle limits updates when its list is old.

@@ -24,10 +24,10 @@ signing-service-tampering                      Very Low (28)     Very Low (45)  
 software-signing-private-key-disclosure        Very Low (32)     Very Low (59)   2 -> 2  Claim
   malicious-software-installed                 impact Severe                     2 -> 2
 software-signing-private-key-denial            Very Low (25)     Very Low (55)   2 -> 2  Claim
-  fleet-cannot-be-updated                      impact Major                      2 -> 2
+  vehicle-cannot-be-updated                    impact Moderate                   2 -> 2
 software-signing-certificate-spoofing          Medium (19)       Very Low (48)   4 -> 2  Goal
   malicious-software-installed                 impact Severe                     4 -> 2
-  trust-chain-broken                           impact Severe                     4 -> 2
+  trust-chain-broken                           impact Moderate                   4 -> 2
 secure-boot-private-key-disclosure             Very Low (32)     Very Low (59)   2 -> 2  Claim
   malicious-software-installed                 impact Severe                     2 -> 2
 campaign-definition-tampering                  High (11)         Very Low (62)   5 -> 2  Goal
@@ -41,18 +41,18 @@ authorisation-signing-private-key-disclosure   Low (22)          Very Low (49)  
 vehicle-configuration-tampering                Medium (15)       Very Low (28)   4 -> 2  Goal
   wrong-software-installed                     impact Major                      4 -> 2
 vehicle-configuration-disclosure               High (12)         Very Low (25)   5 -> 2  Goal
-  fleet-data-disclosed                         impact Major                      5 -> 2
+  owner-data-disclosed                         impact Major                      5 -> 2
 update-package-tampering                       Medium (14)       Very Low (59)   4 -> 2  Goal
   malicious-software-installed                 impact Severe                     4 -> 2
 update-package-disclosure                      High (9)          Low (24)        5 -> 3  Goal
   software-ip-lost                             impact Moderate                   5 -> 3
 vehicle-api-gateway-denial                     High (8)          Very Low (26)   5 -> 2  Goal
-  fleet-cannot-be-updated                      impact Major                      5 -> 2
+  vehicle-cannot-be-updated                    impact Moderate                   5 -> 2
 vehicle-api-gateway-spoofing                   Low (22)          Very Low (47)   3 -> 2  Goal
-  fleet-data-disclosed                         impact Major                      3 -> 2
+  owner-data-disclosed                         impact Major                      3 -> 2
   update-delayed                               impact Moderate                   2 -> 1
 backend-tls-private-key-disclosure             Low (22)          Very Low (39)   3 -> 2  Goal
-  fleet-data-disclosed                         impact Major                      3 -> 2
+  owner-data-disclosed                         impact Major                      3 -> 2
 workshop-interface-spoofing                    High (8)          Medium (18)     5 -> 4  Goal
   software-ip-lost                             impact Moderate                   5 -> 4
 audit-log-tampering                            Low (21)          Very Low (59)   3 -> 2  Goal
@@ -60,26 +60,26 @@ audit-log-tampering                            Low (21)          Very Low (59)  
 audit-log-repudiation                          High (11)         Very Low (35)   5 -> 2  Goal
   evidence-lost                                impact Major                      5 -> 2
 root-ca-private-key-disclosure                 Very Low (41)     Very Low (68)   2 -> 2  Claim
-  trust-chain-broken                           impact Severe                     2 -> 2
+  trust-chain-broken                           impact Moderate                   2 -> 2
 root-ca-private-key-denial                     Very Low (29)     Very Low (72)   2 -> 2  Claim
-  trust-chain-broken                           impact Severe                     2 -> 2
+  trust-chain-broken                           impact Moderate                   2 -> 2
 registration-authority-tampering               Very Low (27)     Very Low (48)   2 -> 2  Claim
-  trust-chain-broken                           impact Severe                     2 -> 2
+  trust-chain-broken                           impact Moderate                   2 -> 2
   vehicle-identity-forged                      impact Moderate                   2 -> 2
 vehicle-ca-tampering                           Very Low (26)     Very Low (47)   2 -> 2  Claim
   vehicle-identity-forged                      impact Moderate                   2 -> 2
-certificate-revocation-list-denial             Very Low (39)     Very Low (84)   2 -> 2  Claim
-  trust-chain-broken                           impact Severe                     2 -> 2
+certificate-revocation-list-denial             Very Low (39)     Very Low (84)   1 -> 1  Claim
+  trust-chain-broken                           impact Moderate                   1 -> 1
 provisioning-server-tampering                  Very Low (30)     Very Low (51)   2 -> 2  Claim
-  vehicles-built-untrusted                     impact Severe                     2 -> 2
+  vehicle-built-untrusted                      impact Major                      2 -> 2
   vehicle-identity-forged                      impact Moderate                   1 -> 1
 provisioning-server-denial                     Very Low (27)     Very Low (31)   2 -> 2  Claim
   production-halted                            impact Severe                     2 -> 2
 trust-anchor-bundle-tampering                  Low (21)          Very Low (45)   3 -> 2  Goal
-  vehicles-built-untrusted                     impact Severe                     3 -> 2
-  trust-chain-broken                           impact Severe                     3 -> 2
+  vehicle-built-untrusted                      impact Major                      3 -> 2
+  trust-chain-broken                           impact Moderate                   2 -> 1
 secure-boot-public-key-tampering               Very Low (33)     Very Low (54)   2 -> 2  Claim
-  vehicles-built-untrusted                     impact Severe                     2 -> 2
+  vehicle-built-untrusted                      impact Major                      2 -> 2
   malicious-software-installed                 impact Severe                     2 -> 2
 lifecycle-state-tampering                      Very Low (26)     Very Low (42)   2 -> 2  Claim
   malicious-software-installed                 impact Severe                     2 -> 2
@@ -87,7 +87,7 @@ cellular-interface-spoofing                    Low (21)          Low (21)       
   update-delayed                               impact Moderate                   2 -> 2
 ota-client-tampering                           Very Low (42)     Very Low (68)   2 -> 2  Claim
   malicious-software-installed                 impact Severe                     2 -> 2
-  fleet-data-disclosed                         impact Major                      2 -> 2
+  owner-data-disclosed                         impact Major                      2 -> 2
 package-verifier-tampering                     Very Low (38)     Very Low (65)   2 -> 2  Claim
   malicious-software-installed                 impact Severe                     2 -> 2
 secure-time-tampering                          Low (24)          Very Low (42)   3 -> 2  Goal
@@ -120,7 +120,7 @@ vehicle-private-key-disclosure                 Very Low (48)     Very Low (82)  
   vehicle-identity-forged                      impact Moderate                   1 -> 1
 installed-root-certificate-tampering           Very Low (27)     Very Low (69)   2 -> 2  Claim
   malicious-software-installed                 impact Severe                     2 -> 2
-  trust-chain-broken                           impact Severe                     2 -> 2
+  trust-chain-broken                           impact Moderate                   1 -> 1
 vcu-rollback-counter-tampering                 Very Low (29)     Very Low (50)   1 -> 1  Claim
   wrong-software-installed                     impact Major                      1 -> 1
 the impact shown is the one rated for one vehicle. The risk is read at the impact that scalability raised for the path. assess explain shows how

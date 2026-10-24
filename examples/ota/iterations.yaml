@@ -64,9 +64,9 @@ iterations:
     date: "2026-10-23T09:30:00Z"
     by:
       - OTA security lead
-    note: Scalability raises the impact of a damage scenario and no longer the risk value. The risks were calculated again. The treatments stay, and the reasons that named a value were reworded.
+    note: Scalability raises the impact of a damage scenario and no longer the risk value. Damage scenarios are rated for one vehicle, one owner or one plant. The risks were calculated again, and the treatments stay.
     tool: v0.1.0
-    inputs: sha256:7a02ace7d4b7d03707f3d2b4800e0f68c1f08e70ece674d4c1fe33f3e07e7cf2
+    inputs: sha256:c3c41db9de0a72455ffc4df85498c15eaff06fccfe3b60c81fe92a818845c55e
     decisions:
       approval-record-tampering: Reduce 5>3 68fcdaa7
       audit-log-repudiation: Reduce 5>2 cb17bb0d
@@ -78,7 +78,7 @@ iterations:
       campaign-definition-tampering: Reduce 5>2 f483bc30
       cellular-interface-spoofing: Share 2>2 9311b2a9
       central-gateway-tampering: Reduce 4>3 473f15a8
-      certificate-revocation-list-denial: Reduce 2>2 6f52ebfa
+      certificate-revocation-list-denial: Reduce 1>1 6f52ebfa
       consent-ui-tampering: Accept 2>1 8c1fa733
       download-link-denial: Avoid 3>3 d8663264
       installed-root-certificate-tampering: Accept 2>2 9799ab14
@@ -118,4 +118,4 @@ iterations:
       vehicle-private-key-disclosure: Accept 1>1 782aad46
       workshop-interface-spoofing: Reduce 5>4 b94a7d98
     previous: sha256:97e870ce975a4efa7240a6c9a4af02cf4762c4f90aec8a024c58d956b3aa844a
-    hash: sha256:2c8541c6a9df26d7d38523547e252743cc1a1cd2cb24a70ed462f52e239fabe9
+    hash: sha256:750b74e8679ed73d797a70fd78d7e44fdcfe60cf87dfb9edd987a9b37a802059
