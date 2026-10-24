@@ -269,20 +269,21 @@ func lowerFirst(s string) string {
 }
 
 // WriteRisks writes the files of the plan into the project in dir and returns
-// their project-relative paths.
+// their project-relative paths. The files are written together: if one cannot be
+// written, none is.
 func WriteRisks(dir string, p RiskPlan) ([]string, error) {
-	var written []string
+	var write []atomic.File
 	for _, f := range p.Files() {
 		path := filepath.Join(dir, filepath.FromSlash(f))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return written, err
+			return nil, err
 		}
-		if err := atomic.WriteFile(path, []byte(p.files[f]), 0o644); err != nil {
-			return written, err
-		}
-		written = append(written, f)
+		write = append(write, atomic.File{Path: path, Data: []byte(p.files[f])})
 	}
-	return written, nil
+	if err := atomic.WriteFiles(write, 0o644); err != nil {
+		return nil, err
+	}
+	return p.Files(), nil
 }
 
 // lineEdit changes one line of a file: replace the value of type, base or residual,

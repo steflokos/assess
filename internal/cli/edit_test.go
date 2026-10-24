@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -674,5 +675,35 @@ func TestANewRecordIsNotWrittenInAFolderThatIsALinkOutOfTheProject(t *testing.T)
 	}
 	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
 		t.Errorf("something was written outside the project: %v", entries)
+	}
+}
+
+// A change set that spans two files is written as a whole. When the second file cannot be written, the first one is not changed
+// either, and no temporary file is left in the project.
+func TestApplyWritesAllFilesOrNone(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("a folder cannot be made read only for this user here")
+	}
+	dir := testproject.Copy(t)
+	snapshot := snapshotOf(t, dir)
+	cs := changeSet(t, "two.json", `{"apiVersion": "assess/v1beta1", "changes": [
+  {"op": "put", "kind": "component", "id": "gateway", "attributes": {"description": "The gateway of the vehicle."}},
+  {"op": "put", "kind": "threat", "id": "firmware-image-tampering", "attributes": {"description": "The image is replaced on the way."}}
+]}`)
+	if r := run(t, "apply", "-dry-run", cs, dir); r.code != 0 || !strings.Contains(r.err, "in 2 files") {
+		t.Fatalf("the change set must reach two files\nexit %d\n%s%s", r.code, r.out, r.err)
+	}
+	locked := filepath.Join(dir, "tara")
+	if err := os.Chmod(locked, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(locked, 0o755) })
+
+	r := run(t, "apply", cs, dir)
+	if r.code == 0 || !strings.Contains(r.err, "Nothing was written") {
+		t.Fatalf("exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	if got := snapshotOf(t, dir); got != snapshot {
+		t.Error("the file that could be written was changed, or a temporary file is left")
 	}
 }

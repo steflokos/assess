@@ -230,14 +230,19 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 				return o.fail("%s", load.LinkText(name))
 			}
 		}
+		var write []atomic.File
 		for _, name := range result.Files {
 			path := filepath.Join(dir, filepath.FromSlash(name))
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return o.fail("%v", err)
 			}
-			if err := atomic.WriteFile(path, out.Files[name], 0o644); err != nil {
-				return o.fail("%v", err)
+			write = append(write, atomic.File{Path: path, Data: out.Files[name]})
+		}
+		if err := atomic.WriteFiles(write, 0o644); err != nil {
+			if errors.Is(err, atomic.ErrNotRestored) {
+				return o.fail("%v\nThe files may be half way through the change. Look at them with your version control", err)
 			}
+			return o.fail("%v\nNothing was written", err)
 		}
 		if len(result.Files) > 0 {
 			refreshIDs(dir, load.Load(dir))
