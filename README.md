@@ -341,13 +341,14 @@ up in your bands (`impact.levels`).
 Scalability is how far one run of an attack reaches, so it changes the impact and not the feasibility. A damage scenario is rated
 for one vehicle. The scalability of a path is its narrowest step, because one run of a path reaches no more vehicles than its
 narrowest step does. `scalability.shift` says by how many levels (Negligible, Moderate, Major, Severe) the impact goes up for a path
-that reaches a Limited Batch of vehicles, or the Fleet-Wide. The impact stops at Severe. The matrix is then read at the raised
+that reaches a limited batch of vehicles, or the whole fleet. The impact stops at Severe. The matrix is then read at the raised
 impact and the feasibility of that path. So the feasibility keeps its say: a hard attack stays in the low columns of the matrix however
 far it reaches, and a control still lowers the risk. If you leave the section out, scalability is ignored.
 
 With the matrix of the example, a Major damage that a fleet-wide path reaches at High feasibility is read as Severe, which is 5 and
 not 4. At Very Low feasibility it is 2 and not 1. Severe stays Severe, because the matrix has no level above it. If a loss for the
-whole fleet is worse than anything one vehicle can suffer, rate it as a damage scenario of its own.
+whole fleet is worse than anything one vehicle can suffer, rate it as a damage scenario of its own, and do not count its reach
+again with the shift. A shift of 2 also takes a Negligible damage to Major, so write smaller numbers if that is too much.
 
 assess does not guess. If a step has no `potential`, if a threat scenario has no `steps`, or if a control has
 neither a `reduction` nor a `threatenedby`, the output names the problem and does not calculate that scenario.

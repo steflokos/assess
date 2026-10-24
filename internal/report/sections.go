@@ -579,9 +579,17 @@ func (b *builder) outlineCell(p engine.Path, withControls bool) Cell {
 	return c
 }
 
+// scalabilityLead is the sentence of the risk section about scalability, with its leading space, or nothing when scalability is ignored.
+func scalabilityLead(b *builder) string {
+	if len(b.ws.Policy.Scalability.Shift) == 0 {
+		return ""
+	}
+	return " When scalability counts, the impact is raised first for a path that reaches more vehicles, so the impact in the tables is the one rated for one vehicle."
+}
+
 func (b *builder) riskValues() Section {
 	s := Section{ID: "risk", Title: "Risk values",
-		Lead: "The risk of each threat scenario, for each damage scenario it can cause. The impact of the damage and the feasibility of an attack path give a value in the risk matrix, and scalability can raise it. The highest value over all attack paths counts, so more ways in for an attacker never lower the risk. The risk of a threat scenario is the highest of its damage scenarios. The risk of the item is the highest of its threat scenarios."}
+		Lead: "The risk of each threat scenario, for each damage scenario it can cause. The impact of the damage and the feasibility of an attack path give a value in the risk matrix." + scalabilityLead(b) + " The highest value over all attack paths counts, so more ways in for an attacker never lower the risk. The risk of a threat scenario is the highest of its damage scenarios. The risk of the item is the highest of its threat scenarios."}
 	if it := b.rep.Item; it != nil {
 		s.Blocks = append(s.Blocks, Block{Facts: []Fact{
 			{"Risk of the item before any control (base)", txt(valueBy(it.Base, it.BaseBy))},

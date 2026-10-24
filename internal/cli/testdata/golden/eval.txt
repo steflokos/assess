@@ -1,7 +1,7 @@
 combine steps:    ET sum, SE max, KoIC max, WoO max, Eq max
 combine controls: ET max, SE sum, KoIC sum, WoO sum, Eq sum
 impact:           categories max, stakeholders max
-scalability:      raises the impact by levels, Limited Batch +1, Fleet-Wide +2, from the narrowest step of a path
+scalability:      raises the impact: Limited Batch +1, Fleet-Wide +2 levels, set by the narrowest step of a path
 risk affinity:    2 (a risk of 2 or less before any control is a Claim, a higher one a Goal)
 
 item ota-system
@@ -123,3 +123,4 @@ installed-root-certificate-tampering           Very Low (27)     Very Low (69)  
   trust-chain-broken                           impact Severe                     2 -> 2
 vcu-rollback-counter-tampering                 Very Low (29)     Very Low (50)   1 -> 1  Claim
   wrong-software-installed                     impact Major                      1 -> 1
+the impact shown is the one rated for one vehicle. The risk is read at the impact that scalability raised for the path. assess explain shows how

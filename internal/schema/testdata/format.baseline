@@ -136,7 +136,7 @@ attribute Rule.name string req=always min=0 ref=
 attribute Rule.notes map[string]string req= min=0 ref=
 attribute Rule.on iso21434.RuleTarget req=always min=0 ref=
 attribute Rule.severity iso21434.Severity req= min=0 ref=
-attribute ScalabilityPolicy.shift map[iso21434.Scalability]*int req=always min=0 ref=
+attribute ScalabilityPolicy.shift map[iso21434.Reach]*int req=always min=0 ref=
 attribute Source.location string req= min=0 ref=
 attribute Source.name string req=always min=0 ref=
 attribute Source.version string req= min=0 ref=
@@ -182,6 +182,8 @@ enum Property Availability
 enum Property Confidentiality
 enum Property Integrity
 enum Property Non Repudiation
+enum Reach Fleet-Wide
+enum Reach Limited Batch
 enum RiskType Claim
 enum RiskType Goal
 enum RuleTarget asset

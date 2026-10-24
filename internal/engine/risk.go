@@ -206,8 +206,8 @@ func raiseImpact(level iso21434.ImpactLevel, n int) iso21434.ImpactLevel {
 }
 
 // riskOf works out the risk of a damage scenario for an outcome: the risk of every path is looked up
-// from its feasibility level and, by the scalability mode of the policy, its scalability and the
-// highest decides. A tie goes to the easier path. Taking the highest over all paths, not the value
+// from its feasibility level and its impact, raised for the scalability of the path when the policy
+// says so, and the highest decides. A tie goes to the easier path. Taking the highest over all paths, not the value
 // of the easiest, is what keeps the risk from falling when an attacker gains a way in or a control
 // is taken away: the easiest path can then be a narrower one, with less scalability, while a wider
 // one is still there. It returns nil when it cannot and why when that is for want of scalability
@@ -254,7 +254,7 @@ func pathRisk(pol model.Policy, impact iso21434.ImpactLevel, p Path) (*Risk, str
 		}
 		scal := iso21434.Scalability(p.Scalability.Value)
 		r.Rated, r.Scalability = string(impact), string(scal)
-		if v := pol.Scalability.Shift[scal]; v != nil { // a damage scenario is rated for one vehicle, so Single Vehicle shifts nothing
+		if v := pol.Scalability.Shift[iso21434.Reach(scal)]; v != nil { // a damage scenario is rated for one vehicle, so Single Vehicle shifts nothing
 			r.Shift = *v
 		}
 		impact = raiseImpact(impact, r.Shift)

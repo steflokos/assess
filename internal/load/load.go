@@ -563,6 +563,10 @@ func classify(msg string) (code, text string) {
 			}
 			text += ". The allowed attributes are " + strings.Join(valid, ", ")
 		}
+		if typ == "ScalabilityPolicy" && slices.Contains([]string{"mode", "of", "raise", "cap", "matrix"}, field) {
+			// the policy of the first beta: scalability raised the risk value, and now it raises the impact
+			text += ". Scalability raises the impact now. Write shift: {Limited Batch: n, Fleet-Wide: n}, or leave the scalability section out to ignore scalability"
+		}
 		return CodeUnknownField, text
 	case msg == mappingNotAllowed:
 		return CodeSyntax, "a colon followed by a space starts a new mapping value, which is not allowed here. Put the text in quotes if it contains \": \""

@@ -105,7 +105,7 @@ type ImpactBand struct {
 // rated for one vehicle, so a path that reaches more vehicles raises its impact by the number of levels written here, to Severe at most.
 // The risk is looked up from the raised impact and the feasibility of the path, and the highest over all paths decides.
 type ScalabilityPolicy struct {
-	Shift map[iso21434.Scalability]*int `yaml:"shift,omitempty" req:"always" doc:"How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet (Fleet-Wide). The rating of a damage scenario is for one vehicle, so Single Vehicle is not written. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole scalability section out, scalability is ignored."`
+	Shift map[iso21434.Reach]*int `yaml:"shift,omitempty" req:"always" doc:"How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet (Fleet-Wide). Write both. The rating of a damage scenario is for one vehicle, so a path of one vehicle has no shift. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole scalability section out, scalability is ignored."`
 }
 
 // RiskPolicy holds the risk matrix and the risk the project accepts.
@@ -272,22 +272,17 @@ func (p *Policy) Problems() []Problem {
 
 	// scalability: the shift for a batch and for the fleet, once the section is written
 	if sc := p.Scalability; len(sc.Shift) > 0 {
-		for sv := range sc.Shift {
-			if iso21434.Scalability(sv) == iso21434.ScalabilitySingleVehicle {
-				add("scalability.shift."+string(sv), "scalability.shift.%s is not written. A damage scenario is rated for one vehicle, so it is 0", sv)
-			}
-		}
-		for _, sv := range []iso21434.Scalability{iso21434.ScalabilityLimitedBatch, iso21434.ScalabilityFleetWide} {
-			switch v, ok := sc.Shift[sv]; {
+		for _, rc := range []iso21434.Reach{iso21434.ReachLimitedBatch, iso21434.ReachFleetWide} {
+			switch v, ok := sc.Shift[rc]; {
 			case !ok:
-				add("scalability.shift", "scalability.shift is missing %s", sv)
+				add("scalability.shift", "scalability.shift is missing %s", rc)
 			case v == nil:
-				add("scalability.shift."+string(sv), "scalability.shift.%s has no value", sv)
+				add("scalability.shift."+string(rc), "scalability.shift.%s has no value", rc)
 			case *v < 0 || *v > 3:
-				add("scalability.shift."+string(sv), "scalability.shift.%s is a number of impact levels, from 0 to 3", sv)
+				add("scalability.shift."+string(rc), "scalability.shift.%s is a number of impact levels, from 0 to 3", rc)
 			}
 		}
-		if lb, fw := sc.Shift[iso21434.ScalabilityLimitedBatch], sc.Shift[iso21434.ScalabilityFleetWide]; lb != nil && fw != nil && *fw < *lb {
+		if lb, fw := sc.Shift[iso21434.ReachLimitedBatch], sc.Shift[iso21434.ReachFleetWide]; lb != nil && fw != nil && *fw < *lb {
 			add("scalability.shift.Fleet-Wide", "scalability.shift.Fleet-Wide is less than Limited Batch. An attack that reaches the fleet reaches a batch too")
 		}
 	}

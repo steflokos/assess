@@ -180,7 +180,7 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 		rep.Policy = append(rep.Policy, "risk.matrix is not set in the policy")
 	}
 	if len(pol.Scalability.Shift) > 0 {
-		for _, sv := range []iso21434.Scalability{iso21434.ScalabilityLimitedBatch, iso21434.ScalabilityFleetWide} {
+		for _, sv := range []iso21434.Reach{iso21434.ReachLimitedBatch, iso21434.ReachFleetWide} {
 			if pol.Scalability.Shift[sv] == nil {
 				riskable = false
 				rep.Policy = append(rep.Policy, "scalability.shift is not set for "+string(sv)+" in the policy")

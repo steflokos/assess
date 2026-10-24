@@ -31,9 +31,10 @@ What is in it:
 - `assess help <command>` says how a command is written. A flag that comes after the folder is said to be in the wrong place, and a typo
   in the name of a command is met with the one that was meant. `verify` shows the start of each key and flags a key that signs twice.
 - Scalability raises the impact of a damage scenario, per path, and not the risk value. `scalability.shift` in the policy gives the levels for a
-  Limited Batch and the Fleet-Wide. A hard attack stays small however far it reaches, and a control still lowers the risk. This replaces
-  `mode`, `of`, `raise`, `cap` and `matrix`, which could give a negligible damage a risk above the affinity. A policy that has them is
-  refused with the name of the key, and the format baseline in `internal/schema/testdata` was recorded again for it.
+  limited batch and for the whole fleet. A hard attack stays small however far it reaches, and a control still lowers the risk. A policy that
+  has the keys of the escalator (`mode`, `of`, `raise`, `cap`, `matrix`) is refused, and the message says what to write now. In the JSON of
+  `eval` and `explain`, a risk has `impact`, `rated`, `scalability` and `shift`, and not `cell`, `raise` and `cap`, and `rules.risk.scalability`
+  is `ignored` or `shift`.
 - `examples/ota`, a finished example project.
 
 Known limits of this beta:

@@ -55,10 +55,10 @@ extra:
       scenarios with their attack steps, the controls, the risks and the treatment decisions. Every risk has a
       calculated value, every cybersecurity goal has an item in the tracker, and nothing is open.
 
-      The risks that stay higher are attacks that are still easy after the controls and that reach many vehicles.
-      A path that reaches a batch or the whole fleet raises the impact of its damage scenario, so a damage that
-      is moderate for one vehicle weighs more for the fleet. The highest risk left is 4. A very hard attack stays
-      small however far it reaches, which is why most risks are at 2 after the controls. The risks above the
-      affinity stay visible as goals. The decisions say what is reduced, shared, avoided or accepted, and why.
+      The risks that stay higher are attacks that are still feasible after the controls, or that cause a severe
+      damage. Some of them also reach many vehicles, and a path that reaches a batch or the whole fleet raises
+      the impact of its damage scenario. The highest risk left is 4. A very hard attack stays small however far
+      it reaches, which is why most risks are at 2 after the controls. The risks above the affinity stay visible
+      as goals. The decisions say what is reduced, shared, avoided or accepted, and why.
 
       This is a demonstration. Replace the data with your own.

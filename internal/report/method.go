@@ -123,10 +123,10 @@ func (b *builder) riskPolicy() Section {
 		Lead: "The risk value is read from the matrix at the impact and the feasibility level. When scalability counts, the impact of a damage scenario is raised first for a path that reaches more than one vehicle."}
 	s.Blocks = append(s.Blocks, Block{Table: matrixTable("Risk matrix", pol.Risk.Matrix)})
 	if len(pol.Scalability.Shift) > 0 {
-		t := &Table{Caption: "How far scalability raises the impact. A damage scenario is rated for one vehicle, and the impact stops at the most severe level", Head: []string{"Scalability", "Levels"}}
+		t := &Table{Caption: "Levels that scalability raises the impact by, up to the most severe level", Head: []string{"Scalability", "Levels"}}
 		for _, sc := range iso21434.ScalabilityValues() {
 			n := 0
-			if v := pol.Scalability.Shift[iso21434.Scalability(sc)]; v != nil {
+			if v := pol.Scalability.Shift[iso21434.Reach(sc)]; v != nil {
 				n = *v
 			}
 			t.Rows = append(t.Rows, Row{Cells: []Cell{txt(sc), intPlain(&n)}})

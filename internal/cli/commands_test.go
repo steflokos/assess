@@ -377,6 +377,13 @@ func TestGenerateNeedsAKindAndAProjectWithoutErrors(t *testing.T) {
 
 // ---- eval and explain ----------------------------------------------------------------------------------------
 
+func TestTheDescriptionOfTheShiftNamesOnlyTheReachesThatHaveOne(t *testing.T) {
+	r := run(t, "describe")
+	if r.code != 0 || !strings.Contains(r.out, "shift: {Limited Batch: <number>, Fleet-Wide: <number>}") || strings.Contains(r.out, "shift: {Single Vehicle") {
+		t.Errorf("a vehicle that has no shift is not offered one: exit %d\n%s", r.code, r.out)
+	}
+}
+
 func TestEvalText(t *testing.T) {
 	dir := testproject.Copy(t)
 	r := run(t, "eval", dir)
@@ -386,7 +393,7 @@ func TestEvalText(t *testing.T) {
 	for _, want := range []string{
 		"combine steps:    ET sum, SE max, KoIC max, WoO max, Eq max",
 		"combine controls: ET max, SE sum, KoIC sum, WoO sum, Eq sum",
-		"scalability:      raises the impact by levels, Limited Batch +1, Fleet-Wide +2, from the narrowest step of a path",
+		"scalability:      raises the impact: Limited Batch +1, Fleet-Wide +2 levels, set by the narrowest step of a path",
 		"risk affinity:    2",
 		"base      5   decided by update-package-tampering",
 		"residual  2   decided by update-package-tampering",
@@ -492,7 +499,7 @@ func TestExplainShowsTheWorksheet(t *testing.T) {
 	}
 	// when the damage is Major, the harder path through the build server reaches the fleet, raises the impact to Severe and decides
 	testproject.Replace(t, dir, "policy.yaml", "stakeholders: [roaduser, oem]", "stakeholders: [oem]")
-	if m := run(t, "explain", "update-package-tampering", dir); !strings.Contains(m.out, "residual  Very Low (path #2, not the easiest), Fleet-Wide raises the impact from Major to Severe (+2), risk 2") {
+	if m := run(t, "explain", "update-package-tampering", dir); !strings.Contains(m.out, "residual  Very Low (path #2, not the easiest), Fleet-Wide raises the impact from Major to Severe (shift 2, stops at the most severe level), risk 2") {
 		t.Errorf("the worksheet says which path decides and what scalability did:\n%s", m.out)
 	}
 	all := run(t, "explain", "-all", "update-package-tampering", dir)

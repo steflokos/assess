@@ -15,7 +15,7 @@ risk supplier-delivery-tampering:
   residual: 2
   description: Malicious code arrives in a supplier delivery and is built, signed and installed like any other.
   treatment: Reduce
-  rationale: Review, binary comparison and the account hardening bring it to 4. What remains is a supplier who delivers bad code on purpose, which no review can exclude.
+  rationale: Review, binary comparison and the account hardening bring it down. What remains is a supplier who delivers bad code on purpose, which no review can exclude.
   reference: [OTA-2101]
 
 risk release-candidate-tampering:
@@ -25,7 +25,7 @@ risk release-candidate-tampering:
   residual: 2
   description: The images that are signed are not the ones that were reviewed, because a library poisons the build or an image is changed after approval.
   treatment: Reduce
-  rationale: Pinned dependencies, isolated runners and the digest check in the signing service bring it to 4. What remains is an upstream library that is poisoned for a long time before it is used.
+  rationale: Pinned dependencies, isolated runners and the digest check in the signing service bring it down. What remains is an upstream library that is poisoned for a long time before it is used.
   reference: [OTA-2102]
 
 risk approval-record-tampering:
@@ -35,7 +35,7 @@ risk approval-record-tampering:
   residual: 3
   description: A release or a campaign is approved by someone who should not have been able to, and the next steps act on it.
   treatment: Reduce
-  rationale: Second approver, device-bound sessions and the callback of the helpdesk bring it to 4. Two colluding approvers are what remains, and the audit log and the signing alerts watch for them.
+  rationale: Second approver, device-bound sessions and the callback of the helpdesk bring it down. Two colluding approvers are what remains, and the audit log and the signing alerts watch for them.
   reference: [OTA-2103]
 
 risk backoffice-portal-spoofing:
@@ -45,7 +45,7 @@ risk backoffice-portal-spoofing:
   residual: 2
   description: Someone acts in the portal as a release manager or a campaign manager.
   treatment: Reduce
-  rationale: Hardware tokens, the helpdesk callback and device-bound sessions bring it to 4. What remains takes weeks and a foothold inside.
+  rationale: Hardware tokens, the helpdesk callback and device-bound sessions bring it down. What remains takes weeks and a foothold inside.
   reference: [OTA-2104]
 
 risk signing-service-tampering:
@@ -55,7 +55,7 @@ risk signing-service-tampering:
   residual: 2
   description: The signing service signs something that was not approved.
   treatment: Reduce
-  rationale: Both ways need a foothold in the build network and a pipeline identity, or two insiders. The monitoring raises an alarm on every signature outside a release. The controls leave 4 for an attack of this effort, which is high only because it reaches the whole fleet.
+  rationale: Both ways need a foothold in the build network and a pipeline identity, or two insiders. The monitoring raises an alarm on every signature outside a release. The controls leave an attack of this effort, which counts for more because it reaches the whole fleet.
   reference: [OTA-2114]
 
 risk software-signing-private-key-disclosure:
@@ -65,7 +65,7 @@ risk software-signing-private-key-disclosure:
   residual: 2
   description: The key that vehicles accept for software is taken.
   treatment: Reduce
-  rationale: The key is in a certified HSM at two sites, with the backups in split custody. What is left needs a laboratory of a state or an insider with a quorum. The value is 4 because the attack reaches the whole fleet.
+  rationale: The key is in a certified HSM at two sites, with the backups in split custody. What is left needs a laboratory of a state or an insider with a quorum. The risk is low because the attack is very hard. It would be larger if the attack were easier, because it reaches the whole fleet.
   reference: [OTA-2115]
 
 risk software-signing-private-key-denial:
@@ -85,7 +85,7 @@ risk software-signing-certificate-spoofing:
   residual: 2
   description: The attacker gets a signing certificate for their own key, and vehicles accept their software.
   treatment: Reduce
-  rationale: Two approvals, key attestation and the segmentation of the PKI network bring it to 4. A taken-over registration authority together with a colluding approver is what remains.
+  rationale: Two approvals, key attestation and the segmentation of the PKI network bring it down. A taken-over registration authority together with a colluding approver is what remains.
   reference: [OTA-2105]
 
 risk secure-boot-private-key-disclosure:
@@ -105,7 +105,7 @@ risk campaign-definition-tampering:
   residual: 2
   description: A campaign sends valid software to vehicles that it does not fit, in one wave.
   treatment: Reduce
-  rationale: The second approval and the staged roll-out with an automatic stop keep a bad campaign from reaching the fleet. It stays at 4 because the stop acts only after the first wave.
+  rationale: The second approval and the staged roll-out with an automatic stop keep a bad campaign from reaching the fleet. The stop acts only after the first wave, so the first wave is not kept from its vehicles.
   reference: [OTA-2106]
 
 risk update-director-tampering:
@@ -115,7 +115,7 @@ risk update-director-tampering:
   residual: 2
   description: The director authorises installations that no campaign asked for.
   treatment: Reduce
-  rationale: Hardening of the cloud administrator accounts and the policy in the director HSM on what it may sign bring it to 4.
+  rationale: Hardening of the cloud administrator accounts and the policy in the director HSM on what it may sign bring it down.
   reference: [OTA-2107]
 
 risk authorisation-signing-private-key-disclosure:
@@ -135,7 +135,7 @@ risk vehicle-configuration-tampering:
   residual: 2
   description: The registry holds a wrong inventory for a vehicle, so it gets a package for another variant or none.
   treatment: Reduce
-  rationale: Authorisation per VIN, rate limits and detection bring it to 3.
+  rationale: Authorisation per VIN, rate limits and detection bring it down.
   reference: [OTA-2110]
 
 risk vehicle-configuration-disclosure:
@@ -145,7 +145,7 @@ risk vehicle-configuration-disclosure:
   residual: 2
   description: The inventory of the fleet is read through the API or from the database.
   treatment: Reduce
-  rationale: The same controls, and the hardening of the cloud accounts, bring it to 3.
+  rationale: The same controls, and the hardening of the cloud accounts, bring it down.
   reference: [OTA-2111]
 
 risk update-package-tampering:
@@ -155,7 +155,7 @@ risk update-package-tampering:
   residual: 2
   description: A package that was changed is served to vehicles at the content delivery network or at the origin.
   treatment: Reduce
-  rationale: The verification in the vehicle and the lock on the repository bring it to 4. What remains is the theft of the signing key or a flaw in the verifier, which have their own risks.
+  rationale: The verification in the vehicle and the lock on the repository bring it down. What remains is the theft of the signing key or a flaw in the verifier, which have their own risks.
   reference: [OTA-2108]
 
 risk update-package-disclosure:
@@ -165,7 +165,7 @@ risk update-package-disclosure:
   residual: 3
   description: Anyone who owns a vehicle, or has a workshop login, can read the firmware of the whole line, and so can see where to attack it.
   treatment: Reduce
-  rationale: 'The images are encrypted for the vehicles, which closes the workshop path and the download link: they give ciphertext. The owner of a vehicle can still read the images from the unit after decryption, with a debug interface or a memory dump, so what is left is one owner with the skill. The value stays at 4 because what one owner reads is known for the whole line.'
+  rationale: 'The images are encrypted for the vehicles, which closes the workshop path and the download link: they give ciphertext. The owner of a vehicle can still read the images from the unit after decryption, with a debug interface or a memory dump, so what is left is one owner with the skill. The risk is not lower because what one owner reads is known for the whole line.'
   reference: [OTA-2210]
 
 risk vehicle-api-gateway-denial:
@@ -205,7 +205,7 @@ risk workshop-interface-spoofing:
   residual: 4
   description: Someone passes as a workshop and takes packages without owning a vehicle.
   treatment: Reduce
-  rationale: Second factor and device binding bring it to 4. A tester certificate that is stolen is the way around, and it gives packages only.
+  rationale: Second factor and device binding bring it down. A tester certificate that is stolen is the way around, and it gives packages only.
   reference: [OTA-2109]
 
 risk audit-log-tampering:
@@ -225,7 +225,7 @@ risk audit-log-repudiation:
   residual: 2
   description: A person who acted denies it, because the log cannot tell who used a shared account or the entry is gone.
   treatment: Reduce
-  rationale: The immutable storage of the log, named accounts and the sealed emergency account bring it to 3.
+  rationale: The immutable storage of the log, named accounts and the sealed emergency account bring it down.
   reference: [OTA-2113]
 
 risk root-ca-private-key-disclosure:
@@ -235,7 +235,7 @@ risk root-ca-private-key-disclosure:
   residual: 2
   description: The root key is taken and the attacker can certify any CA.
   treatment: Reduce
-  rationale: The root is offline, in a certified HSM, with custodians in three places, and is used for ceremonies only. 4 is the lowest value that an attack on the whole fleet can have under this policy.
+  rationale: The root is offline, in a certified HSM, with custodians in three places, and is used for ceremonies only. The attack is very hard, so the risk is low even though it reaches the whole fleet.
   reference: [OTA-2122]
 
 risk root-ca-private-key-denial:

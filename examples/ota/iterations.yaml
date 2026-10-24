@@ -64,18 +64,18 @@ iterations:
     date: "2026-10-23T09:30:00Z"
     by:
       - OTA security lead
-    note: Scalability raises the impact of a damage scenario and no longer the risk value. The risks were calculated again, and the decisions stay.
+    note: Scalability raises the impact of a damage scenario and no longer the risk value. The risks were calculated again. The treatments stay, and the reasons that named a value were reworded.
     tool: v0.1.0
-    inputs: sha256:2d93b75370166b32b3c014e5a3ff7f680b0a8fdcbe35c0034c09159533a2a6be
+    inputs: sha256:7a02ace7d4b7d03707f3d2b4800e0f68c1f08e70ece674d4c1fe33f3e07e7cf2
     decisions:
-      approval-record-tampering: Reduce 5>3 c24ace52
-      audit-log-repudiation: Reduce 5>2 8e4d5078
+      approval-record-tampering: Reduce 5>3 68fcdaa7
+      audit-log-repudiation: Reduce 5>2 cb17bb0d
       audit-log-tampering: Reduce 3>2 6fded517
       authorisation-signing-private-key-disclosure: Reduce 3>2 230002e3
       backend-tls-private-key-disclosure: Reduce 3>2 e59aa621
-      backoffice-portal-spoofing: Reduce 5>2 5c93ea07
+      backoffice-portal-spoofing: Reduce 5>2 6cf21641
       bms-bootloader-tampering: Accept 2>2 334acd9a
-      campaign-definition-tampering: Reduce 5>2 2e91b407
+      campaign-definition-tampering: Reduce 5>2 f483bc30
       cellular-interface-spoofing: Share 2>2 9311b2a9
       central-gateway-tampering: Reduce 4>3 473f15a8
       certificate-revocation-list-denial: Reduce 2>2 6f52ebfa
@@ -89,33 +89,33 @@ iterations:
       provisioning-server-denial: Share 2>2 8dbdf40c
       provisioning-server-tampering: Reduce 2>2 c5414e38
       registration-authority-tampering: Reduce 2>2 7483bfa5
-      release-candidate-tampering: Reduce 4>2 7a9b8d80
+      release-candidate-tampering: Reduce 4>2 8aec1fc3
       root-ca-private-key-denial: Reduce 2>2 70eec917
-      root-ca-private-key-disclosure: Reduce 2>2 230765d5
+      root-ca-private-key-disclosure: Reduce 2>2 70a98a50
       secure-boot-private-key-disclosure: Reduce 2>2 67b3e4af
       secure-boot-public-key-tampering: Share 2>2 ba5888f6
       secure-time-tampering: Reduce 3>2 8b6d71c9
-      signing-service-tampering: Reduce 2>2 46da571f
-      software-signing-certificate-spoofing: Reduce 4>2 f73895b6
+      signing-service-tampering: Reduce 2>2 4b5af146
+      software-signing-certificate-spoofing: Reduce 4>2 c4af88c2
       software-signing-private-key-denial: Reduce 2>2 3777044a
-      software-signing-private-key-disclosure: Reduce 2>2 6902c4c3
-      supplier-delivery-tampering: Reduce 3>2 5af8cae4
+      software-signing-private-key-disclosure: Reduce 2>2 86b0e1c6
+      supplier-delivery-tampering: Reduce 3>2 eaf0b0ce
       tcu-debug-port-spoofing: Accept 4>2 b7e12bb2
       tcu-hsm-tampering: Accept 3>2 8f432a82
       telematics-unit-tampering: Accept 3>2 a9e35181
       trust-anchor-bundle-tampering: Reduce 3>2 f59fcc7a
-      update-director-tampering: Reduce 3>2 18bf1230
+      update-director-tampering: Reduce 3>2 acdd0234
       update-orchestrator-tampering: Reduce 2>2 58b6eb67
-      update-package-disclosure: Reduce 5>3 a628113c
-      update-package-tampering: Reduce 4>2 1bb675dc
+      update-package-disclosure: Reduce 5>3 74c87901
+      update-package-tampering: Reduce 4>2 b6c03f2a
       vcu-bootloader-tampering: Accept 3>2 7b16e23e
       vcu-rollback-counter-tampering: Accept 1>1 a2547383
       vehicle-api-gateway-denial: Reduce 5>2 fe570dd8
       vehicle-api-gateway-spoofing: Accept 3>2 edb090a6
       vehicle-ca-tampering: Reduce 2>2 b196726d
-      vehicle-configuration-disclosure: Reduce 5>2 767c5cc0
-      vehicle-configuration-tampering: Reduce 4>2 dd85be3a
+      vehicle-configuration-disclosure: Reduce 5>2 57e85d81
+      vehicle-configuration-tampering: Reduce 4>2 9c1ee96a
       vehicle-private-key-disclosure: Accept 1>1 782aad46
-      workshop-interface-spoofing: Reduce 5>4 5ab2f728
+      workshop-interface-spoofing: Reduce 5>4 b94a7d98
     previous: sha256:97e870ce975a4efa7240a6c9a4af02cf4762c4f90aec8a024c58d956b3aa844a
-    hash: sha256:765d667c6cd363814fe89aaaf6e21897ddda662edb1ded5303c2060d8c82b2da
+    hash: sha256:2c8541c6a9df26d7d38523547e252743cc1a1cd2cb24a70ed462f52e239fabe9

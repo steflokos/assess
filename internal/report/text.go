@@ -10,6 +10,7 @@ package report
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
@@ -74,6 +75,9 @@ func Eval(w io.Writer, rep *engine.Report) {
 		}
 	}
 	tw.Flush()
+	if rep.Risk != nil && rep.Risk.Scalability == "shift" {
+		fmt.Fprintln(w, "the impact shown is the one rated for one vehicle. The risk is read at the impact that scalability raised for the path. assess explain shows how")
+	}
 	var noRisk []engine.Result
 	for _, r := range rep.Threats {
 		if len(r.RiskIssues) > 0 {
@@ -173,7 +177,7 @@ func scalabilityText(r *engine.RiskRules) string {
 			parts = append(parts, fmt.Sprintf("%s +%d", sv, n))
 		}
 	}
-	return "raises the impact by levels, " + strings.Join(parts, ", ") + ", from the narrowest step of a path"
+	return "raises the impact: " + strings.Join(parts, ", ") + " levels, set by the narrowest step of a path"
 }
 
 // ruleLine reads "ET sum, SE max, KoIC max, WoO max, Eq max".
@@ -373,7 +377,7 @@ func stageResult(rule, level string, total *int) string {
 	return rule + " " + level
 }
 
-// riskDerivation reads "matrix cell 3, risk 3", or with scalability "Fleet-Wide raises the impact from Moderate to Severe (+2), risk 4".
+// riskDerivation reads "impact Major, risk 4", or with scalability "Fleet-Wide raises the impact from Moderate to Severe (+2), risk 4".
 func riskDerivation(r *engine.Risk) string {
 	if r == nil {
 		return "risk not calculated"
@@ -382,10 +386,17 @@ func riskDerivation(r *engine.Risk) string {
 	case r.Scalability != "" && r.Impact == r.Rated:
 		return fmt.Sprintf("%s keeps the impact at %s, risk %d", r.Scalability, r.Impact, r.Value)
 	case r.Scalability != "":
+		from, to := slices.Index(impactSteps, r.Rated), slices.Index(impactSteps, r.Impact)
+		if to-from < r.Shift { // the shift is more than there is room for
+			return fmt.Sprintf("%s raises the impact from %s to %s (shift %d, stops at the most severe level), risk %d", r.Scalability, r.Rated, r.Impact, r.Shift, r.Value)
+		}
 		return fmt.Sprintf("%s raises the impact from %s to %s (+%d), risk %d", r.Scalability, r.Rated, r.Impact, r.Shift, r.Value)
 	}
-	return fmt.Sprintf("matrix cell %d, risk %d", r.Value, r.Value)
+	return fmt.Sprintf("impact %s, risk %d", r.Impact, r.Value)
 }
+
+// impactSteps lists the impact levels, least severe first.
+var impactSteps = []string{"Negligible", "Moderate", "Major", "Severe"}
 
 func bandLine(bands []model.Band) string {
 	parts := make([]string, len(bands))

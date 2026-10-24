@@ -86,6 +86,33 @@ func (v *Scalability) UnmarshalYAML(n *yaml.Node) error {
 	return nil
 }
 
+// Reach is a scalability that goes beyond one vehicle: the keys of scalability.shift in the policy. A damage scenario is rated for one
+// vehicle, so Single Vehicle has no shift and is not one of them.
+type Reach string
+
+const (
+	ReachLimitedBatch Reach = "Limited Batch"
+	ReachFleetWide    Reach = "Fleet-Wide"
+)
+
+var reachValues = []string{"Limited Batch", "Fleet-Wide"}
+
+// ReachValues returns both reaches, the narrower first.
+func ReachValues() []string { return slices.Clone(reachValues) }
+
+// EnumValues lets generic code (the editor schema and the description of the format) list the values.
+func (Reach) EnumValues() []string { return slices.Clone(reachValues) }
+
+// UnmarshalYAML rejects values outside the allowed values at the offending node.
+func (v *Reach) UnmarshalYAML(n *yaml.Node) error {
+	s, err := yamlx.DecodeEnum(n, "scalability for a shift", reachValues)
+	if err != nil {
+		return err
+	}
+	*v = Reach(s)
+	return nil
+}
+
 // ThreatActor is a class of actor by motivation and access relationship (not by skill).
 type ThreatActor string
 

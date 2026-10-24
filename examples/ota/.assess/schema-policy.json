@@ -645,15 +645,12 @@
       "properties": {
         "shift": {
           "additionalProperties": false,
-          "description": "How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet (Fleet-Wide). The rating of a damage scenario is for one vehicle, so Single Vehicle is not written. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole scalability section out, scalability is ignored.",
+          "description": "How many impact levels (Negligible, Moderate, Major, Severe) the impact of a damage scenario goes up for a path that reaches a Limited Batch of vehicles, or the whole fleet (Fleet-Wide). Write both. The rating of a damage scenario is for one vehicle, so a path of one vehicle has no shift. Whole numbers from 0 to 3. The impact stops at Severe. If you leave the whole scalability section out, scalability is ignored.",
           "properties": {
             "Fleet-Wide": {
               "type": "integer"
             },
             "Limited Batch": {
-              "type": "integer"
-            },
-            "Single Vehicle": {
               "type": "integer"
             }
           },
