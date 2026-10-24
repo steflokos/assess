@@ -2,8 +2,8 @@
 import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { S, load } from '../data.js';
-import { inSchemaOrder, labelOf, hasValue, readOnly } from '../form.js';
+import { S, load, drafts } from '../data.js';
+import { inSchemaOrder, labelOf, hasValue, readOnly, madeFor } from '../form.js';
 
 await load();
 
@@ -33,4 +33,15 @@ test('a list of blocks comes back in the order of the format too', () => {
   const flow = { name: 'flow', type: 'blocks', attributes: [{ name: 'from', type: 'text' }, { name: 'to', type: 'text' }] };
   const out = inSchemaOrder('function', flow, [{ to: 'b', from: 'a' }]);
   assert.deepEqual(Object.keys(out[0]), ['from', 'to']);
+});
+
+test('a record made on the way is written with the form only while the form still names it', () => {
+  drafts.set('step:fresh-step', { kind: 'step', id: 'fresh-step', attributes: { name: 'Fresh step', scalability: 'Fleet-Wide' } });
+  drafts.set('step:dropped-step', { kind: 'step', id: 'dropped-step', attributes: { name: 'Dropped step' } });
+  try {
+    const attrs = { steps: { and: ['modify-package-in-transit', { or: ['fresh-step', 'other'] }] }, name: 'dropped-step is only text in a name' };
+    assert.deepEqual(madeFor(attrs), [{ op: 'put', kind: 'step', id: 'fresh-step', attributes: { name: 'Fresh step', scalability: 'Fleet-Wide' }, new: true }]);
+    assert.deepEqual(madeFor({ steps: 'fresh-step' }).map((c) => c.id), ['fresh-step'], 'a path of one step is the id');
+    assert.deepEqual(madeFor({ name: 'Other' }), [], 'a step that the path no longer holds is not made');
+  } finally { drafts.clear(); }
 });

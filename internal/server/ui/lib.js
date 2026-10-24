@@ -44,6 +44,8 @@ export const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(
 export const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '') ? '⌘' : 'Ctrl';
 export const short = (hash) => String(hash || '').replace('sha256:', '').slice(0, 12);
 export const upper = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+// slug turns a name into an id: lower case letters and digits with hyphens between the words, accents taken off.
+export const slug = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '');
 // when writes a date and time from a file in plain form: 23 Oct 2026, 12:04. A text that is not a date is given back as it is.
 export function when(iso) {
   const d = new Date(iso);

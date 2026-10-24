@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0. Copyright 2026 Stefanos Flokos.
 // Pieces that more than one page uses: findings, diffs, the effects of a change, breadcrumbs and empty states.
 
-import { h, chip, plural } from './lib.js';
+import { h, chip, plural, toasts } from './lib.js';
 import { icon } from './icons.js';
-import { recordAt, kindTitle, kindName, nameOf } from './data.js';
+import { recordAt, kindTitle, kindName, nameOf, rec } from './data.js';
 import { labelOf } from './form.js';
 
 export const hrefOf = (...parts) => '#/' + parts.map(encodeURIComponent).join('/');
@@ -19,6 +19,8 @@ export function diagnostic(d) {
     real ? h('div', { class: 'where' }, at ? h('a', { href: hrefOf('kind', at.kind, at.id) }, where(d)) : where(d)) : null);
 }
 export const diagnostics = (list) => { const f = document.createDocumentFragment(); list.forEach((d) => f.append(diagnostic(d))); return f; };
+// noAdvice takes the advice about the command line out of what a command said. The page has the buttons for it.
+export const noAdvice = (text) => String(text || '').replace(/\s*Run assess [^.\n]*\.?/g, '').replace(/ with assess [a-z -]+$/gm, '');
 // said shows what a command said for a person, when the document has it.
 export const said = (env) => (env.text ? h('pre', { class: 'plain', text: env.text }) : null);
 
@@ -97,4 +99,30 @@ export function conflicts(list, { keep, reload }) {
     h('div', { class: 'row' },
       keep && !gone ? h('button', { class: 'btn small', type: 'button', onclick: keep }, 'Keep my change') : null,
       reload ? h('button', { class: 'btn small', type: 'button', onclick: reload }, gone ? 'Reload' : 'Discard mine and reload') : null));
+}
+
+// ---- what is open ---------------------------------------------------------------------------------------------------------------------
+export const OPEN_TITLES = {
+  'no-item': 'No item yet', 'policy-gap': 'The policy lacks values', 'not-calculated': 'Cannot be calculated', 'risk-not-calculated': 'Risk cannot be calculated',
+  'damage-uncaused': 'No threat scenario causes it', 'no-risks': 'No risks yet', 'risk-missing': 'Risk missing', 'risk-stale': 'Risk out of date',
+  'no-treatment': 'Needs a decision', 'rule-finding': 'Found by a rule', 'rule-not-checked': 'A rule could not be checked',
+};
+
+// opened tells the person which open items a change has just made, next to the message that it was saved. A change can open items: a
+// risk that is accepted above the affinity, a step without a rating, a damage scenario that nothing causes any more. The message stays
+// for a while, and has the way to the list.
+export function opened(items) {
+  if (!items || !items.length) return null;
+  const line = (it) => {
+    const r = it.kind && it.id && rec(it.kind, it.id);
+    return h('li', {}, h('b', { text: (OPEN_TITLES[it.code] || it.code) + (r ? ': ' : '') }),
+      r ? h('a', { href: hrefOf('kind', it.kind, it.id), text: nameOf(it.kind, it.id) }) : null, h('div', { class: 'small detail', text: noAdvice(it.text) }));
+  };
+  const el = h('div', { class: 'toast alert warn opened', role: 'status' },
+    h('div', { class: 'grow' }, h('strong', { text: items.length === 1 ? 'This opened 1 item.' : 'This opened ' + items.length + ' items.' }),
+      h('ul', {}, items.slice(0, 4).map(line)), items.length > 4 ? h('div', { class: 'small', text: 'and ' + (items.length - 4) + ' more' }) : null),
+    h('div', { class: 'stack' }, h('a', { class: 'btn small', href: '#/open', onclick: () => el.remove() }, 'See them'), h('button', { class: 'btn small', type: 'button', onclick: () => el.remove() }, 'Close')));
+  toasts().append(el);
+  setTimeout(() => el.remove(), 30000);
+  return el;
 }

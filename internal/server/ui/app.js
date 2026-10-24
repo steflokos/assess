@@ -4,7 +4,7 @@
 
 import { $, h, put, clear, plural, toast, toasts, api, tokenValue, paintTheme, nextTheme, currentTheme, remember, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
-import { S, load, nameOf, kindTitle, workflow } from './data.js';
+import { S, load, nameOf, kindTitle, workflow, newOpen } from './data.js';
 import { editor } from './editor.js';
 import { overview, list, decisions, openItems, calc, explain, reportView, diagramView, iterations, files, welcome } from './views.js';
 import { openPalette } from './palette.js';
@@ -22,10 +22,13 @@ const ui = {
   dirty: () => state.dirty,
   render: () => render(),
   // refresh reads the project again. A page with changes that are not saved is not drawn again, because that would throw them away.
-  // The menu and the top bar still show the new numbers.
+  // The menu and the top bar still show the new numbers. It gives back the open items that were not open before, for the page that
+  // saved something to tell the person about.
   refresh: async () => {
+    const before = S.exp && S.exp.results ? S.open : null;
     await load();
     if (state.dirty) { drawNav(S.noProject ? ['none'] : path()); drawTop(); } else render();
+    return newOpen(before, S.exp && S.exp.results ? S.open : null);
   },
   setDirty(v) {
     state.dirty = v;

@@ -4,9 +4,9 @@
 // value that it holds, undefined when it is empty, or INVALID when what is typed cannot be used. A widget that the person has not
 // touched returns what the record had, so that opening a record never looks like a change.
 
-import { h, put, clear, uid, lines, same, firstSentence, upper } from './lib.js';
+import { h, put, clear, uid, lines, same, firstSentence, upper, ask } from './lib.js';
 import { icon } from './icons.js';
-import { S, candidates, kindOfId, nameOf, kindName, resolveAttr } from './data.js';
+import { S, drafts, candidates, kindOfId, nameOf, kindName, resolveAttr, freeId } from './data.js';
 
 export const INVALID = { invalid: true };
 
@@ -79,8 +79,9 @@ function listBox(value, onChange) {
 
 // ---- chips: ids with type-ahead -------------------------------------------------------------------------------------------
 // chipPicker holds one id or a list of ids. A chip shows the name of the record, and its id as a tooltip. A click on it opens the
-// record. Typing finds records by name or id.
-export function chipPicker({ kinds, multiple, value, onChange, placeholder, label, exclude }) {
+// record. Typing finds records by name or id. A picker with make ends its list with a row that makes the record that is missing: make
+// is { name, run }, and run(typed) gives the id of the record that it made, or nothing when the person gave up.
+export function chipPicker({ kinds, multiple, value, onChange, placeholder, label, exclude, make }) {
   let items = [].concat(value === undefined || value === null ? [] : value).filter((s) => typeof s === 'string');
   const pool = candidates(kinds).filter((c) => !exclude || !exclude.has(c.id));
   const popId = uid();
@@ -101,15 +102,28 @@ export function chipPicker({ kinds, multiple, value, onChange, placeholder, labe
   };
   const remove = (id) => { items = items.filter((x) => x !== id); paint(); onChange(); };
   const close = () => { pop.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); };
+  // create asks make to make the record that is missing, from what was typed, and then takes it.
+  const create = async () => {
+    const typed = input.value.trim();
+    close();
+    const id = await make.run(typed);
+    if (id) add(id); else input.focus();
+  };
+  const take = (c) => (c.make ? create() : add(c.id));
   const show = () => {
     const q = input.value.trim().toLowerCase();
-    hit = pool.filter((c) => !items.includes(c.id) && (!q || c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) || kindName(c.kind).includes(q))).slice(0, 8);
+    // the pool is read again each time: a record that was made since is in it
+    const all = candidates(kinds).filter((c) => !exclude || !exclude.has(c.id));
+    hit = all.filter((c) => !items.includes(c.id) && (!q || c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) || kindName(c.kind).includes(q))).slice(0, 8);
+    const found = hit.length;
+    if (make) hit.push({ make: true });
     at = 0;
     moved = false;
     clear(pop);
-    hit.forEach((c, i) => pop.append(h('li', { role: 'option', id: popId + '-' + i, 'aria-selected': String(i === at), class: i === at ? 'on' : '', onmousedown: (e) => { e.preventDefault(); add(c.id); } },
-      h('span', { class: 'pn', text: c.name }), h('span', { class: 'pid', text: c.id }), kinds && kinds.length > 1 ? h('span', { class: 'pk', text: kindName(c.kind) }) : null)));
-    if (!hit.length) pop.append(h('li', { class: 'none', text: pool.length ? 'No match' + (q ? ' for ' + q : '') : 'Type an id' }));
+    hit.forEach((c, i) => pop.append(h('li', { role: 'option', id: popId + '-' + i, 'aria-selected': String(i === at), class: (i === at ? 'on' : '') + (c.make ? ' make' : ''), onmousedown: (e) => { e.preventDefault(); take(c); } },
+      c.make ? [icon('plus', 14), h('span', { class: 'pn', text: q ? 'Make ' + make.name + ' “' + input.value.trim() + '”' : 'Make a new ' + make.name })]
+        : [h('span', { class: 'pn', text: c.name }), h('span', { class: 'pid', text: c.id }), kinds && kinds.length > 1 ? h('span', { class: 'pk', text: kindName(c.kind) }) : null])));
+    if (!found && !make) pop.append(h('li', { class: 'none', text: all.length ? 'No match' + (q ? ' for ' + q : '') : 'Type an id' }));
     pop.hidden = false;
     input.setAttribute('aria-expanded', 'true');
     if (hit.length) input.setAttribute('aria-activedescendant', popId + '-' + at);
@@ -129,7 +143,7 @@ export function chipPicker({ kinds, multiple, value, onChange, placeholder, labe
       e.preventDefault();
       const typed = input.value.trim();
       // the first suggestion is taken when something was typed or an arrow key chose one. An empty box adds nothing.
-      if (hit[at] && (typed || moved)) add(hit[at].id);
+      if (hit[at] && (typed || moved)) take(hit[at]);
       else if (typed && (!pool.length || kindOfId(typed, kinds))) add(typed);
     }
     else if (e.key === 'Escape') { close(); }
@@ -167,7 +181,7 @@ function ratingRow(attr, value, onChange) {
     const sel = h('select', { 'aria-label': labelOf(sub.name), onchange: () => { touched = true; paint(); onChange(); } },
       h('option', { value: '', text: 'Choose…' }), (sub.values || []).map((v) => h('option', { value: v, text: v + (v in points ? ' · ' + points[v] + ' pts' : '') })));
     sel.value = cur[sub.name] === undefined ? '' : cur[sub.name];
-    const paint = () => { sel.classList.toggle('empty', sel.value === ''); };
+    const paint = () => { sel.classList.toggle('unset', sel.value === ''); };
     paint();
     sel.title = sub.doc || '';
     return { sub, sel, node: h('div', { class: 'rate' }, h('div', { class: 'rl', text: labelOf(sub.name) }), sel) };
@@ -271,6 +285,55 @@ function compromises(attr, value, onChange) {
   };
 }
 
+// ---- records made on the way -----------------------------------------------------------------------------------------------------
+// The picker of an attack path can make the attack step that is missing. The step is not written then. It is a draft, and it becomes part
+// of the change set of the form, so that the dry run checks both, one Save writes both and one Undo takes both back. Only what the
+// calculation needs is asked: the name, and the effort and the scalability, which can wait.
+async function newStep(typed) {
+  const defs = (S.kinds.step || {}).attributes || [];
+  const attr = (name) => defs.find((a) => a.name === name);
+  const potential = attr('potential'), scalability = attr('scalability');
+  if (!attr('name')) return undefined;
+  const name = h('input', { type: 'text', id: uid(), placeholder: 'What the attacker does', autocomplete: 'off', spellcheck: 'false', autofocus: true }); // the dialog opens on it, and not on the help button before it
+  name.value = typed || '';
+  const rating = potential ? ratingRow(potential, undefined, () => {}) : null;
+  const reach = scalability ? choice({ values: scalability.values || [], label: 'Scalability', value: undefined, required: false, onChange: () => {} }) : null;
+  const err = h('div', { class: 'alert err', role: 'alert', hidden: true });
+  const body = h('div', { class: 'newrec' },
+    shell('Name', true, attr('name').doc, name, name.id),
+    rating ? shell('Attack potential', false, potential.doc, rating.node) : null,
+    reach ? shell('Scalability', false, scalability.doc, reach.node) : null,
+    h('p', { class: 'muted small', text: 'The step is written when you save the record. Rate it later if you do not know yet.' }), err);
+  for (;;) {
+    if (!(await ask({ title: 'New attack step', body, ok: 'Make the step' }))) return undefined;
+    const rated = rating ? rating.get() : undefined;
+    const problem = !name.value.trim() ? 'Give the step a name.'
+      : rated && Object.keys(rated).length < potential.attributes.length ? 'Rate all five factors of the effort, or none of them.' : '';
+    err.hidden = !problem;
+    err.textContent = problem;
+    if (problem) continue;
+    const id = freeId('step', name.value) || freeId('step', 'step');
+    const attributes = { name: name.value.trim() };
+    if (rated) attributes.potential = rated;
+    const how = reach && reach.get();
+    if (how) attributes.scalability = how;
+    drafts.set('step:' + id, { kind: 'step', id, attributes });
+    return id;
+  }
+}
+
+// makerFor gives the picker the row that makes a record, for the kinds that can be made on the way.
+const makerFor = (refs) => ((refs || []).includes('step') ? { name: 'attack step', run: newStep } : undefined);
+
+// A value mentions an id when it is that id, or holds it in a list or a block.
+const mentions = (v, id) => (typeof v === 'string' ? v === id : Array.isArray(v) ? v.some((x) => mentions(x, id))
+  : v && typeof v === 'object' ? Object.values(v).some((x) => mentions(x, id)) : false);
+
+// madeFor is the changes that make the drafts that the changed attributes of the form still name. A step that was made and then
+// taken out of the path again is not written.
+export const madeFor = (attrs) => [...drafts.values()].filter((d) => mentions(attrs, d.id))
+  .map((d) => ({ op: 'put', kind: d.kind, id: d.id, attributes: d.attributes, new: true }));
+
 // ---- the attack path: and, or and the steps and threat scenarios under them ------------------------------------------------------
 // tree is a value like "a", {or: ["a", "b"]} or {and: ["a", {or: ["b", "c"]}]}. The editor shows each group as a box that is "All of" or
 // "Any one of" what is in it. A group of one is written as the one, which means the same.
@@ -290,7 +353,7 @@ function treeEditor(attr, value, onChange) {
 
   const changed = () => { touched = true; draw(); onChange(); };
   function addLeaf(group) {
-    const picker = chipPicker({ kinds: attr.refs, multiple: false, value: undefined, placeholder: 'Add a step or a threat scenario…', label: 'Add to this group',
+    const picker = chipPicker({ kinds: attr.refs, multiple: false, value: undefined, placeholder: 'Add a step or a threat scenario…', label: 'Add to this group', make: makerFor(attr.refs),
       onChange: () => { const id = picker.get(); if (id) { group.kids.push({ leaf: id }); changed(); } } });
     return picker.node;
   }
@@ -388,9 +451,9 @@ function widget(kind, attr, value, onChange) {
           return ordered.length ? ordered : undefined;
         } };
     }
-    case 'id': return chipPicker({ kinds: attr.refs, multiple: false, value, onChange, placeholder: 'Choose…', label });
+    case 'id': return chipPicker({ kinds: attr.refs, multiple: false, value, onChange, placeholder: 'Choose…', label, make: makerFor(attr.refs) });
     case 'ids': return attr.refs && attr.refs.length
-      ? chipPicker({ kinds: attr.refs, multiple: true, value, onChange, placeholder: 'Add…', label })
+      ? chipPicker({ kinds: attr.refs, multiple: true, value, onChange, placeholder: 'Add…', label, make: makerFor(attr.refs) })
       : listBox(value, onChange);
     case 'texts': return listBox(value, onChange);
     case 'map': return mapEditor(value, onChange);
@@ -451,6 +514,7 @@ export function field(kind, attr0, value, onChange, opt) {
 // sentence of their help.
 let outside = null; // the click that closes the menu of the form that is on the page
 export function recordForm(kind, original, onChange) {
+  drafts.clear(); // what an earlier form made on the way is not this form's
   const info = S.kinds[kind];
   const defs = (info.attributes || []).filter((a) => !readOnly(kind, a));
   // notes come last
@@ -508,7 +572,7 @@ export function recordForm(kind, original, onChange) {
     }
     return { attrs: out, invalid };
   };
-  return { node: h('div', {}, list, menuBox), changes, focusFirst: () => { const f = fields.find((x) => x.shown && x.f); if (f) f.f.focus(); } };
+  return { node: h('div', {}, list, menuBox), changes, made: madeFor, focusFirst: () => { const f = fields.find((x) => x.shown && x.f); if (f) f.f.focus(); } };
 }
 
 export { readOnly, hasValue };

@@ -3,7 +3,7 @@
 // (names, what a record uses and what uses it, the search index and the path of the work). All of it comes from export and describe.
 // Nothing is calculated here that assess calculates.
 
-import { api, upper, plural } from './lib.js';
+import { api, upper, plural, slug } from './lib.js';
 
 export const S = {
   desc: null, kinds: {}, apiVersion: 'assess/v1beta1',
@@ -49,7 +49,23 @@ export async function load() {
 }
 
 export const rec = (kind, id) => S.byKey.get(kind + ':' + id);
-export const nameOf = (kind, id) => { const r = rec(kind, id); return (r && r.attributes && r.attributes.name) || id; };
+
+// drafts are the records that a form made on the way and that are not written yet, such as an attack step made from the picker of an
+// attack path. They are known to the pickers and the chips of that form, and to nothing else.
+export const drafts = new Map();
+export const nameOf = (kind, id) => {
+  const r = rec(kind, id) || drafts.get(kind + ':' + id);
+  return (r && r.attributes && r.attributes.name) || id;
+};
+
+// freeId makes an id for a new record from its name, with a number after it when the id is taken. It is empty when the name has no
+// letter or digit to make an id of.
+export function freeId(kind, name) {
+  const base = slug(name);
+  let id = base, n = 2;
+  while (base && (S.byKey.has(kind + ':' + id) || drafts.has(kind + ':' + id))) id = base + '-' + n++;
+  return id;
+}
 export const kindName = (k) => (S.kinds[k] ? S.kinds[k].name : k);
 export const kindsName = (k) => { const n = kindName(k); return /s$/.test(n) ? n : n + 's'; };
 export const kindTitle = (k) => upper(kindsName(k));
@@ -58,10 +74,11 @@ export const kindTitle = (k) => upper(kindsName(k));
 export function candidates(kinds) {
   const out = [];
   for (const k of kinds || []) for (const r of S.of[k] || []) out.push({ kind: k, id: r.id, name: nameOf(k, r.id) });
+  for (const d of drafts.values()) if ((kinds || []).includes(d.kind)) out.push({ kind: d.kind, id: d.id, name: nameOf(d.kind, d.id), draft: true });
   return out.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 // kindOfId finds the record that an id names, among the kinds that the attribute may point at.
-export const kindOfId = (id, kinds) => (kinds || []).find((k) => S.byKey.has(k + ':' + id));
+export const kindOfId = (id, kinds) => (kinds || []).find((k) => S.byKey.has(k + ':' + id) || drafts.has(k + ':' + id));
 
 // recordAt finds the record that a place in a file belongs to: the last one that starts at or before the line.
 export function recordAt(file, line) {
@@ -145,6 +162,16 @@ function relate() {
 // one to do next. A step has an action: a page to go to, or one of the commands that write records for you.
 const count = (k) => (S.of[k] || []).length;
 const openCount = (...codes) => S.open.filter((o) => codes.includes(o.code)).length;
+
+// newOpen is what is open after a change and was not open before it. An item is the same item when it is about the same record and
+// has the same code, and for a rule when it is the same rule: its text may say other numbers by then. The lists are compared only
+// when both were worked out. A project with errors has no list, and then everything would look new.
+const openKey = (o) => [o.code, o.kind || '', o.id || '', o.rule || '', o.ref || '', o.where || ''].join('\u0000');
+export function newOpen(before, after) {
+  if (!before || !after) return [];
+  const had = new Set(before.map(openKey));
+  return after.filter((o) => !had.has(openKey(o)));
+}
 
 export function workflow() {
   const results = !!(S.exp && S.exp.results);

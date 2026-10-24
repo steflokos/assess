@@ -5,9 +5,9 @@
 
 import { h, put, clear, plural, debounce, ask, toast, api, chip, upper, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
-import { S, rec, nameOf, kindName, kindTitle } from './data.js';
+import { S, rec, nameOf, kindName, kindTitle, freeId } from './data.js';
 import { recordForm, chipPicker, readOnly, inSchemaOrder, shell } from './form.js';
-import { hrefOf, diagnostics, diff, effects, conflicts, crumbs, notFound } from './parts.js';
+import { hrefOf, diagnostics, diff, effects, conflicts, crumbs, notFound, opened } from './parts.js';
 
 const changeSet = (changes) => ({ apiVersion: S.apiVersion, changes });
 
@@ -24,7 +24,6 @@ export function editor(kind, id, isNew, ui) {
   // ---- the id and the parent of a new record
   let idCtl = null, parentCtl = null, byHand = false;
   const top = [];
-  const slug = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '');
   if (isNew) {
     const taken = new Set((S.of[kind] || []).map((r) => r.id));
     if (info.idOf && info.idOf.length) {
@@ -35,10 +34,7 @@ export function editor(kind, id, isNew, ui) {
       const input = h('input', { type: 'text', class: 'mono', placeholder: 'Made from the name', spellcheck: 'false', 'aria-label': 'Id', oninput: () => { byHand = true; changed(); } });
       idCtl = { node: input, get: () => input.value.trim() || undefined, focus: () => input.focus(), fill: (name) => {
         if (byHand) return;
-        const base = slug(name);
-        let id = base, n = 2;
-        while (base && taken.has(id)) id = base + '-' + n++;
-        input.value = id;
+        input.value = freeId(kind, name);
       } };
     }
     top.push(shell('Id', true, info.idOf && info.idOf.length
@@ -60,6 +56,8 @@ export function editor(kind, id, isNew, ui) {
   const build = () => {
     const { attrs, invalid } = form.changes();
     if (invalid) return { error: 'One of the fields holds text that is not valid JSON.' };
+    // the records that a picker made on the way, such as an attack step, are written with the record
+    const made = form.made(attrs);
     const n = Object.keys(attrs).length;
     if (isNew) {
       const newId = idCtl.get();
@@ -67,11 +65,11 @@ export function editor(kind, id, isNew, ui) {
       const change = { op: 'put', kind, id: newId, attributes: attrs, new: true };
       const parent = parentCtl && parentCtl.get();
       if (parent) change.parent = parent;
-      return { set: changeSet([change]), id: newId, n };
+      return { set: changeSet([...made, change]), id: newId, n: n + made.length, made };
     }
     if (!n) return { none: true };
     const was = Object.fromEntries(Object.keys(attrs).map((k) => [k, baseline[k] === undefined ? null : baseline[k]]));
-    return { set: changeSet([{ op: 'put', kind, id, attributes: attrs, was }]), id, n, attrs };
+    return { set: changeSet([...made, { op: 'put', kind, id, attributes: attrs, was }]), id, n: n + made.length, attrs, made };
   };
 
   const check = async () => {
@@ -136,18 +134,22 @@ export function editor(kind, id, isNew, ui) {
       return;
     }
     ui.setDirty(false);
-    await ui.refresh();
+    const news = await ui.refresh();
     // Undo puts the old values back, or removes what was created.
     // Undo expects to find what was just written, so that it does not undo over a change that someone made since.
-    const back = isNew ? [{ op: 'delete', kind, id: b.id }]
+    // The records that were made on the way go too, after the change that no longer names them.
+    const gone = b.made.map((m) => ({ op: 'delete', kind: m.kind, id: m.id }));
+    const back = (isNew ? [{ op: 'delete', kind, id: b.id }]
       : [{ op: 'put', kind, id, attributes: Object.fromEntries(Object.keys(b.attrs).map((k) => [k, baseline[k] === undefined ? null : inSchemaOrder(kind, info.attributes.find((a) => a.name === k) || { name: k }, baseline[k])])),
-        was: Object.fromEntries(Object.keys(b.attrs).map((k) => [k, b.attrs[k]])) }];
-    toast((isNew ? 'Created ' : 'Saved ') + (nameOf(kind, b.id) || b.id) + '.', 'ok', { label: 'Undo', run: async () => {
+        was: Object.fromEntries(Object.keys(b.attrs).map((k) => [k, b.attrs[k]])) }]).concat(gone);
+    const also = b.made.length ? ' with ' + plural(b.made.length, 'new ' + kindName(b.made[0].kind)) : '';
+    toast((isNew ? 'Created ' : 'Saved ') + (nameOf(kind, b.id) || b.id) + also + '.', 'ok', { label: 'Undo', run: async () => {
       const undone = await api('/api/apply', { method: 'POST', body: changeSet(back) });
       await ui.refresh();
       if (undone.ok) toast('Undone.'); else toast(((undone.result || {}).conflicts || []).length ? 'Someone changed it since. It was not undone.' : 'That could not be undone.', 'err');
       if (isNew && undone.ok) ui.go('kind', kind);
     } });
+    opened(news);
     if (isNew) ui.go('kind', kind, b.id); else ui.render();
   }
   save.addEventListener('click', doSave);
@@ -263,7 +265,8 @@ async function deleteRecord(kind, id, ui) {
   const done = await api('/api/apply', { method: 'POST', body: set(cascade) });
   if (!done.ok) { await ask({ title: 'The delete was not written', body: problem(done), noCancel: true }); return; }
   ui.setDirty(false);
-  await ui.refresh();
+  const news = await ui.refresh();
   toast('Deleted ' + kindName(kind) + ' ' + id + '.');
+  opened(news);
   ui.go('kind', kind);
 }

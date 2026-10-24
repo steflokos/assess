@@ -6,7 +6,7 @@ import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, shor
 import { icon, KIND_ICON } from './icons.js';
 import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow } from './data.js';
 import { choice } from './form.js';
-import { hrefOf, diagnostics, diagnostic, said, diff, effects, conflicts, crumbs, empty, notFound } from './parts.js';
+import { hrefOf, diagnostics, diagnostic, said, diff, effects, conflicts, crumbs, empty, notFound, opened, OPEN_TITLES, noAdvice } from './parts.js';
 import { signIteration } from './sign.js';
 
 // ---- doing what a step of the path asks ---------------------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ export async function act(action, ui) {
     await ui.refresh();
     // what the command said, without the advice that is about the command line
     const raw = (env.text || '').trim();
-    let said = raw.replace(/\s*Run assess [^.\n]*\.?/g, '').replace(/ with assess [a-z -]+$/gm, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+    let said = noAdvice(raw).split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
     const nothing = /^nothing/i.test(raw) || (env.result || {}).wrote === false; // the command wrote nothing: that is a warning, and not a success
     if (action.generate === 'assets' && /already exists/.test(raw)) said = 'The assets are written already, so nothing was changed.';
     toast(said || (env.ok ? 'Done.' : (env.diagnostics[0] || {}).message || 'It did not work.'), !env.ok ? 'err' : nothing ? 'warn' : 'ok');
@@ -296,12 +296,13 @@ export function decisions(ui) {
     const back = list.map((c) => ({ op: 'put', kind: 'risk', id: c.id, attributes: c.was, was: c.attributes }));
     pending.clear();
     ui.setDirty(false);
-    await ui.refresh();
+    const news = await ui.refresh();
     toast('Saved ' + plural(list.length, 'decision') + '.', 'ok', { label: 'Undo', run: async () => {
       const undone = await api('/api/apply', { method: 'POST', body: { apiVersion: S.apiVersion, changes: back } });
       await ui.refresh();
       toast(undone.ok ? 'Undone.' : ((undone.result || {}).conflicts || []).length ? 'Someone changed it since. It was not undone.' : 'That could not be undone.', undone.ok ? 'ok' : 'err');
     } });
+    opened(news);
   });
   // Ctrl S saves the decisions, for as long as this page is on the screen.
   const keySave = () => save.click();
@@ -315,11 +316,6 @@ export function decisions(ui) {
 }
 
 // ---- what is open --------------------------------------------------------------------------------------------------------------------------
-const OPEN_TITLES = {
-  'no-item': 'No item yet', 'policy-gap': 'The policy lacks values', 'not-calculated': 'Cannot be calculated', 'risk-not-calculated': 'Risk cannot be calculated',
-  'damage-uncaused': 'No threat scenario causes it', 'no-risks': 'No risks yet', 'risk-missing': 'Risk missing', 'risk-stale': 'Risk out of date',
-  'no-treatment': 'Needs a decision', 'rule-finding': 'Found by a rule', 'rule-not-checked': 'A rule could not be checked',
-};
 
 export function openItems(ui) {
   const items = S.open;
@@ -531,13 +527,14 @@ function fileEditor(name, ui) {
     if (clash(env)) return;
     if (!env.ok) { clear(status); put(status, errors((env.diagnostics || []).slice(0, 20))); return; }
     ui.setDirty(false);
-    await ui.refresh();
+    const news = await ui.refresh();
     // After "Keep my change" the text that was read is not the text that was on disk, and putting it back would remove the other change.
     toast('Saved ' + name + '.', 'ok', kept ? undefined : { label: 'Undo', run: async () => {
       const undone = await api('/api/apply', { method: 'POST', body: { apiVersion: S.apiVersion, changes: [{ op: 'write', file: name, text: original, was: S.exp.texts[name].hash }] } });
       await ui.refresh();
       toast(undone.ok ? 'Undone.' : 'That could not be undone.', undone.ok ? 'ok' : 'err');
     } });
+    opened(news);
   }
   save.addEventListener('click', doSave);
   window.addEventListener('assess:save', doSave);

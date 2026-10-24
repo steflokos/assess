@@ -2,7 +2,7 @@
 import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId } from '../data.js';
+import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen } from '../data.js';
 import { pagesFor } from '../palette.js';
 
 await load();
@@ -69,4 +69,37 @@ test('a project reads the same twice, and a change is seen', async () => {
   await load();
   assert.equal(S.changed, false, 'the same answer is no change');
   assert.equal(S.view, 'v', 'the token of the report is kept');
+});
+
+test('an id is made from a name, with a number when it is taken, and nothing when the name has no letters', () => {
+  assert.equal(freeId('step', 'Replace the package — in transit!'), 'replace-the-package-in-transit');
+  assert.equal(freeId('step', 'Modify package in transit'), 'modify-package-in-transit-2', 'that step exists');
+  assert.equal(freeId('step', '???'), '');
+  drafts.set('step:fresh-step', { kind: 'step', id: 'fresh-step', attributes: { name: 'Fresh step' } });
+  try {
+    assert.equal(freeId('step', 'Fresh step'), 'fresh-step-2', 'a draft holds its id too');
+  } finally { drafts.clear(); }
+});
+
+test('a record that a form made on the way is known to its pickers and its chips, and to nothing else', () => {
+  drafts.set('step:fresh-step', { kind: 'step', id: 'fresh-step', attributes: { name: 'Fresh step' } });
+  try {
+    assert.ok(candidates(['step', 'threat']).some((c) => c.id === 'fresh-step' && c.draft));
+    assert.equal(kindOfId('fresh-step', ['threat', 'step']), 'step');
+    assert.equal(nameOf('step', 'fresh-step'), 'Fresh step');
+    assert.ok(!(S.of.step || []).some((r) => r.id === 'fresh-step'), 'the lists show what is written');
+  } finally { drafts.clear(); }
+  assert.ok(!candidates(['step']).some((c) => c.id === 'fresh-step'));
+  assert.equal(kindOfId('fresh-step', ['step']), undefined);
+});
+
+test('the open items that a change made are the ones that were not open before', () => {
+  const item = (code, id, extra) => Object.assign({ code, kind: 'risk', id, text: 'x', where: 'Risks' }, extra);
+  const before = [item('no-treatment', 'a'), item('rule-finding', 'b', { rule: 'r1' })];
+  const after = [item('no-treatment', 'a', { text: 'other words' }), item('rule-finding', 'b', { rule: 'r1' }), item('rule-finding', 'b', { rule: 'r2' }), item('no-treatment', 'c')];
+  assert.deepEqual(newOpen(before, after).map((o) => o.code + ':' + o.id + ':' + (o.rule || '')), ['rule-finding:b:r2', 'no-treatment:c:'],
+    'the same record and code is the same item, whatever the text says. Another rule on the same record is another item');
+  assert.deepEqual(newOpen(before, before), []);
+  assert.deepEqual(newOpen(null, after), [], 'a project that had errors has no list to compare with');
+  assert.deepEqual(newOpen(before, null), []);
 });

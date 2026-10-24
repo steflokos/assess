@@ -139,6 +139,11 @@ dl.facts dd { margin: 0; overflow-wrap: anywhere; }
 .toasts { position: fixed; right: var(--s4); bottom: var(--s4); z-index: 40; width: min(28rem, calc(100vw - 2 * var(--s4))); display: grid; gap: var(--s2); pointer-events: none; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: var(--s3); box-shadow: 0 8px 28px rgb(0 0 0 / .22); margin: 0; }
 .toast span { flex: 1; white-space: pre-line; }
+.toast.opened { align-items: flex-start; }
+.toast.opened ul { margin: 6px 0 0; padding-left: 1.1rem; max-height: 12rem; overflow-y: auto; }
+.toast.opened li + li { margin-top: 6px; }
+.toast.opened .detail { color: var(--muted); overflow-wrap: anywhere; }
+.toast .stack { display: grid; gap: var(--s2); }
 
 /* ---- an empty page, and one that is loading ---------------------------------------------------- */
 .empty { text-align: center; padding: var(--s6) var(--s4); color: var(--muted); display: grid; justify-items: center; gap: var(--s2); }
@@ -259,6 +264,9 @@ details.lines summary { cursor: pointer; color: var(--muted); font-size: .85rem;
 .pop li { display: flex; align-items: baseline; gap: var(--s2); padding: 6px var(--s3); border-radius: 6px; cursor: pointer; }
 .pop li.on { background: var(--accent-soft); color: var(--accent-ink); }
 .pop li.none { color: var(--muted); cursor: default; }
+.pop li.make { align-items: center; margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; padding-top: 9px; color: var(--accent-ink); font-weight: 500; }
+.pop li.make svg { flex: none; }
+.pop li.make:first-child { margin-top: 0; border-top: 0; padding-top: 6px; border-radius: 6px; }
 .pn { font-weight: 550; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pid, .pk { color: var(--faint); font-size: .78rem; font-family: var(--mono); }
 .pk { font-family: var(--sans); }
@@ -270,9 +278,10 @@ details.lines summary { cursor: pointer; color: var(--muted); font-size: .85rem;
 .menu-i .muted { font-size: .82rem; }
 
 .rating { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.6rem, 1fr)); gap: var(--s3); }
+.rate { display: flex; flex-direction: column; justify-content: flex-end; }
 .rl { font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
 .rhint { font-size: .74rem; color: var(--faint); margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.rate select.empty { color: var(--faint); }
+.rate select.unset { color: var(--faint); }
 
 .impact { display: grid; gap: var(--s3); }
 .stk { border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s3); background: var(--raised); }
@@ -311,6 +320,7 @@ pre.plain { background: var(--sunken); border: 1px solid var(--line); border-rad
 dialog { border: 1px solid var(--line-2); border-radius: var(--r3); background: var(--surface); color: var(--fg); padding: var(--s5); max-width: min(46rem, 92vw); width: 100%; box-shadow: 0 16px 50px rgb(0 0 0 / .32); }
 dialog::backdrop { background: rgb(8 12 24 / .5); }
 dialog h2 { margin-bottom: var(--s3); }
+dialog .newrec .field:last-of-type { margin-bottom: 0; }
 dialog .actions { display: flex; gap: var(--s2); justify-content: flex-end; margin-top: var(--s4); }
 dialog ul { margin: 0 0 var(--s3); padding-left: 1.2rem; max-height: 14rem; overflow-y: auto; }
 dialog.palette { padding: 0; max-width: min(40rem, 92vw); margin-top: 12vh; overflow: hidden; }
