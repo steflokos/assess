@@ -46,6 +46,9 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   README says how to close iterations with branches.
 - An asset property can have more than one threat scenario: the others are written `<asset>-<stride>.<name>`, each with its own risk
   and treatment. Every id that ends with the STRIDE word reads as before. `generate threats` counts any of them as covering the property.
+- A project can have stakeholders of its own: `impact.parties` in the policy names them, such as `fleet: Fleet operator`, a damage
+  scenario rates them under `impact` next to `roaduser`, and `impact.stakeholders` can count them. The report, the worksheets, the rules,
+  the editor schema and the web interface show them.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

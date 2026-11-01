@@ -41,7 +41,14 @@ func (b *builder) method() Section {
 		facts = append(facts, Fact{"Impact and scalability", open("the policy does not set them completely")})
 	}
 	if len(pol.Impact.Stakeholders) > 0 {
-		facts = append(facts, Fact{"Stakeholders counted", txt(strings.Join(strs(pol.Impact.Stakeholders), ", "))})
+		names := make([]string, len(pol.Impact.Stakeholders))
+		for i, s := range pol.Impact.Stakeholders {
+			names[i] = string(s)
+			if name := pol.Impact.Parties[string(s)]; name != "" {
+				names[i] += " (" + name + ")"
+			}
+		}
+		facts = append(facts, Fact{"Stakeholders counted", txt(strings.Join(names, ", "))})
 	}
 	if len(b.rep.Excluded) > 0 {
 		facts = append(facts, Fact{"Controls left out of the residual value", links(aControl, b.rep.Excluded)})

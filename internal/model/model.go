@@ -192,6 +192,23 @@ type ImpactSet struct {
 	RoadUser *StakeholderImpact `yaml:"roaduser" req:"always" doc:"Impact on the road user. Required."`
 	OEM      *StakeholderImpact `yaml:"oem,omitempty" doc:"Impact on the vehicle manufacturer."`
 	Supplier *StakeholderImpact `yaml:"supplier,omitempty" doc:"Impact on suppliers and other third parties: tier-1, tier-2 and further manufacturers."`
+	// Parties are the stakeholders of the project's own, which the policy names in impact.parties, written next to the
+	// others under their own word, such as fleet.
+	Parties map[string]*StakeholderImpact `yaml:",inline"`
+}
+
+// Of returns the impact on a stakeholder: one of the three that every project has, or one of the policy's parties. It is
+// nil when the damage scenario does not rate it.
+func (s ImpactSet) Of(who string) *StakeholderImpact {
+	switch who {
+	case "roaduser":
+		return s.RoadUser
+	case "oem":
+		return s.OEM
+	case "supplier":
+		return s.Supplier
+	}
+	return s.Parties[who]
 }
 
 // StakeholderImpact rates the four ISO/SAE 21434 impact categories.

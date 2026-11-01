@@ -154,9 +154,13 @@ impact:
   # adds their points and looks the total up in levels. Every stakeholder that counts, counts the
   # same.
   between: max | sum
-  # optional. Whose impact counts for the risk. A stakeholder a damage scenario does not rate is
-  # skipped.
+  # optional. Whose impact counts for the risk: roaduser, oem, supplier or one of parties. A
+  # stakeholder a damage scenario does not rate is skipped.
   stakeholders: [roaduser | oem | supplier]
+  # optional. Stakeholders of your own, besides roaduser, oem and supplier, each a word of small
+  # letters with a name, such as fleet: Fleet operator. A damage scenario rates them under impact
+  # like the road user, and stakeholders can count them.
+  parties: {key: value}
   # optional. Points of each impact level, for a stage that is sum. Write every level.
   points: {Severe: <number>, Major: <number>, Moderate: <number>, Negligible: <number>}
   # optional. Turns total points back into an impact level, for a stage that is sum. The first band

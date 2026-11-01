@@ -1450,7 +1450,9 @@
       "type": "object"
     },
     "impactSet": {
-      "additionalProperties": false,
+      "additionalProperties": {
+        "$ref": "#/definitions/stakeholderImpact"
+      },
       "description": "Impact rating per stakeholder. The road user is required.",
       "properties": {
         "oem": {

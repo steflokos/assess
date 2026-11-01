@@ -212,7 +212,8 @@ Here is what else each kind has. `schema.yaml` lists every attribute with its al
   that matter for it: Confidentiality, Integrity, Availability, Authenticity or Non Repudiation. You need at
   least one.
 - **damage.** `compromises` lists assets and the properties of each that are lost. `impact` rates the damage for
-  each stakeholder: `roaduser` (required), `oem` and `supplier`. A stakeholder has four ratings: `safety`,
+  each stakeholder: `roaduser` (required), `oem`, `supplier`, and the stakeholders of your own that the policy names
+  in `impact.parties`. A stakeholder has four ratings: `safety`,
   `financial`, `operational` and `privacy`. A rating has a `level` (Severe, Major, Moderate or Negligible) and
   an optional `rationale`.
 - **threat.** Its id is `<asset>-<stride>`, or `<asset>-<stride>.<name>` for another threat scenario to the same property.
@@ -354,6 +355,11 @@ scalability it can differ, because the easiest path may reach only one vehicle w
 many. If assess looked only at the easiest path, the risk could fall when an attacker gets a new way in or when
 a control is taken away. The highest value over all paths avoids that. The worksheet from `assess explain`
 says which path decides each value.
+
+The stakeholders are the road user, the OEM and the supplier, and any of your own. Name yours in the policy with a word and
+a name, such as `parties: {fleet: Fleet operator, workshop: Independent workshop}` under `impact`. A damage scenario then rates
+`fleet:` under `impact` like the road user, and `impact.stakeholders` can count it for the risk. A word under `impact` that
+the policy does not name is an error, so a typo does not become a stakeholder.
 
 You choose how the impact of a damage scenario is worked out. It happens in two stages. `impact.across`
 combines the four categories of one stakeholder. `impact.between` combines the stakeholders. With `max`, the

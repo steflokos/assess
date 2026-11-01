@@ -83,6 +83,10 @@ type Attr struct {
 	Table      *TableInfo `json:"table,omitempty"`      // the shape of a table
 	Attributes []Attr     `json:"attributes,omitempty"` // the attributes of a block
 	SameAs     string     `json:"sameAs,omitempty"`     // a block that is written like another one, by its path
+	// Extra says that a block takes more keys besides its attributes, and what they are: for an impact, the stakeholders that
+	// the policy names in impact.parties, each written like ExtraLike.
+	Extra     string `json:"extra,omitempty"`
+	ExtraLike string `json:"extraLike,omitempty"`
 }
 
 // TableInfo is a table keyed by an enum: every key has to be written.
@@ -205,6 +209,9 @@ func describeAttr(f model.Field, seen map[reflect.Type]string, path string) Attr
 		}
 		seen[t] = path
 		a.Type, a.Attributes = "block", describeAttrs(t, seen, path)
+		if t == impactSetType {
+			a.Extra, a.ExtraLike = "the stakeholders that the policy names in impact.parties", path+".roaduser"
+		}
 	case t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Struct:
 		a.Type, a.Attributes = "blocks", describeAttrs(t.Elem(), seen, path)
 	case t == refsType:
@@ -253,3 +260,5 @@ func ruleFields(t reflect.Type) []RuleField {
 	}
 	return out
 }
+
+var impactSetType = reflect.TypeOf(model.ImpactSet{})

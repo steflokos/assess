@@ -295,6 +295,24 @@
           ],
           "description": "Turns total points back into an impact level, for a stage that is sum. The first band that matches from the top wins. Each band except the last gives the highest total it covers. The last band has none."
         },
+        "parties": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Stakeholders of your own, besides roaduser, oem and supplier, each a word of small letters with a name, such as fleet: Fleet operator. A damage scenario rates them under impact like the road user, and stakeholders can count them."
+        },
         "points": {
           "anyOf": [
             {
@@ -339,7 +357,7 @@
               "type": "null"
             }
           ],
-          "description": "Whose impact counts for the risk. A stakeholder a damage scenario does not rate is skipped."
+          "description": "Whose impact counts for the risk: roaduser, oem, supplier or one of parties. A stakeholder a damage scenario does not rate is skipped."
         }
       },
       "type": "object"

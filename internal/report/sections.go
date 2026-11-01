@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/steflokos/assess/internal/attack"
@@ -440,11 +441,25 @@ func (b *builder) damages() Section {
 		sum.Rows = append(sum.Rows, Row{ID: aDamage + d.ID, Cells: []Cell{txt(d.ID), txt(d.Name), prose(d.Description), comp, impact, caused, decides}})
 
 		rt := &Table{Caption: d.ID + ": " + d.Name, Head: []string{"Stakeholder", "Safety", "Financial", "Operational", "Privacy", "Counted for the risk"}}
-		for _, who := range []struct {
+		type party struct {
 			name string
 			key  string
 			si   *model.StakeholderImpact
-		}{{"Road user", "roaduser", d.Impact.RoadUser}, {"OEM", "oem", d.Impact.OEM}, {"Supplier", "supplier", d.Impact.Supplier}} {
+		}
+		whos := []party{{"Road user", "roaduser", d.Impact.RoadUser}, {"OEM", "oem", d.Impact.OEM}, {"Supplier", "supplier", d.Impact.Supplier}}
+		var own []string
+		for key := range d.Impact.Parties {
+			own = append(own, key)
+		}
+		sort.Strings(own)
+		for _, key := range own {
+			name := b.ws.Policy.Impact.Parties[key]
+			if name == "" {
+				name = key
+			}
+			whos = append(whos, party{name, key, d.Impact.Parties[key]})
+		}
+		for _, who := range whos {
 			if who.si == nil {
 				continue
 			}

@@ -6,6 +6,7 @@ package load
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -382,10 +383,17 @@ func (l *loader) checkAttrs(n *yaml.Node, t reflect.Type, childWords []string) b
 		for _, f := range fields {
 			byName[f.Name] = f
 		}
+		extra, takesExtra := model.Extra(t)
 		ok := true
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			key, val := n.Content[i], n.Content[i+1]
 			f, known := byName[key.Value]
+			if !known && takesExtra && l.party(key.Value) {
+				if !l.checkAttrs(val, extra, nil) {
+					ok = false
+				}
+				continue
+			}
 			if !known {
 				l.unknownAttribute(key, t, fields, childWords)
 				ok = false
@@ -410,10 +418,25 @@ func (l *loader) checkAttrs(n *yaml.Node, t reflect.Type, childWords []string) b
 	return true
 }
 
+// party says whether a word is a stakeholder of the project's own, which the policy names in impact.parties.
+func (l *loader) party(word string) bool {
+	if l.ws == nil {
+		return false
+	}
+	_, ok := l.ws.Policy.Impact.Parties[word]
+	return ok
+}
+
 func (l *loader) unknownAttribute(key *yaml.Node, t reflect.Type, fields []model.Field, childWords []string) {
 	names := make([]string, len(fields))
 	for i, f := range fields {
 		names[i] = f.Name
+	}
+	if _, takesExtra := model.Extra(t); takesExtra && l.ws != nil {
+		for w := range l.ws.Policy.Impact.Parties {
+			names = append(names, w)
+		}
+		sort.Strings(names[len(fields):])
 	}
 	text := fmt.Sprintf("%s is not allowed in %s", key.Value, withArticle(noun(t)))
 	if near, ok := closest(key.Value, append(append([]string{}, names...), childWords...)); ok {

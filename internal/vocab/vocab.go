@@ -19,6 +19,7 @@ package vocab
 import (
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/steflokos/assess/internal/engine"
@@ -542,6 +543,25 @@ func ratings(x model.DamageScenario) []Rating {
 		name string
 		si   *model.StakeholderImpact
 	}{{"roaduser", x.Impact.RoadUser}, {"oem", x.Impact.OEM}, {"supplier", x.Impact.Supplier}} {
+		if who.si == nil {
+			continue
+		}
+		for _, c := range who.si.Categories() {
+			if c.Rating != nil {
+				out = append(out, Rating{Who: who.name, Category: c.Name, Level: string(c.Rating.Level), Rationale: c.Rating.Rationale})
+			}
+		}
+	}
+	parties := make([]string, 0, len(x.Impact.Parties))
+	for p := range x.Impact.Parties {
+		parties = append(parties, p)
+	}
+	sort.Strings(parties)
+	for _, p := range parties {
+		who := struct {
+			name string
+			si   *model.StakeholderImpact
+		}{p, x.Impact.Parties[p]}
 		if who.si == nil {
 			continue
 		}

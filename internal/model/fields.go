@@ -68,6 +68,9 @@ func Fields(t reflect.Type) []Field {
 		}
 		name, opts, _ := strings.Cut(tag, ",")
 		if strings.Contains(opts, "inline") {
+			if f.Type.Kind() == reflect.Map {
+				continue // more keys of one type, such as the parties of an impact: see Extra
+			}
 			out = append(out, Fields(f.Type)...)
 			continue
 		}
@@ -106,4 +109,16 @@ func Types() map[string]reflect.Type {
 		out[k] = v
 	}
 	return out
+}
+
+// Extra returns the type of the value that a struct takes under keys of its own besides its attributes, such as the impact on
+// a stakeholder that the policy names, and true. It reports false for a struct that takes only its attributes.
+func Extra(t reflect.Type) (reflect.Type, bool) {
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if _, opts, _ := strings.Cut(f.Tag.Get("yaml"), ","); strings.Contains(opts, "inline") && f.Type.Kind() == reflect.Map {
+			return f.Type.Elem(), true
+		}
+	}
+	return nil, false
 }

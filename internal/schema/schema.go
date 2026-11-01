@@ -303,6 +303,10 @@ func (g *generator) structRef(t reflect.Type) map[string]any {
 		"additionalProperties": false,
 		"properties":           props,
 	}
+	if extra, ok := model.Extra(t); ok {
+		// the parties of the policy: the editor cannot know their words, and assess validate checks them
+		def["additionalProperties"] = g.schemaFor(extra)
+	}
 	doc, ok := typeDocs[t.Name()]
 	if !ok {
 		g.fail(fmt.Errorf("schema: no type description for %s (add it to typeDocs)", t.Name()))

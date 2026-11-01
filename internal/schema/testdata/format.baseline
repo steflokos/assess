@@ -83,6 +83,7 @@ attribute ImpactBand.upto *int req= min=0 ref=
 attribute ImpactPolicy.across iso21434.Aggregate req= min=0 ref=
 attribute ImpactPolicy.between iso21434.Aggregate req= min=0 ref=
 attribute ImpactPolicy.levels []model.ImpactBand req= min=0 ref=
+attribute ImpactPolicy.parties map[string]string req= min=0 ref=
 attribute ImpactPolicy.points map[iso21434.ImpactLevel]*int req= min=0 ref=
 attribute ImpactPolicy.stakeholders []iso21434.Stakeholder req= min=0 ref=
 attribute ImpactSet.oem *model.StakeholderImpact req= min=0 ref=
