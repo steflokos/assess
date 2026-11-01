@@ -1107,3 +1107,26 @@ func TestADryRunSaysWhatTheChangeMoves(t *testing.T) {
 		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }
+
+// ids.json follows the records, so a new project leaves it out of git, and a command writes it again when it is missing from a
+// project with editor support, as after a clone.
+func TestIDsAreWrittenAgainWhenTheFileIsMissing(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "p")
+	mustRun(t, "init", dir)
+	if gi := testproject.Read(t, dir, ".gitignore"); !strings.Contains(gi, ".assess/ids.json") {
+		t.Errorf(".gitignore does not leave out the ids:\n%s", gi)
+	}
+	if err := os.Remove(filepath.Join(dir, ".assess", "ids.json")); err != nil {
+		t.Fatal(err)
+	}
+	run(t, "validate", dir)
+	if _, err := os.Stat(filepath.Join(dir, ".assess", "ids.json")); err != nil {
+		t.Errorf("validate did not write the ids again: %v", err)
+	}
+	// a project without editor support gets no folder
+	bare := testproject.Copy(t)
+	run(t, "validate", bare)
+	if _, err := os.Stat(filepath.Join(bare, ".assess")); err == nil {
+		t.Error("a project without .assess got one")
+	}
+}

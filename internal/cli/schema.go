@@ -207,7 +207,11 @@ func refreshIDs(dir string, res *load.Result) {
 	path := filepath.Join(dir, filepath.FromSlash(idsFile))
 	have, err := os.ReadFile(path)
 	if err != nil {
-		return
+		// A project with editor support gets the file back, as after a clone of a repository that ignores it, as it should.
+		// A project without the folder does not get one.
+		if info, statErr := os.Stat(filepath.Dir(path)); !errors.Is(err, fs.ErrNotExist) || statErr != nil || !info.IsDir() {
+			return
+		}
 	}
 	if raw, _, err := idsOf(res); err == nil && !bytes.Equal(have, raw) {
 		_ = atomic.WriteFile(path, raw, 0o644)

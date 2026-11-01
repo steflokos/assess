@@ -955,7 +955,10 @@ repos:
 - `.assess/ids.json`, which holds the ids of your records (see below)
 - `.vscode/settings.json`, `.vscode/extensions.json` and `.vscode/tasks.json`, if they do not exist yet
 
-Commit them. Nothing depends on them, and `assess validate` is still the final check. After you upgrade assess,
+Commit them, except `ids.json`. Nothing depends on them, and `assess validate` is still the final check. `ids.json` follows
+your records, so it changes with every record you add and would make every change of a branch touch it. A new project's
+`.gitignore` leaves it out, and every assess command writes it again when `.assess/` is there, also after a clone. In a
+project from an earlier version, add `.assess/ids.json` to `.gitignore` and run `git rm --cached .assess/ids.json`. After you upgrade assess,
 `assess validate` warns (`stale-schema`) when `schema.yaml` or one of the schema files differs from what the
 installed assess would write. Run `assess schema` to update them. assess does not report `ids.json` as stale, because it
 follows your files.

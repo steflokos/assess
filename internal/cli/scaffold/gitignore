@@ -1,1 +1,3 @@
 out/
+# the ids of the records, for the editor. Every assess command writes it again from the files.
+.assess/ids.json

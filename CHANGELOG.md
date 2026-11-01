@@ -39,6 +39,9 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   can be saved. `remainingErrors` counts what is left.
 - A person is shown at most 20 diagnostics of one code, then a line that says how many more there are, so a mistake that repeats
   does not hide the others. JSON, GitHub and SARIF output list every one.
+- `.assess/ids.json` is left out of git: a new project's `.gitignore` names it, and every command writes it again when it is
+  missing from a project with `.assess/`. It follows the records, so committing it made every branch touch it. In an existing project,
+  add it to `.gitignore` and run `git rm --cached .assess/ids.json`.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open
