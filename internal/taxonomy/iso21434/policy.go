@@ -77,6 +77,7 @@ var stakeholderValues = []string{"roaduser", "oem", "supplier"}
 func StakeholderValues() []string        { return slices.Clone(stakeholderValues) }
 func (Stakeholder) EnumValues() []string { return slices.Clone(stakeholderValues) }
 func (v Stakeholder) Valid() bool        { return slices.Contains(stakeholderValues, string(v)) }
+
 // UnmarshalYAML reads one of the three stakeholders that every project has, or a word of the policy's impact.parties, which
 // the policy checks once it knows them.
 func (v *Stakeholder) UnmarshalYAML(n *yaml.Node) error {
