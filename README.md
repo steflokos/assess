@@ -50,7 +50,7 @@ in the file, `assess validate` warns you. `assess version` (or `assess --version
 To build assess from a checkout, run `make build`. The program ends up in `bin/assess` inside the checkout, and
 it is not on your PATH. Run `make install` to use it from any folder. This puts `assess` in your Go bin
 directory (`GOBIN`, or `$GOPATH/bin`, usually `~/go/bin`). If that directory is not on your PATH, the command
-tells you. You can also run assess without building it, for example `go run ./cmd/assess init my-tara`. With Go 1.27.1 or newer,
+tells you. You can also run assess without building it, for example `go run ./cmd/assess init my-tara`. With Go 1.27.2 or newer,
 `go install github.com/steflokos/assess/cmd/assess@latest` installs the latest release, or the main branch while there is none. Each
 release also has the program built for Linux, macOS and Windows on the releases page of the repository, with a file of SHA-256 sums,
 so you do not need Go for it. `assess version` prints the version, and for a program that was built from a git checkout, the commit.
@@ -971,7 +971,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.2'
       - run: go install github.com/steflokos/assess/cmd/assess@latest
       - run: assess check -strict -format github my-tara
 ```
