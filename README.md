@@ -1045,7 +1045,10 @@ Three more things that the page does:
 The page has no login, so `assess serve` listens on this computer only and refuses any other address. A web page that is open in
 the same browser cannot use it, because every request has to carry the token. The report and the diagrams are loaded by a frame and an
 image, which cannot send a header, so they get a token of their own in the address. It opens those two pages and nothing else. The token
-of the API is in an address once, after the `#`, which a browser does not send to the server and the page removes at once. It is never
+of the API is in an address once, after the `#`, which a browser does not send to the server and the page removes at once. The page
+keeps it in the storage of its origin, so a link that you open in a new tab works too. The report is loaded from the other name of
+the server (127.0.0.1 or localhost), which is another origin for a browser, so a script in a report template cannot read it there. At
+[::1] the report opens in a tab of the same origin, so there the token stays with the tab, and a new tab needs the address again. It is never
 in an address that a frame or an image loads, so a script in a report template cannot use it. The page runs the same commands as the command line,
 so what it writes passes the same checks as `assess apply`.
 

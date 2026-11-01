@@ -24,6 +24,8 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   rationale and the reference of each decision, where v1 kept 8 hex characters, which can be matched in minutes. An iteration of v1
   still verifies with the text it was made with, a chain can hold both, and a comparison with an iteration of v1 is made in its format.
   `verify` names an iteration of a format it does not know.
+- In the web interface, a link opened in a new tab works: the page keeps the token in the storage of its origin, which the report,
+  on the other name of the server, cannot read. At [::1], where the report opens on the same origin, the token stays with the tab.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open
