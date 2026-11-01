@@ -39,9 +39,12 @@ func runDelete(args []string, stdout, stderr io.Writer) int {
 	if fl.NArg() < 2 || fl.NArg() > 3 {
 		return o.fail("expected a kind and an id, and at most one directory: assess delete [-cascade] <kind> <id> [dir]")
 	}
-	kind, id, dir := fl.Arg(0), fl.Arg(1), "."
+	kind, id := fl.Arg(0), fl.Arg(1)
+	dir := ""
 	if fl.NArg() == 3 {
 		dir = fl.Arg(2)
+	} else {
+		dir = here(stderr)
 	}
 	if _, known := iso21434.KindByWord(kind); !known {
 		return o.fail("%q is not a kind of record. The kinds are %s", kind, strings.Join(iso21434.Words(), ", "))

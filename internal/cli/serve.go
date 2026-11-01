@@ -33,8 +33,14 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 		return exitUsage
 	}
-	dir, ok := oneDir(fl, textOutput("serve", stdout, stderr))
-	if !ok {
+	// serve does not look for a project in the folders above: in a folder without one, it offers to create one there
+	dir := "."
+	switch fl.NArg() {
+	case 0:
+	case 1:
+		dir = fl.Arg(0)
+	default:
+		fmt.Fprintln(stderr, "assess serve: expected at most one folder")
 		return exitUsage
 	}
 	if info, err := os.Stat(dir); err != nil || !info.IsDir() {

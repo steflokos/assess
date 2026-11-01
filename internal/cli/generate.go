@@ -55,9 +55,10 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	if *force && fl.Arg(0) != "assets" {
 		return o.fail("-force applies only to assets")
 	}
-	dir := "."
+	dir := ""
 	switch fl.NArg() {
 	case 1:
+		dir = here(stderr)
 	case 2:
 		dir = fl.Arg(1)
 	default:

@@ -109,11 +109,11 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 	return drift, false
 }
 
-// oneDir returns the directory argument, "." when there is none.
+// oneDir returns the directory argument. When there is none, it is the project that the current folder is in (see here).
 func oneDir(fl *flag.FlagSet, o *output) (string, bool) {
 	switch fl.NArg() {
 	case 0:
-		return ".", true
+		return here(o.stderr), true
 	case 1:
 		return fl.Arg(0), true
 	}
@@ -143,9 +143,12 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: assess explain [-all] [-format text|json] <threat-id> [dir]")
 		return exitUsage
 	}
-	id, dir := fl.Arg(0), "."
+	id := fl.Arg(0)
+	dir := ""
 	if fl.NArg() == 2 {
 		dir = fl.Arg(1)
+	} else {
+		dir = here(stderr)
 	}
 	res, ok := loadChecked(o, dir)
 	if !ok {

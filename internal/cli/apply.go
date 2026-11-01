@@ -56,11 +56,12 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	setName, dir := "-", "."
+	setName, dir := "-", ""
 	switch fl.NArg() {
 	case 0:
+		dir = here(stderr)
 	case 1:
-		setName = fl.Arg(0)
+		setName, dir = fl.Arg(0), here(stderr)
 	case 2:
 		setName, dir = fl.Arg(0), fl.Arg(1)
 	default:

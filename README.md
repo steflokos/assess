@@ -82,7 +82,9 @@ assess export my-tara            # the whole project as one JSON document
 ```
 
 A flag can go anywhere on the line, so `assess explain <threat-id> -all` and `assess explain -all <threat-id>` are the same.
-After `--`, every word is an argument, even one that starts with `-`.
+After `--`, every word is an argument, even one that starts with `-`. A command that is given no folder uses the project of the
+current folder, or else of the nearest folder above it that has an `assess.yaml`, the way git finds its repository. So you can run
+it from inside `tara/` too, and it says which folder it took. `init` and `serve` only look at the folder they are given.
 
 Exit code `0` means everything is fine. `1` means the project has errors, or warnings when you use `-strict`.
 `2` means you used the command wrongly. `-format json` gives the answer as JSON, for programs (see "Using assess

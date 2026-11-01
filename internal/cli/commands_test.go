@@ -1031,3 +1031,27 @@ func TestDiagramOfAnAttackTree(t *testing.T) {
 		t.Errorf("the default file of an attack tree: %v", err)
 	}
 }
+
+// A command that is given no folder finds the project in the folders above, the way git finds its repository, and says which
+// one it took. serve does not, because in a folder without a project it offers to create one.
+func TestACommandFindsTheProjectAbove(t *testing.T) {
+	dir := testproject.Copy(t)
+	t.Chdir(filepath.Join(dir, "tara"))
+	r := run(t, "validate")
+	if r.code != 0 || !strings.Contains(r.err, "using the project in ..") {
+		t.Errorf("validate from tara/: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	if r := run(t, "explain", "update-package-tampering"); r.code != 0 || !strings.Contains(r.out, "update-package-tampering") {
+		t.Errorf("explain from tara/: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// in the project itself there is nothing to say
+	t.Chdir(dir)
+	if r := run(t, "validate"); r.code != 0 || strings.Contains(r.err, "using the project") {
+		t.Errorf("validate in the project: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// a folder that no project contains still says that there is no project
+	t.Chdir(t.TempDir())
+	if r := run(t, "validate"); r.code == 0 || !strings.Contains(r.out+r.err, "no assess.yaml") {
+		t.Errorf("validate outside a project: %+v", r)
+	}
+}

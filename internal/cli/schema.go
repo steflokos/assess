@@ -112,9 +112,10 @@ func runSchema(args []string, stdout, stderr io.Writer) int {
 		stdout.Write(raw)
 		return exitOK
 	}
-	dir := "."
+	dir := ""
 	switch fl.NArg() {
 	case 0:
+		dir = here(stderr)
 	case 1:
 		dir = fl.Arg(0)
 	default:
