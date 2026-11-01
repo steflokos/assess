@@ -40,7 +40,7 @@ type Kind struct {
 func (k Kind) Heading() string {
 	switch {
 	case len(k.Suffixes) > 0:
-		return k.Word + " <asset>-<stride>"
+		return k.Word + " <asset>-<stride>[.<name>]"
 	case len(k.Of) > 0:
 		return k.Word + " <" + k.OfLabel + "-id>"
 	}
@@ -56,15 +56,23 @@ func (k Kind) Key(id string) string {
 	return k.Word + ":" + id
 }
 
-// SplitID splits the id of a kind with suffixes into the part the author chose
-// and the suffix word. It reports false when the id does not end with one.
+// SplitID splits the id of a kind with suffixes into the part the author chose and the suffix word. The id ends with
+// the suffix after a hyphen, as in update-package-tampering, or has a name of its own after it and a dot, as in
+// update-package-tampering.ota, so that one asset property can have several threat scenarios. It reports false when
+// the id is neither.
 func (k Kind) SplitID(id string) (subject, suffix string, ok bool) {
 	for _, s := range k.Suffixes {
 		if rest, found := strings.CutSuffix(id, "-"+s); found && rest != "" {
 			return rest, s, true
 		}
 	}
-	return "", "", false
+	best := -1
+	for _, s := range k.Suffixes { // the last "-<suffix>." of the id, so that an asset id may itself hold dots
+		if i := strings.LastIndex(id, "-"+s+"."); i > 0 && i+len(s)+2 < len(id) && i > best {
+			best, subject, suffix = i, id[:i], s
+		}
+	}
+	return subject, suffix, best > 0
 }
 
 // Stride is a STRIDE category and the cybersecurity property whose loss it

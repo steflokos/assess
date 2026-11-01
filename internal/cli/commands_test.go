@@ -1130,3 +1130,36 @@ func TestIDsAreWrittenAgainWhenTheFileIsMissing(t *testing.T) {
 		t.Error("a project without .assess got one")
 	}
 }
+
+// An asset property can have more than one threat scenario: the others have a name of their own after a dot. Each one is calculated
+// and has its own risk and treatment, and assess generate threats counts any of them as covering the property.
+func TestAnAssetPropertyCanHaveSeveralThreatScenarios(t *testing.T) {
+	dir := testproject.Copy(t)
+	threats := testproject.Read(t, dir, "tara/threat-scenarios.yaml")
+	testproject.Write(t, dir, "tara/threat-scenarios.yaml", threats+`
+threat update-package-tampering.debug:
+  name: Tampering with the update package through the debug port
+  damages: unsafe-software-runs
+  steps: reflash-over-debug-port
+`)
+	if r := run(t, "validate", dir); r.code != 0 {
+		t.Fatalf("validate: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	r := run(t, "generate", "-format", "json", "threats", dir)
+	if strings.Contains(r.out, "update-package-tampering") && strings.Contains(r.out, `"added"`) && strings.Contains(r.out, `"update-package-tampering"`) {
+		t.Errorf("generate threats added one for a property that is covered:\n%s", r.out)
+	}
+	mustRun(t, "generate", "risks", dir)
+	if !strings.Contains(testproject.Read(t, dir, "concept/risks.yaml"), "risk update-package-tampering.debug:") {
+		t.Error("the second threat scenario has no risk of its own")
+	}
+	_, env := runJSON(t, "explain", "update-package-tampering.debug", dir)
+	if !env.OK {
+		t.Errorf("explain: %+v", env)
+	}
+	// deleting the asset with -cascade takes both threat scenarios
+	r = run(t, "delete", "-cascade", "-dry-run", "asset", "update-package", dir)
+	if !strings.Contains(r.out, "update-package-tampering.debug") {
+		t.Errorf("a cascade misses the second threat scenario:\n%s%s", r.out, r.err)
+	}
+}

@@ -150,10 +150,9 @@ function relate() {
     if (parent) add(r, [parent, r.parent]);
     const of = kindOfId(r.id, info.idOf);
     if (of) add(r, [of, r.id]);
-    // a threat scenario is written <asset>-<stride>
-    for (const s of info.idSuffixes || []) {
-      if (r.id.endsWith('-' + s) && S.byKey.has('asset:' + r.id.slice(0, -(s.length + 1)))) add(r, ['asset', r.id.slice(0, -(s.length + 1))]);
-    }
+    // a threat scenario is written <asset>-<stride>, or <asset>-<stride>.<name>
+    const asset = subjectOf(r.id, info.idSuffixes);
+    if (asset && S.byKey.has('asset:' + asset)) add(r, ['asset', asset]);
   }
 }
 
@@ -251,4 +250,16 @@ export function workflow() {
     if (!s.done) found = true;
   });
   return list;
+}
+
+// subjectOf is the asset of a threat scenario's id, as SplitID in Go reads it: the id ends with "-<stride>", or has a name of its
+// own after "-<stride>.". It is empty for an id that is neither.
+export function subjectOf(id, suffixes) {
+  for (const s of suffixes || []) if (id.endsWith('-' + s) && id.length > s.length + 1) return id.slice(0, -(s.length + 1));
+  let best = -1;
+  for (const s of suffixes || []) {
+    const i = id.lastIndexOf('-' + s + '.');
+    if (i > 0 && i + s.length + 2 < id.length && i > best) best = i;
+  }
+  return best > 0 ? id.slice(0, best) : '';
 }

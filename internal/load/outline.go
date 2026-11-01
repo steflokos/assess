@@ -159,7 +159,7 @@ func (l *loader) record(key, val *yaml.Node, word, id string, parent *rec) {
 		return
 	}
 	// An id with a suffix says something the record would otherwise repeat: a threat
-	// is "<asset>-<stride>", so the asset and the property are read from it.
+	// is "<asset>-<stride>" or "<asset>-<stride>.<name>", so the asset and the property are read from it.
 	subject, suffix := id, ""
 	if len(kind.Suffixes) > 0 {
 		var ok bool

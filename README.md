@@ -215,7 +215,8 @@ Here is what else each kind has. `schema.yaml` lists every attribute with its al
   each stakeholder: `roaduser` (required), `oem` and `supplier`. A stakeholder has four ratings: `safety`,
   `financial`, `operational` and `privacy`. A rating has a `level` (Severe, Major, Moderate or Negligible) and
   an optional `rationale`.
-- **threat.** Its id is `<asset>-<stride>`. `damages` lists the damage scenarios it can cause. `steps` is its
+- **threat.** Its id is `<asset>-<stride>`, or `<asset>-<stride>.<name>` for another threat scenario to the same property.
+  `damages` lists the damage scenarios it can cause. `steps` is its
   attack path. `assumes` lists the assumptions it relies on.
 - **step.** `target` is the element the step is carried out on. `potential` rates the effort in five factors.
   `rationale` says why. `scalability` is Single Vehicle, Limited Batch or Fleet-Wide. `actors` lists who would
@@ -273,8 +274,12 @@ The basic rules warn about an assumption that nothing points to.
 
 A threat scenario is written `threat <asset>-<stride>:`. The id is the id of the asset, a hyphen and a STRIDE
 word. The word stands for a property. Spoofing is Authenticity, tampering is Integrity, repudiation is Non
-Repudiation, disclosure is Confidentiality and denial is Availability. The asset must list that property. This
-gives you one threat scenario for each asset property, with nothing repeated.
+Repudiation, disclosure is Confidentiality and denial is Availability. The asset must list that property.
+
+An asset property can have more than one threat scenario, for example tampering with the update package on the way and
+tampering with it through the debug port. Write the others with a name of their own after a dot:
+`threat update-package-tampering.debug-port:`. Each one has its own risk, so each can have its own treatment: you can
+reduce one and accept the other. The different ways to carry out one threat scenario stay alternatives in its `steps`.
 
 A threat scenario lists the damage scenarios it can cause and its `steps`. The steps use boolean logic. A step
 is an id, or `and:` and `or:` over step ids and more blocks. You can nest them as deep as you need.

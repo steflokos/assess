@@ -2,7 +2,7 @@
 import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen } from '../data.js';
+import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen, subjectOf } from '../data.js';
 import { pagesFor } from '../palette.js';
 
 await load();
@@ -121,4 +121,13 @@ test('the open items that a change made are the ones that were not open before',
   assert.deepEqual(newOpen(before, before), []);
   assert.deepEqual(newOpen(null, after), [], 'a project that had errors has no list to compare with');
   assert.deepEqual(newOpen(before, null), []);
+});
+
+test('the asset of a threat scenario is read from its id, also when it has a name of its own after a dot', () => {
+  const words = ['spoofing', 'tampering', 'repudiation', 'disclosure', 'denial'];
+  assert.equal(subjectOf('update-package-tampering', words), 'update-package');
+  assert.equal(subjectOf('update-package-tampering.ota', words), 'update-package');
+  assert.equal(subjectOf('ecu.fw-denial.bus', words), 'ecu.fw');
+  assert.equal(subjectOf('update-package', words), '');
+  assert.equal(subjectOf('x-tampering.', words), '');
 });

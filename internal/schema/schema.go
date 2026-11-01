@@ -119,11 +119,11 @@ func (g *generator) root() (map[string]any, error) {
 	}, nil
 }
 
-// headingPattern matches a record heading key: the kind word, whitespace, then an
-// id. The id of a kind with suffixes ends with a hyphen and one of them.
+// headingPattern matches a record heading key: the kind word, whitespace, then an id. The id of a kind with suffixes
+// ends with a hyphen and one of them, or has a name of its own after it and a dot.
 func headingPattern(word string) string {
 	if k, ok := iso21434.KindByWord(word); ok && len(k.Suffixes) > 0 {
-		return "^" + word + `\s+[A-Za-z0-9][A-Za-z0-9._-]*-(` + strings.Join(k.Suffixes, "|") + `)$`
+		return "^" + word + `\s+[A-Za-z0-9][A-Za-z0-9._-]*-(` + strings.Join(k.Suffixes, "|") + `)(\.[A-Za-z0-9._-]+)?$`
 	}
 	return "^" + word + `\s+[A-Za-z0-9][A-Za-z0-9._-]*$`
 }

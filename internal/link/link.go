@@ -337,7 +337,7 @@ func (c *checker) declared(owner, path, element string, p iso21434.Property, ver
 func (c *checker) threat(t *model.Threat) {
 	c.record(iso21434.Threat, t, &t.Record)
 	c.references(t.ID, t)
-	// The asset and the property are read from the heading: threat <stride> <asset>.
+	// The asset and the property are read from the heading: threat <asset>-<stride>, or <asset>-<stride>.<name>.
 	if c.ref(t.ID, "asset", "asset", t.Asset, elementKinds()...) {
 		c.declared(t.ID, "property", t.Asset, t.Property, "attacked")
 	}

@@ -44,6 +44,8 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   add it to `.gitignore` and run `git rm --cached .assess/ids.json`.
 - `verify` reports a `fork` when two iterations follow the same one, as when two branches each finalized and a merge kept both.
   README says how to close iterations with branches.
+- An asset property can have more than one threat scenario: the others are written `<asset>-<stride>.<name>`, each with its own risk
+  and treatment. Every id that ends with the STRIDE word reads as before. `generate threats` counts any of them as covering the property.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

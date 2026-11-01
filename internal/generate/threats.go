@@ -25,7 +25,8 @@ import (
 // ThreatsFile is where generated threat scenarios are written, relative to the project.
 const ThreatsFile = "tara/threat-scenarios.yaml"
 
-const header = `# Threat scenarios: one threat to one property of one asset. Write one as threat <asset>-<stride>:
+const header = `# Threat scenarios: one threat to one property of one asset. Write one as threat <asset>-<stride>:, and another one
+# to the same property with a name of its own after a dot, as threat <asset>-<stride>.<name>:
 #   spoofing = Authenticity, tampering = Integrity, repudiation = Non Repudiation,
 #   disclosure = Confidentiality, denial = Availability
 # assess generate threats writes them from the architecture. Edit them freely, and run it again
