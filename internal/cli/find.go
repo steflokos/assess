@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/source"
@@ -53,9 +54,9 @@ func nearID(ix *source.Index, kind, id string) string {
 		return ""
 	}
 	var ids []string
-	for _, known := range ix.IDs() {
-		if r := ix.Lookup(known); r != nil && r.Kind == kind {
-			ids = append(ids, known)
+	for _, key := range ix.IDs() {
+		if r := ix.Lookup(key); r != nil && r.Kind == kind {
+			ids = append(ids, strings.TrimPrefix(key, kind+":")) // a risk or an asset is kept under a key of its own, risk:<id>
 		}
 	}
 	if near, ok := load.Closest(id, ids); ok {

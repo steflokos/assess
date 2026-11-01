@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -1072,5 +1073,21 @@ func TestATypoInAnIdIsMetWithTheOneThatWasMeant(t *testing.T) {
 	}
 	if r := run(t, "explain", "something-else-entirely", dir); r.code != 2 || strings.Contains(r.err, "Did you mean") {
 		t.Errorf("a word that is not near any id: %+v", r)
+	}
+}
+
+// assess open says where the record of each open item is written, so that an editor or a terminal can jump to it. A risk is found
+// in the risk file, and not at its threat scenario, which has the same id.
+func TestOpenSaysWhereEachItemIs(t *testing.T) {
+	dir := testproject.Copy(t)
+	risks := testproject.Read(t, dir, "concept/risks.yaml")
+	cleared := strings.Replace(risks, "treatment: Reduce", "treatment:", 1)
+	if cleared == risks {
+		t.Fatal("the test project has no risk treated by Reduce")
+	}
+	testproject.Write(t, dir, "concept/risks.yaml", cleared)
+	r := run(t, "open", dir)
+	if !regexp.MustCompile(`(?m)^concept/risks\.yaml:\d+:\d+: \[no-treatment\] `).MatchString(r.out) {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }

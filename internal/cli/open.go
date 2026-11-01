@@ -7,10 +7,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/steflokos/assess/internal/atomic"
 	"io"
 
+	"github.com/steflokos/assess/internal/atomic"
+	"github.com/steflokos/assess/internal/load"
 	"github.com/steflokos/assess/internal/report"
+	"github.com/steflokos/assess/internal/taxonomy/iso21434"
 )
 
 // runOpen lists everything that is still open in the project: what could not be calculated, what has no
@@ -56,7 +58,7 @@ func runOpen(args []string, stdout, stderr io.Writer) int {
 	}
 	w := o.text()
 	for _, it := range items {
-		fmt.Fprintf(w, "[%s] %s: %s\n", it.Code, it.Where, it.Text)
+		fmt.Fprintf(w, "%s[%s] %s: %s\n", openAt(res, it), it.Code, it.Where, it.Text)
 	}
 	fmt.Fprintf(o.stderr, "assess: %s\n", plural(len(items), "open item"))
 	code := exitOK
@@ -70,4 +72,19 @@ func runOpen(args []string, stdout, stderr io.Writer) int {
 type openResult struct {
 	Count int               `json:"count"`
 	Open  []report.OpenItem `json:"open"`
+}
+
+// openAt is where the record of an open item is written, as file:line:col and a space, so that an editor or a terminal can jump to
+// it. A gap in the policy is in the policy file. An item that is about no record, or about one that is not written yet, has nothing.
+func openAt(res *load.Result, it report.OpenItem) string {
+	if res == nil || res.Index == nil {
+		return ""
+	}
+	if k, ok := iso21434.KindByWord(it.Kind); ok && it.ID != "" && res.Index.Lookup(k.Key(it.ID)) != nil {
+		return res.Index.At(k.Key(it.ID), "").String() + ": " // a risk shares its id with its threat scenario, so it has a key of its own
+	}
+	if it.Code == "policy-gap" && res.Index.PolicyFile != "" {
+		return res.Index.PolicyFile + ": "
+	}
+	return ""
 }
