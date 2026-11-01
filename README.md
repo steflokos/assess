@@ -605,9 +605,9 @@ An iteration records:
 - who finalized it. Give each person with `-by`, or assess takes the assessors from `project.yaml`
 - your `note` (`-note`) and the version of assess
 - a fingerprint of the project files the decisions were made from
-- your decision for every risk: the treatment, the base and residual values, and a short code for the rationale and
-  the reference. assess does not copy the text. If you change your reasoning, the code changes, and `git diff` shows
-  you the words
+- your decision for every risk: the treatment, the base and residual values, and a code for the rationale and the
+  reference, which is their SHA-256 digest. assess does not copy the text. If you change your reasoning, the code changes,
+  and `git diff` shows you the words
 - the hash of the iteration before it, and its own hash
 
 `assess finalize` also tells you what changed since the last iteration: which risks were added or removed, and which
@@ -619,8 +619,14 @@ assess hashes the content of an iteration with SHA-256. It writes the content in
 order of lines in the file do not change the hash. The form is `Canonical` in `internal/model/iteration.go`, if you
 want to compute a hash yourself. Each iteration also holds the hash of the one before it. Change anything in a closed
 iteration and its hash no longer matches. Change the hash too, and the next iteration no longer points at it. Either
-way the chain breaks where you made the change. The rationale and the reference of a decision are not stored in the iteration. A short
-code of 8 hex characters stands for each, so a changed text is found, but the code is short.
+way the chain breaks where you made the change. The rationale and the reference of a decision are not stored in the iteration. Their
+SHA-256 digest stands for them, so a changed text is found, and a signature of the hash covers the words too.
+
+An iteration says the format of its text in `format`. assess finalize writes `assess-iteration-v2`, which keeps the whole digest.
+The first format, `assess-iteration-v1`, kept only 8 hex characters of it, and an iteration without `format` is one of those. With 8
+characters, a rationale with the same code as another can be found in minutes, so a signature of such an iteration does not really
+cover the words of its rationale. assess still verifies an iteration of v1 with the text it was made with, and a chain can hold both.
+When you compare with an iteration of v1, assess works out your decisions in its format.
 
 ```sh
 assess verify my-tara
@@ -1058,8 +1064,10 @@ Three things have a version of their own:
   when a project comes from a newer version than the one you run.
 - The format of a project. This is `apiVersion` in `assess.yaml`, and the JSON of every command carries the same value.
   This version reads `assess/v1beta1` only.
-- The text that an iteration hash is made from, called `assess-iteration-v1`. It does not change without a new name. So
-  an iteration that one version finalized is one that the next version can verify.
+- The text that an iteration hash is made from, called `assess-iteration-v2` now and `assess-iteration-v1` before. It does
+  not change without a new name, and an iteration says its name in `format`. So an iteration that one version finalized is one
+  that the next version can verify. The text that a signature signs starts with `assess-iteration-v1` for every format, because
+  the hash it signs already covers the format.
 
 The tests guard the format in two ways. `examples/ota` is checked on every change, and its numbers, its lint result and
 the shape of its report must stay the same. And `internal/schema/testdata/format.baseline` lists every kind, attribute,

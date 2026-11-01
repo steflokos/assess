@@ -20,6 +20,10 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   that add up can rate an attacker beyond the scale, which makes the residual risk look lower than it is. It is off unless you switch it
   on, so no number of an existing project changes. `explain` shows the effort before the cap and after it, and the JSON of a path has
   `uncapped` when the cap lowered it and `rules.cap`. A new project has the line as a comment in its policy.
+- A new iteration is written in the format `assess-iteration-v2` and says so in `format`. It keeps the whole SHA-256 digest of the
+  rationale and the reference of each decision, where v1 kept 8 hex characters, which can be matched in minutes. An iteration of v1
+  still verifies with the text it was made with, a chain can hold both, and a comparison with an iteration of v1 is made in its format.
+  `verify` names an iteration of a format it does not know.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

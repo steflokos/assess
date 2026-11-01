@@ -198,6 +198,10 @@ risk:
 iterations:
   # required. The number of the iteration. Numbers start at 1 and have no gap.
   - number: <number>
+    # optional. The format of the text the hash is made from. assess-iteration-v2 keeps the whole
+    # SHA-256 digest of the rationale and the reference of each decision. An iteration without it is
+    # assess-iteration-v1, which keeps 8 hex characters of it.
+    format: <text>
     # required. The date and time it was finalized, as RFC 3339 with the time zone, such as
     # 2026-10-18T14:32:07+02:00.
     date: <text>

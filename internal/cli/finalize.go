@@ -116,7 +116,7 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	decisions, err := iteration.Decisions(ws, in.Report)
+	decisions, err := iteration.Decisions(ws, in.Report, model.IterationFormat)
 	if err != nil {
 		return o.fail("%v", err)
 	}
@@ -128,11 +128,16 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 		people = append(people, ws.Project.Assessors...)
 	}
 	it := model.Iteration{
-		Number: len(its) + 1, Date: when, By: people, Note: *note, Tool: model.ToolVersion,
+		Number: len(its) + 1, Format: model.IterationFormat, Date: when, By: people, Note: *note, Tool: model.ToolVersion,
 		Inputs: in.Meta.Inputs, Decisions: decisions, Previous: last.Hash,
 	}
 	it.Hash = it.ComputeHash()
 	changes := iteration.Changes(last.Decisions, decisions)
+	if last.Version() != model.IterationFormat { // the digests of an older format are shorter, so compare in its format
+		if same, err := iteration.Decisions(ws, in.Report, last.Version()); err == nil {
+			changes = iteration.Changes(last.Decisions, same)
+		}
+	}
 
 	if !*dry {
 		path := filepath.Join(dir, load.IterationsFile)

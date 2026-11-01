@@ -50,6 +50,21 @@
           ],
           "description": "Your decision for every risk, by the id of its threat scenario. It holds the treatment, the base and residual values, and a short digest of the rationale and the reference."
         },
+        "format": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The format of the text the hash is made from. assess-iteration-v2 keeps the whole SHA-256 digest of the rationale and the reference of each decision. An iteration without it is assess-iteration-v1, which keeps 8 hex characters of it."
+        },
         "hash": {
           "description": "The hash of this iteration.",
           "type": [

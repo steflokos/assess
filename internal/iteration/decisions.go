@@ -12,9 +12,10 @@ import (
 	"github.com/steflokos/assess/internal/model"
 )
 
-// Decisions returns your decision about every risk as the project stands now, by the id of its threat scenario. The
-// values are calculated. The treatment and the reasoning are what you wrote.
-func Decisions(ws *model.Workspace, rep *engine.Report) (map[string]string, error) {
+// Decisions returns your decision about every risk as the project stands now, by the id of its threat scenario, written the way
+// an iteration of the format records it. The values are calculated. The treatment and the reasoning are what you wrote. To compare
+// with an iteration, ask for the decisions in the format of that iteration.
+func Decisions(ws *model.Workspace, rep *engine.Report, format string) (map[string]string, error) {
 	rec := map[string]*model.Risk{}
 	for i := range ws.Risks {
 		rec[ws.Risks[i].ID] = &ws.Risks[i]
@@ -25,7 +26,7 @@ func Decisions(ws *model.Workspace, rep *engine.Report) (map[string]string, erro
 		if r == nil || t.Risk == nil {
 			return nil, fmt.Errorf("threat scenario %s has no risk to record", t.Threat)
 		}
-		out[t.Threat] = model.Decision(string(r.Treatment), t.Risk.Base, t.Risk.Residual, r.Rationale, []string(r.Reference))
+		out[t.Threat] = model.DecisionIn(format, string(r.Treatment), t.Risk.Base, t.Risk.Residual, r.Rationale, []string(r.Reference))
 	}
 	return out, nil
 }

@@ -29,6 +29,7 @@ const (
 	CodeHash      = "hash"      // an iteration is not what its hash says
 	CodeSignature = "signature" // a signature is wrong
 	CodeHead      = "head"      // the last hash is not the one you expected
+	CodeFormat    = "format"    // an iteration has a format that this version of assess does not know
 )
 
 // Chain checks the numbers, the links and the hashes of the iterations. It does not look at signatures.
@@ -46,7 +47,9 @@ func Chain(its []model.Iteration) []Problem {
 				out = append(out, Problem{it.Number, CodePrevious, fmt.Sprintf("it does not point at iteration %d, the one before it. One of them was changed, removed or added", i)})
 			}
 		}
-		if got := it.ComputeHash(); got != it.Hash {
+		if !model.KnownIterationFormat(it.Format) {
+			out = append(out, Problem{it.Number, CodeFormat, fmt.Sprintf("its format %q is not one this version of assess knows, so its hash cannot be checked. A newer assess may have written it", it.Format)})
+		} else if got := it.ComputeHash(); got != it.Hash {
 			out = append(out, Problem{it.Number, CodeHash, "its content no longer matches its hash. It was changed after it was finalized"})
 		}
 		prev = it.Hash

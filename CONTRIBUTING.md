@@ -43,8 +43,9 @@ project yourself: `go run ./cmd/assess eval internal/testproject/testdata/projec
   record it with `go test ./internal/schema -run TestFormat -update`.
 
 Two tests pin a format that projects depend on: the text an iteration hash is made from, and the digest of a decision.
-If one of them fails, do not change the test. Change `IterationVersion`, so that a later assess can tell the two
-formats apart.
+If one of them fails, do not change the test. Add a new format next to `IterationVersion` and `IterationV2`, keep the
+old ones verifiable, and make `IterationFormat` the new one, so that a later assess can tell the formats apart. An
+iteration names its format in `format`.
 
 ## How the code is arranged
 
