@@ -78,7 +78,7 @@ func (b *builder) iterations() Section {
 
 // sinceLast lists how the decisions now differ from the decisions of the last iteration.
 func (b *builder) sinceLast(last *model.Iteration) []Block {
-	now, err := iteration.Decisions(b.ws, b.rep)
+	now, err := iteration.Decisions(b.ws, b.rep, last.Version()) // in the format of the last iteration, so that the digests compare
 	if err != nil {
 		return []Block{{Para: "The decisions cannot be compared with iteration " + fmt.Sprint(last.Number) + " yet, because a risk is open."}}
 	}

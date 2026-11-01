@@ -32,7 +32,7 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("export", stderr)
 	format := fl.String("format", "json", "export always writes json. The flag is here so that it can be given like the other commands")
 	derived := fl.Bool("derived", false, "also give each record with what is worked out about it: the views that rules read, such as what mitigates a step")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -93,10 +93,12 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	}
 
 	code := exitOK
-	if diags.Count(diag.Error) > 0 {
+	hasErrors := diags.Count(diag.Error) > 0
+	if hasErrors {
 		code = exitFindings
-	} else {
-		in, err := reportInput(dir, res)
+	}
+	if broken, blocked := isolation(res, diags); !blocked {
+		in, err := isolatedInput(dir, res, broken, hasErrors)
 		if err != nil {
 			return o.fail("%v", err)
 		}

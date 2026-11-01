@@ -19,7 +19,7 @@ import (
 func runDescribe(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("describe", stderr)
 	format := fl.String("format", "text", "output format: text (schema.yaml) or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

@@ -19,7 +19,7 @@ const ROOT_TEXT = { steps: 'of these lead to the threat', preparedby: 'of these 
 
 const LABELS = {
   preparedby: 'Prepared by', threatenedby: 'Threatened by', mitigatedby: 'Mitigated by', entrypoint: 'Entry point',
-  roaduser: 'Road user', oem: 'OEM', knowledge: 'Knowledge of the item', window: 'Window of opportunity', time: 'Elapsed time',
+  roaduser: 'Road user', oem: 'OEM', uid: 'UID', knowledge: 'Knowledge of the item', window: 'Window of opportunity', time: 'Elapsed time',
   expertise: 'Specialist expertise', compromises: 'Properties lost', damages: 'Damage scenarios', steps: 'Attack path',
   assumes: 'Assumptions', potential: 'Attack potential', reduction: 'Effect on the attack potential', target: 'Where it acts',
   between: 'Between', over: 'Carried over', on: 'Applies to', check: 'Check', reference: 'References', actors: 'Threat actors',
@@ -204,6 +204,15 @@ function impactGrid(kind, attr, value, onChange) {
   let touched = false;
   const state = {};
   const stakeholders = attr.attributes.map((a) => resolveAttr(kind, a));
+  // the stakeholders of the project's own, which the policy names in impact.parties, are rated like the road user
+  const parties = (((S.exp || {}).policy || {}).impact || {}).parties || {};
+  const like = stakeholders.find((s) => s.name === 'roaduser');
+  if (attr.extra && like) {
+    for (const word of Object.keys(parties).sort()) {
+      if (!stakeholders.some((s) => s.name === word)) stakeholders.push(Object.assign({}, like, { name: word, label: parties[word], required: false }));
+    }
+  }
+  const nameOfStk = (s) => s.label || labelOf(s.name);
   for (const s of stakeholders) state[s.name] = JSON.parse(JSON.stringify((value || {})[s.name] || {}));
   const shown = new Set(stakeholders.filter((s) => s.required || hasValue(state[s.name])).map((s) => s.name));
   const root = h('div', { class: 'impact' });
@@ -212,7 +221,7 @@ function impactGrid(kind, attr, value, onChange) {
     const def = resolveAttr(kind, cat);
     const levelAttr = (def.attributes || []).find((a) => a.type === 'enum') || { values: [] };
     const cur = state[stk.name][cat.name] || {};
-    const sel = h('select', { 'aria-label': labelOf(stk.name) + ', ' + labelOf(cat.name) });
+    const sel = h('select', { 'aria-label': (stk.label || labelOf(stk.name)) + ', ' + labelOf(cat.name) });
     put(sel, h('option', { value: '', text: 'Not rated' }), (levelAttr.values || []).map((v) => h('option', { value: v, text: v })));
     sel.value = cur.level || '';
     const why = h('textarea', { rows: 2, placeholder: 'Why this level', 'aria-label': 'Why this level', oninput: () => { touched = true; save(); onChange(); } });
@@ -236,13 +245,13 @@ function impactGrid(kind, attr, value, onChange) {
       if (!shown.has(s.name)) continue;
       const cats = (s.attributes || []);
       root.append(h('div', { class: 'stk' },
-        h('div', { class: 'stk-h' }, h('strong', { text: labelOf(s.name) }), s.required ? null : h('button', { type: 'button', class: 'linkish', onclick: () => {
+        h('div', { class: 'stk-h' }, h('strong', { text: nameOfStk(s) }), s.required ? null : h('button', { type: 'button', class: 'linkish', onclick: () => {
           shown.delete(s.name); state[s.name] = {}; touched = true; draw(); onChange();
         } }, 'Remove')),
         h('div', { class: 'cells' }, cats.map((c) => cellOf(s, c)))));
     }
     const hidden = stakeholders.filter((s) => !shown.has(s.name));
-    if (hidden.length) root.append(h('div', { class: 'row' }, hidden.map((s) => h('button', { type: 'button', class: 'btn small', onclick: () => { shown.add(s.name); touched = true; draw(); } }, icon('plus', 14), ' ' + labelOf(s.name)))));
+    if (hidden.length) root.append(h('div', { class: 'row' }, hidden.map((s) => h('button', { type: 'button', class: 'btn small', onclick: () => { shown.add(s.name); touched = true; draw(); } }, icon('plus', 14), ' ' + nameOfStk(s)))));
   };
   draw();
   return {

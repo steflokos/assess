@@ -2,6 +2,70 @@
 
 assess uses semantic versioning.
 
+## Unreleased
+
+Changes to how assess is used. The format of a project and the JSON of the commands stay the same.
+
+- A flag can go anywhere on the command line, so `assess explain <threat-id> -all` works. After `--` every word is an argument. A flag
+  after the folder used to be refused.
+- A command that is given no folder finds the project in the nearest folder above that has an `assess.yaml`, the way git finds its
+  repository, and says which folder it took. `init` and `serve` still only look at the folder they are given.
+- `explain`, `delete` and `diagram -threat` name the id that was meant when the one given does not exist. A value of a fixed list that
+  differs from an allowed one only in case, spaces, hyphens or underscores, such as `major` for `Major`, is named in the error.
+- Each line of `assess open` starts with the `file:line:col` of its record, as a diagnostic does.
+- In text, `apply` and `delete` end with what the change moves in the calculation, also in a dry run. JSON had this as `effects` already.
+- `assess check` runs validate, the rules, the open items and the iterations in one command, for a pipeline. `-format github` writes
+  annotations for GitHub Actions and `-format sarif` a SARIF 2.1.0 document. The repository has a hook for pre-commit.
+- `feasibility.cap: true` in the policy stops each factor of a path at the points of the highest key of its table. Without it, controls
+  that add up can rate an attacker beyond the scale, which makes the residual risk look lower than it is. It is off unless you switch it
+  on, so no number of an existing project changes. `explain` shows the effort before the cap and after it, and the JSON of a path has
+  `uncapped` when the cap lowered it and `rules.cap`. A new project has the line as a comment in its policy.
+- `feasibility.days: true` in the policy adds up elapsed time as days where `combine` sums it, and turns the total back into a key:
+  three steps of a week each are ET2, not 1 + 1 + 1 points. It is off unless you switch it on, so no number of an existing project
+  changes. `explain`, the report and the JSON (`rules.days`) say when it is on.
+- A new iteration is written in the format `assess-iteration-v2` and says so in `format`. It keeps the whole SHA-256 digest of the
+  rationale and the reference of each decision, where v1 kept 8 hex characters, which can be matched in minutes. An iteration of v1
+  still verifies with the text it was made with, a chain can hold both, and a comparison with an iteration of v1 is made in its format.
+  `verify` names an iteration of a format it does not know.
+- In the web interface, a link opened in a new tab works: the page keeps the token in the storage of its origin, which the report,
+  on the other name of the server, cannot read. At [::1], where the report opens on the same origin, the token stays with the tab.
+- A tag such as `v0.2.0` makes a release: a workflow checks that the tag is the version in the source, runs the tests, and publishes
+  the program for Linux, macOS and Windows with SHA-256 sums and the license notices. `assess version` names the commit of a program
+  that was built from a git checkout.
+- `apply` and the web interface lost a text that was only line breaks or white space, and the empty lines at the end of a text, and
+  a text with a tab and a line break made a file that no longer read. Such a text is now written in double quotes, with escapes. A
+  line separator in a JSON change set was read as a space, and is now refused, as it is in YAML. Fuzz tests found these.
+- One error no longer takes every number away. A threat scenario that uses a record with an error is not calculated, and says
+  which record (`blocked: true` in JSON). The others are calculated as usual, in `eval`, `explain`, `open`, `check`, `export` and the
+  web interface, which still exit with 1. A file that does not parse, or an error in the policy or in `assess.yaml`, still stops the
+  calculation. `apply`, `delete` and the web interface take a change to a project with errors when the change adds no error, so a fix
+  can be saved. `remainingErrors` counts what is left.
+- A person is shown at most 20 diagnostics of one code, then a line that says how many more there are, so a mistake that repeats
+  does not hide the others. JSON, GitHub and SARIF output list every one.
+- `.assess/ids.json` is left out of git: a new project's `.gitignore` names it, and every command writes it again when it is
+  missing from a project with `.assess/`. It follows the records, so committing it made every branch touch it. In an existing project,
+  add it to `.gitignore` and run `git rm --cached .assess/ids.json`.
+- `verify` reports a `fork` when two iterations follow the same one, as when two branches each finalized and a merge kept both.
+  README says how to close iterations with branches.
+- An asset property can have more than one threat scenario: the others are written `<asset>-<stride>.<name>`, each with its own risk
+  and treatment. Every id that ends with the STRIDE word reads as before. `generate threats` counts any of them as covering the property.
+- A project can have stakeholders of its own: `impact.parties` in the policy names them, such as `fleet: Fleet operator`, a damage
+  scenario rates them under `impact` next to `roaduser`, and `impact.stakeholders` can count them. The report, the worksheets, the rules,
+  the editor schema and the web interface show them.
+- Cybersecurity goals, claims and requirements are records of their own: `goal` (with `threats` and a CAL), `claim` (with `threats`) and
+  `requirement` (with `goals`, `target` and `controls`), in `concept/`. Rules can read them, and a risk's `goals` and `claims`. A new project
+  gets header-only files for them and two basic rules that warn when a reduced risk has no goal or an accepted or shared risk no claim.
+  The report lists them in the part on goals and claims, and the web interface has them under Decide.
+- A risk has a `uid`, such as `R-0007`, that `generate risks` gives it and never changes, and a link that opens it in the web interface:
+  `http://127.0.0.1:<port>/#/risk/<uid>`, with `port:` of `assess.yaml` (8484 by default). The page of a risk and the decisions table copy the
+  link, the report links each uid, and the JSON of `eval`, `explain`, `export` and `open` carries `uid` and `link`. `serve` listens at that port and
+  keeps its token in the user's configuration folder, so the links keep working after a restart. `serve -new-token` replaces the token.
+- On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
+- `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
+- In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open
+  items and decisions pages list the errors. The calculation and decisions tables sort by any column, the highest risk first, and filter
+  by goals or claims. The count of undecided risks follows the choices on the page.
+
 ## 0.1.0
 
 The first beta. Projects use the format `assess/v1beta1`.
@@ -28,7 +92,7 @@ What is in it:
   document or a line separator that an editor does not show is not edited, a file or a folder of the project that is a link out of it is not
   read or written, and the report and the diagrams have a token of their own. When one value of a block changes, the rest of the block is
   written as it was.
-- `assess help <command>` says how a command is written. A flag that comes after the folder is said to be in the wrong place, and a typo
+- `assess help <command>` says how a command is written. A typo
   in the name of a command is met with the one that was meant. `verify` shows the start of each key and flags a key that signs twice.
 - Scalability raises the impact of a damage scenario, per path, and not the risk value. `scalability.shift` in the policy gives the levels for a
   limited batch and for the whole fleet. A hard attack stays small however far it reaches, and a control still lowers the risk. A policy that
@@ -47,6 +111,6 @@ Known limits of this beta:
 
 - The numbers in the policy that comes with assess are examples. Check them before you rely on a result.
 - Signing keys must be ed25519 keys in PKCS#8 form, without a passphrase.
-- The tests have only run on macOS so far. Where there is no `flock`, as on Windows, assess locks a project with a lock
-  file instead. That code is written but not yet tested on Windows.
+- The tests run on Linux, macOS and Windows in CI. Where there is no `flock`, as on Windows, assess locks a project with a lock
+  file instead, and readers do not wait for a change to finish. A command that was killed leaves the lock file behind for five minutes.
 - This is a beta, so expect some bugs. Later versions fix them and add features.

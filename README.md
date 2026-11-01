@@ -51,9 +51,11 @@ To build assess from a checkout, run `make build`. The program ends up in `bin/a
 it is not on your PATH. Run `make install` to use it from any folder. This puts `assess` in your Go bin
 directory (`GOBIN`, or `$GOPATH/bin`, usually `~/go/bin`). If that directory is not on your PATH, the command
 tells you. You can also run assess without building it, for example `go run ./cmd/assess init my-tara`. With Go 1.27.1 or newer,
-`go install github.com/steflokos/assess/cmd/assess@latest` installs the latest release.
+`go install github.com/steflokos/assess/cmd/assess@latest` installs the latest release, or the main branch while there is none. Each
+release also has the program built for Linux, macOS and Windows on the releases page of the repository, with a file of SHA-256 sums,
+so you do not need Go for it. `assess version` prints the version, and for a program that was built from a git checkout, the commit.
 
-The folder `examples/ota` is a finished project, with every risk treated and one iteration closed. Read it, or run
+The folder `examples/ota` is a finished project, with every risk treated and three iterations closed. Read it, or run
 the commands below on it. An AI generated it and the data is made up, so it does not describe a real system and is not for production use.
 
 ```sh
@@ -72,6 +74,7 @@ assess serve my-tara             # a web interface for the project, on this comp
 assess template -o layout.html   # the standard report layout, to start your own from
 assess lint my-tara              # check the project against the rules in rules/
 assess open my-tara              # what is still open: not calculated, no decision yet, found by a rule
+assess check my-tara             # every check at once, for a pipeline (see "In a pipeline")
 assess delete <kind> <id> my-tara  # delete a record, and with -cascade what depends on it
 assess apply changes.json my-tara  # change records from a change set, for programs (see below)
 assess finalize my-tara          # close the treatment decisions as an iteration (see "Iterations")
@@ -80,6 +83,13 @@ assess verify my-tara            # check that closed iterations were not changed
 assess describe -format json     # how to write the files, for programs
 assess export my-tara            # the whole project as one JSON document
 ```
+
+A flag can go anywhere on the line, so `assess explain <threat-id> -all` and `assess explain -all <threat-id>` are the same.
+After `--`, every word is an argument, even one that starts with `-`. A command that is given no folder uses the project of the
+current folder, or else of the nearest folder above it that has an `assess.yaml`, the way git finds its repository. So you can run
+it from inside `tara/` too, and it says which folder it took. `init` and `serve` only look at the folder they are given.
+
+A command shows at most 20 diagnostics of one kind and says how many more there are. `-format json` lists every one.
 
 Exit code `0` means everything is fine. `1` means the project has errors, or warnings when you use `-strict`.
 `2` means you used the command wrongly. `-format json` gives the answer as JSON, for programs (see "Using assess
@@ -178,7 +188,7 @@ of the record come below it, indented. Indentation also means "contains". A comp
 interfaces, data and other components written inside it.
 
 The kinds are `item`, `assumption`, `function`, `component`, `interface`, `channel`, `data`, `asset`, `damage`,
-`threat`, `step`, `control`, `risk` and `rule`. Every record has a `name`, which is required, and two optional
+`threat`, `step`, `control`, `risk`, `goal`, `claim`, `requirement` and `rule`. Every record has a `name`, which is required, and two optional
 attributes. `description` says what the thing is and what it does. `notes` is a map of text values for people,
 such as an owner, a ticket number or who reviewed it. No report or calculation reads `notes`. A rule can read them
 (see "Rules"), so a company can check its own review process.
@@ -202,10 +212,12 @@ Here is what else each kind has. `schema.yaml` lists every attribute with its al
   that matter for it: Confidentiality, Integrity, Availability, Authenticity or Non Repudiation. You need at
   least one.
 - **damage.** `compromises` lists assets and the properties of each that are lost. `impact` rates the damage for
-  each stakeholder: `roaduser` (required), `oem` and `supplier`. A stakeholder has four ratings: `safety`,
+  each stakeholder: `roaduser` (required), `oem`, `supplier`, and the stakeholders of your own that the policy names
+  in `impact.parties`. A stakeholder has four ratings: `safety`,
   `financial`, `operational` and `privacy`. A rating has a `level` (Severe, Major, Moderate or Negligible) and
   an optional `rationale`.
-- **threat.** Its id is `<asset>-<stride>`. `damages` lists the damage scenarios it can cause. `steps` is its
+- **threat.** Its id is `<asset>-<stride>`, or `<asset>-<stride>.<name>` for another threat scenario to the same property.
+  `damages` lists the damage scenarios it can cause. `steps` is its
   attack path. `assumes` lists the assumptions it relies on.
 - **step.** `target` is the element the step is carried out on. `potential` rates the effort in five factors.
   `rationale` says why. `scalability` is Single Vehicle, Limited Batch or Fleet-Wide. `actors` lists who would
@@ -213,8 +225,14 @@ Here is what else each kind has. `schema.yaml` lists every attribute with its al
   `assumes` lists the assumptions it relies on.
 - **control.** `target` lists where it is deployed. `reduction` rates the effort it demands from the attacker.
   `rationale` says why. `threatenedby` says what can bypass it. `assumes` lists the assumptions it relies on.
-- **risk.** Its id is the id of its threat scenario. `type`, `base` and `residual` are calculated by assess.
+- **risk.** Its id is the id of its threat scenario. `uid` is a short id that never changes, such as `R-0007`, for links. `type`, `base` and `residual` are calculated by assess.
   You write `treatment`, `rationale` and `reference`. `assumes` lists the assumptions it relies on.
+- **goal.** A cybersecurity goal. Its `name` is the goal itself. `threats` lists the threat scenarios whose risk it treats.
+  `cal` is its cybersecurity assurance level, CAL1 to CAL4, if your method uses them.
+- **claim.** A cybersecurity claim about a risk that is accepted or shared. Its `name` is the claim. `threats` lists the
+  threat scenarios it is about, and `assumes` the assumptions it relies on.
+- **requirement.** A cybersecurity requirement of the concept. Its `name` is the requirement. `goals` lists the goals it
+  serves, `target` the elements it is allocated to, and `controls` the controls that meet it.
 - **rule.** `on` says which kind it checks, `check` is the expression, `severity` is `Error` or `Warning`, and
   `message` is optional. The section on rules explains them.
 
@@ -263,8 +281,12 @@ The basic rules warn about an assumption that nothing points to.
 
 A threat scenario is written `threat <asset>-<stride>:`. The id is the id of the asset, a hyphen and a STRIDE
 word. The word stands for a property. Spoofing is Authenticity, tampering is Integrity, repudiation is Non
-Repudiation, disclosure is Confidentiality and denial is Availability. The asset must list that property. This
-gives you one threat scenario for each asset property, with nothing repeated.
+Repudiation, disclosure is Confidentiality and denial is Availability. The asset must list that property.
+
+An asset property can have more than one threat scenario, for example tampering with the update package on the way and
+tampering with it through the debug port. Write the others with a name of their own after a dot:
+`threat update-package-tampering.debug-port:`. Each one has its own risk, so each can have its own treatment: you can
+reduce one and accept the other. The different ways to carry out one threat scenario stay alternatives in its `steps`.
 
 A threat scenario lists the damage scenarios it can cause and its `steps`. The steps use boolean logic. A step
 is an id, or `and:` and `or:` over step ids and more blocks. You can nest them as deep as you need.
@@ -315,6 +337,19 @@ factor in two stages:
 2. The controls the attacker has to defeat. `feasibility.combine.controls` says how they are applied on top of
    the steps. A control that is in place raises the other factors by adding.
 
+3. The cap, when the policy has `feasibility.cap: true`. Each factor stops at the points of the highest key of its table. Without
+   the cap, controls that add up can rate an attacker beyond the scale. Two controls of SE2 on a step of SE2 come to 18 points of
+   expertise, while the scale ends at SE3 with 8. That makes the residual feasibility, and the residual risk, look lower than any
+   attacker the scale describes. Elapsed time that adds up along a long path stops at ET4 in the same way. The cap is off unless
+   you switch it on, so the numbers of an existing project do not change. `assess explain` shows the effort before the cap and
+   after it.
+
+Elapsed time in days. The points of elapsed time do not grow in line with time: three steps of a week each add up to 1 + 1 + 1 =
+3 points, though three weeks are ET2, which is worth 4. With `feasibility.days: true`, wherever `combine` says `sum` for time, each
+key counts as the longest time it covers (ET0 1 day, ET1 7, ET2 30, ET3 180, ET4 365). The days add up, the total turns back into
+the first key that covers it, and the path gets the points of that key. Where `combine` says `max` for time, nothing changes. It is
+off unless you switch it on.
+
 The five results add up to a total, and the total falls into a feasibility level. The easiest path decides the
 feasibility of the threat scenario. This is the **base** result.
 
@@ -332,6 +367,11 @@ scalability it can differ, because the easiest path may reach only one vehicle w
 many. If assess looked only at the easiest path, the risk could fall when an attacker gets a new way in or when
 a control is taken away. The highest value over all paths avoids that. The worksheet from `assess explain`
 says which path decides each value.
+
+The stakeholders are the road user, the OEM and the supplier, and any of your own. Name yours in the policy with a word and
+a name, such as `parties: {fleet: Fleet operator, workshop: Independent workshop}` under `impact`. A damage scenario then rates
+`fleet:` under `impact` like the road user, and `impact.stakeholders` can count it for the risk. A word under `impact` that
+the policy does not name is an error, so a typo does not become a stakeholder.
 
 You choose how the impact of a damage scenario is worked out. It happens in two stages. `impact.across`
 combines the four categories of one stakeholder. `impact.between` combines the stakeholders. With `max`, the
@@ -354,6 +394,15 @@ assess does not guess. If a step has no `potential`, if a threat scenario has no
 neither a `reduction` nor a `threatenedby`, the output names the problem and does not calculate that scenario.
 It does not treat a missing value as the easiest possible. Without `feasibility.combine` nothing is
 calculated, because assess does not pick a rule for you.
+
+A record with an error may have lost a value, such as a list written under a misspelled name, and a number made without it
+would look right and be wrong. So a threat scenario that uses a record with an error is not calculated: not its asset, its
+damage scenarios, and no step, control or threat scenario that its paths can reach. The output says which record it is.
+Every other threat scenario is calculated as usual, so one typo does not take all the numbers away while you work.
+`eval`, `explain`, `open`, `check`, `export` and the web interface work this way, and they still exit with `1`, because the
+project has an error. Nothing is calculated when a file does not parse, because it may hold any record, or when the policy or
+`assess.yaml` has an error, because that changes every number. `report`, `lint`, `generate` and `finalize` wait for a project
+without errors.
 
 `assess explain` prints the working as a table that you can check by hand. It shows the rating key and the
 points of every element, the rule for each factor, every stage and the total. For each damage scenario it then
@@ -382,6 +431,19 @@ external reference next to the treatment.
 The type is a **Goal** when the risk before any control is above `risk.affinity`. That is the highest value the
 project accepts without a goal. The type is a **Claim** when the risk is at or below it.
 
+### Links to risks
+
+Every risk has a `uid`, such as `R-0007`. `assess generate risks` gives one to every risk that has none: the next number
+after the highest one. It never changes a uid after that, so the uid stays when the threat scenario or its asset gets another
+id. Each risk has its own, and `assess validate` says when two share one.
+
+The uid makes a link that opens the risk in the web interface: `http://127.0.0.1:8484/#/risk/R-0007`. Put it in a ticket, a
+mail or a review comment. The port is 8484, or the one you set with `port: 9200` in `assess.yaml`, so a link stays the same
+from one run of `assess serve` to the next. A link opens where `assess serve` runs for the project, on the computer of the
+person who clicks it. The page of a risk and the decisions table have a button that copies the link. The table of risk
+treatment decisions in the report links each uid. The JSON of `eval`, `explain` and `export` gives each threat scenario the
+`uid` and the `link` of its risk, `explain` names them, and an open item about a risk has its `link`.
+
 `assess generate risks` adds the records that are missing. It corrects the type and the two values in place and
 touches nothing else. `assess eval` warns when the file is out of date, and `-strict` turns that warning into a
 failure.
@@ -397,7 +459,7 @@ The points, levels, rules and matrix are your data. They live in `policy.yaml`, 
 - The risk matrix is an example. The matrix in the standard is only informative, so use the matrix of your own
   method.
 - How effort combines along a path, how impact combines and the risk affinity are choices made by assess. The
-  standard does not fix them.
+  standard does not fix them. The cap of each factor at the top of its scale is written as a comment, for you to switch on.
 - Scalability is not part of the standard. It is left out as a commented section that you can switch on.
 
 All values are whole numbers. The same files always give the same numbers, because assess uses no floating
@@ -591,9 +653,9 @@ An iteration records:
 - who finalized it. Give each person with `-by`, or assess takes the assessors from `project.yaml`
 - your `note` (`-note`) and the version of assess
 - a fingerprint of the project files the decisions were made from
-- your decision for every risk: the treatment, the base and residual values, and a short code for the rationale and
-  the reference. assess does not copy the text. If you change your reasoning, the code changes, and `git diff` shows
-  you the words
+- your decision for every risk: the treatment, the base and residual values, and a code for the rationale and the
+  reference, which is their SHA-256 digest. assess does not copy the text. If you change your reasoning, the code changes,
+  and `git diff` shows you the words
 - the hash of the iteration before it, and its own hash
 
 `assess finalize` also tells you what changed since the last iteration: which risks were added or removed, and which
@@ -605,8 +667,14 @@ assess hashes the content of an iteration with SHA-256. It writes the content in
 order of lines in the file do not change the hash. The form is `Canonical` in `internal/model/iteration.go`, if you
 want to compute a hash yourself. Each iteration also holds the hash of the one before it. Change anything in a closed
 iteration and its hash no longer matches. Change the hash too, and the next iteration no longer points at it. Either
-way the chain breaks where you made the change. The rationale and the reference of a decision are not stored in the iteration. A short
-code of 8 hex characters stands for each, so a changed text is found, but the code is short.
+way the chain breaks where you made the change. The rationale and the reference of a decision are not stored in the iteration. Their
+SHA-256 digest stands for them, so a changed text is found, and a signature of the hash covers the words too.
+
+An iteration says the format of its text in `format`. assess finalize writes `assess-iteration-v2`, which keeps the whole digest.
+The first format, `assess-iteration-v1`, kept only 8 hex characters of it, and an iteration without `format` is one of those. With 8
+characters, a rationale with the same code as another can be found in minutes, so a signature of such an iteration does not really
+cover the words of its rationale. assess still verifies an iteration of v1 with the text it was made with, and a chain can hold both.
+When you compare with an iteration of v1, assess works out your decisions in its format.
 
 ```sh
 assess verify my-tara
@@ -624,6 +692,14 @@ The chain has limits that you should know:
   somewhere else, shows this. `assess finalize` prints the hash. Keep it outside the project, for example in a signed
   git tag, in the ticket or in the mail to the reviewer, and compare it with `-head`.
 - Verify tells you that something changed after it was closed. It does not tell you whether the decisions were right.
+
+### Iterations and branches
+
+Close an iteration on one branch, such as `main`, after the decisions are merged. If two branches each run `assess finalize`
+from the same iteration, each adds the next iteration with the same number, and git sees a conflict at the end of
+`iterations.yaml`. Keep the iterations of one branch and delete the others, then run `assess finalize` again after the
+merge, which compares with the last iteration you kept. If both are kept, `assess verify` reports a `fork`: two iterations
+that follow the same one.
 
 ### Signatures
 
@@ -680,13 +756,15 @@ rule goal-is-treated:
   message: a goal must be avoided or reduced
 ```
 
-`assess init` writes five basic rules to `rules/basic.yaml`. They follow from what the records mean:
+`assess init` writes seven basic rules to `rules/basic.yaml`. They follow from what the records mean:
 
 - an accepted risk is within the risk affinity
 - a risk treated by reducing is reduced
 - every property of an asset is in a damage scenario
 - a control mitigates a step
 - an assumption is relied on
+- a risk that is reduced or avoided has a goal (a warning)
+- a risk that is accepted or shared has a claim (a warning)
 
 The file explains each one. You can change it, extend it or shorten it.
 
@@ -742,7 +820,7 @@ running commands and reading JSON. They need nothing but the `assess` program.
 
 ### JSON from the commands
 
-Add `-format json` to `validate`, `lint`, `eval`, `explain`, `generate`, `open`, `describe`, `apply`, `delete`, `finalize`,
+Add `-format json` to `validate`, `lint`, `check`, `eval`, `explain`, `generate`, `open`, `describe`, `apply`, `delete`, `finalize`,
 `sign`, `verify`, `template -list` or `version`. `export` always gives JSON. Standard output then holds exactly one JSON document, always with the same
 shape:
 
@@ -774,7 +852,9 @@ has findings (errors, or warnings under `-strict`) and `2` when the command line
 - `assess export` gives the whole project as one document: every record as it is written (with its file and line),
   the plain files, the closed iterations, the transfers of the function flows, what assess calculated, and what is open. With `-derived` it
   adds what is worked out about each record, the same views that rules read. It works on a project with errors too.
-  The diagnostics are in the document, the results are left out and the exit code is `1`.
+  The diagnostics are in the document and the exit code is `1`. The results leave out the threat scenarios that use a record
+  with an error (they have `blocked: true` and say why), and the rules are not run. When nothing can be calculated (see
+  "Calculation"), the results are left out.
 - `assess open -format json` lists everything that is still open. It is the same list as the open items of the
   report. Each item has a `code`, so a program can tell what to do: `no-item`, `policy-gap`, `not-calculated`,
   `risk-not-calculated`, `damage-uncaused`, `no-risks`, `risk-missing`, `risk-stale`, `no-treatment`,
@@ -826,12 +906,17 @@ writes the records for it. It takes a change set, in JSON or in YAML:
 - `{"op": "write", "file": "policy.yaml", "text": "…", "was": "sha256:…"}` writes one of the plain files as a whole: `assess.yaml`,
   `project.yaml` or the policy. `export` gives the text of each of them with its hash, and a file that has another hash now is a
   conflict. The dry run shows the diff and the `effects`.
+- In text, `apply` and `delete` end with what the change moves in the calculation: one line for each threat scenario and for the
+  item, with the risk before the controls and with them, and the feasibility levels. A dry run shows it too.
 - In JSON, the result has `effects` when the change moves a result of the calculation. Each entry names a threat scenario, or the
   item, with its risk values and feasibility levels before and after. A threat scenario that the change creates or removes has only
   one of the two. It is left out when nothing moves, and when the project cannot be calculated.
 
-Before assess writes anything, it checks the result as a project, in a copy. If the result has errors, nothing is
-written. The errors say which file, line and column they are at in the files as they would be. When an error is
+Before assess writes anything, it checks the result as a project, in a copy. If the change adds an error, nothing is
+written. The errors say which file, line and column they are at in the files as they would be. A project that already has
+errors takes a change that adds none, such as the one that repairs a record, so that the web interface can save a fix. The
+result then counts the errors that are left in `remainingErrors`. A record in a file that does not parse cannot be found,
+so no record is changed until the file parses. A plain file that `write` replaces has to be without errors afterwards. When an error is
 caused by a record that still refers to something you deleted, the result lists that record under `blocked`. The
 files are edited as text: only the lines that change are different, and the comments, the blank lines and the
 way the author wrote everything else stay as they are. When one value of a block changes, such as one cell of the impact of a damage
@@ -850,7 +935,7 @@ style of the project files.
 5. `apply` the attack steps and controls, with their ratings and a rationale.
 6. `assess open -format json` until nothing is left. Fix what it lists, with `apply` and `generate risks`.
 7. A person decides the treatment of each risk. It can be written with `apply` too.
-8. `assess lint -strict` and `assess report -strict`.
+8. `assess check -strict` and `assess report -strict`.
 9. `assess finalize` to close the round. It refuses while anything is open, and `-format json` lists what.
 
 Every command that writes does it in one piece, so an editor never sees half a file. A change that reaches several files, such as
@@ -865,6 +950,47 @@ command ends, even if the command was killed. That holds on a disk of this compu
 cannot lock, readers do not wait, and a command that was killed leaves a lock file behind for five minutes. The same files always give the same output, so a run can be repeated
 and compared.
 
+### In a pipeline
+
+`assess check` runs every check in one command: what `validate` finds, what the rules find, what is still open and whether the
+closed iterations are intact. A project with errors cannot be calculated, so then it checks only the files and the iterations.
+Errors make it exit with `1`. With `-strict`, warnings do too: a rule that warns, an open item, a stale schema and a signature
+that could not be checked. `-keys` and `-head` work as they do for `verify`.
+
+`-format github` writes each finding as an annotation that GitHub Actions shows at its line in the pull request. `-format sarif`
+writes one SARIF 2.1.0 document, which GitHub code scanning and other tools read. Both name each file by its path from the
+current folder, so run assess from the root of the repository and give the folder of the project. A workflow for GitHub Actions:
+
+```yaml
+name: tara
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.1'
+      - run: go install github.com/steflokos/assess/cmd/assess@latest
+      - run: assess check -strict -format github my-tara
+```
+
+To see the findings in the code scanning tab as well, write them with `assess check -format sarif my-tara > assess.sarif` and upload
+the file with GitHub's `upload-sarif` action.
+
+For [pre-commit](https://pre-commit.com), this repository has a hook. Add it to `.pre-commit-config.yaml`, with the folder of the
+project in `args` when it is not the root of the repository:
+
+```yaml
+repos:
+  - repo: https://github.com/steflokos/assess
+    rev: main
+    hooks:
+      - id: assess-check
+        args: [my-tara]
+```
+
 ## Editor support
 
 `assess init` writes the editor files, and so does `assess schema` in an existing project. They are:
@@ -875,7 +1001,10 @@ and compared.
 - `.assess/ids.json`, which holds the ids of your records (see below)
 - `.vscode/settings.json`, `.vscode/extensions.json` and `.vscode/tasks.json`, if they do not exist yet
 
-Commit them. Nothing depends on them, and `assess validate` is still the final check. After you upgrade assess,
+Commit them, except `ids.json`. Nothing depends on them, and `assess validate` is still the final check. `ids.json` follows
+your records, so it changes with every record you add and would make every change of a branch touch it. A new project's
+`.gitignore` leaves it out, and every assess command writes it again when `.assess/` is there, also after a clone. In a
+project from an earlier version, add `.assess/ids.json` to `.gitignore` and run `git rm --cached .assess/ids.json`. After you upgrade assess,
 `assess validate` warns (`stale-schema`) when `schema.yaml` or one of the schema files differs from what the
 installed assess would write. Run `assess schema` to update them. assess does not report `ids.json` as stale, because it
 follows your files.
@@ -936,8 +1065,14 @@ within a few seconds.
 assess serve my-tara
 ```
 
-assess prints an address that ends in `#t=` and a token. Open the whole address. The token is new on every run. Without it, the
-page cannot read or write anything. `-addr 127.0.0.1:9000` picks another port. The address is 127.0.0.1, localhost or [::1]. At [::1] the
+assess prints an address that ends in `#t=` and a token. Open the whole address, or add `-open` to have assess open it in your
+browser. With `-open` the address is on the command line of the browser, where other users of a shared computer can see it in the
+list of processes. Without the token, the page cannot read or write anything. `assess serve` keeps the token in a file of your own
+configuration folder (such as `~/.config/assess/serve-token` on Linux), readable by you only. The page keeps it as well, so the
+page and the links to risks keep working after `assess serve` starts again. `-new-token` makes a new one and keeps that
+instead, and every address with the old one stops working. `assess serve` listens at the port of `assess.yaml` (`port:`), or
+8484. `-addr 127.0.0.1:9000` picks
+another port, and `-addr 127.0.0.1:0` a free one, which helps when another program already has the port. The address is 127.0.0.1, localhost or [::1]. At [::1] the
 report opens in a tab of its own, because a browser cannot be told to allow that address in a frame.
 
 What you can do in the page:
@@ -957,7 +1092,8 @@ What you can do in the page:
   lines, Ctrl S does the same, and Undo puts the old values back. After a save, the page lists the open items that the change made,
   such as a step without a rating or a risk that is accepted above the affinity.
 - **Decide the risks in one table.** The decisions page lists every risk with its treatment, and the changes are checked and saved
-  together.
+  together. It sorts by the risk value or the treatment, and filters by a word, by goals or claims and by the risks still undecided.
+  The calculation page sorts and filters the same way, with the highest risk first.
 - **See what a record is connected to.** The side of a record page shows its calculation, its attack tree, what it uses and what uses it.
 - **Delete a record.** The page says what depends on it before anything is removed.
 - Let assess write assets, threat scenarios and risks, and close an iteration.
@@ -979,7 +1115,10 @@ Three more things that the page does:
 The page has no login, so `assess serve` listens on this computer only and refuses any other address. A web page that is open in
 the same browser cannot use it, because every request has to carry the token. The report and the diagrams are loaded by a frame and an
 image, which cannot send a header, so they get a token of their own in the address. It opens those two pages and nothing else. The token
-of the API is in an address once, after the `#`, which a browser does not send to the server and the page removes at once. It is never
+of the API is in an address once, after the `#`, which a browser does not send to the server and the page removes at once. The page
+keeps it in the storage of its origin, so a link that you open in a new tab works too. The report is loaded from the other name of
+the server (127.0.0.1 or localhost), which is another origin for a browser, so a script in a report template cannot read it there. At
+[::1] the report opens in a tab of the same origin, so there the token stays with the tab, and a new tab needs the address again. It is never
 in an address that a frame or an image loads, so a script in a report template cannot use it. The page runs the same commands as the command line,
 so what it writes passes the same checks as `assess apply`.
 
@@ -998,8 +1137,10 @@ Three things have a version of their own:
   when a project comes from a newer version than the one you run.
 - The format of a project. This is `apiVersion` in `assess.yaml`, and the JSON of every command carries the same value.
   This version reads `assess/v1beta1` only.
-- The text that an iteration hash is made from, called `assess-iteration-v1`. It does not change without a new name. So
-  an iteration that one version finalized is one that the next version can verify.
+- The text that an iteration hash is made from, called `assess-iteration-v2` now and `assess-iteration-v1` before. It does
+  not change without a new name, and an iteration says its name in `format`. So an iteration that one version finalized is one
+  that the next version can verify. The text that a signature signs starts with `assess-iteration-v1` for every format, because
+  the hash it signs already covers the format.
 
 The tests guard the format in two ways. `examples/ota` is checked on every change, and its numbers, its lint result and
 the shape of its report must stay the same. And `internal/schema/testdata/format.baseline` lists every kind, attribute,

@@ -45,7 +45,7 @@ func runSignFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	by := fl.String("by", "", "who signs (default: the one name that finalized the iteration)")
 	number := fl.Int("iteration", 0, "the iteration to sign (default: the last one)")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

@@ -11,8 +11,9 @@ make build          # bin/assess
 make check          # gofmt and go vet
 make test           # every test
 make race           # every test, with the race detector
+make fuzz           # the fuzz tests of the text editor, 30 seconds each (FUZZTIME=5m for longer)
 make vendor-check   # go.mod, go.sum and vendor are in step
-make vuln           # govulncheck
+make vuln           # govulncheck, at a fixed version
 ```
 
 Run `make check` and `make test` before you send a change.
@@ -43,8 +44,9 @@ project yourself: `go run ./cmd/assess eval internal/testproject/testdata/projec
   record it with `go test ./internal/schema -run TestFormat -update`.
 
 Two tests pin a format that projects depend on: the text an iteration hash is made from, and the digest of a decision.
-If one of them fails, do not change the test. Change `IterationVersion`, so that a later assess can tell the two
-formats apart.
+If one of them fails, do not change the test. Add a new format next to `IterationVersion` and `IterationV2`, keep the
+old ones verifiable, and make `IterationFormat` the new one, so that a later assess can tell the formats apart. An
+iteration names its format in `format`.
 
 ## How the code is arranged
 
@@ -76,6 +78,17 @@ text from the client checks it first, so that it can never be taken for a flag. 
 
 The colors are in `internal/theme`, once. The report and the page both take them from there. A test checks the contrast of every pair
 of text and background, so run `go test ./internal/theme` after you change one.
+
+## Making a release
+
+1. Set `ToolVersion` in `internal/model/version.go` to the new version, such as `v0.2.0`.
+2. Move what is under "Unreleased" in `CHANGELOG.md` under the new version.
+3. Commit, tag the commit with the version and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+
+The workflow in `.github/workflows/release.yml` then checks that the tag is `ToolVersion`, runs the checks and the tests,
+builds the program for Linux, macOS and Windows, and publishes a release with the archives and their SHA-256 sums. Each
+archive holds the license, the notice and the notices of the libraries, which their licenses ask for. A version that starts
+with 0 is published as a pre-release.
 
 ## Dependencies
 

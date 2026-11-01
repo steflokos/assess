@@ -2,7 +2,7 @@
 import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen } from '../data.js';
+import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen, subjectOf, riskLink } from '../data.js';
 import { pagesFor } from '../palette.js';
 
 await load();
@@ -56,6 +56,25 @@ test('the path of the work has seven steps and one of them is next', () => {
   for (const s of path) assert.ok(['done', 'now', 'todo'].includes(s.state));
 });
 
+test('a step that needs the calculation waits for the errors, and is never the next step', () => {
+  const saved = { diag: S.diag, exp: S.exp };
+  try {
+    S.diag = [{ severity: 'error', code: 'invalid-value', file: 'tara/damage-scenarios.yaml', line: 3, message: 'not a level' }];
+    S.exp = Object.assign({}, S.exp, { results: undefined });
+    const path = workflow();
+    assert.deepEqual(path.slice(0, 4).map((s) => s.state), ['done', 'done', 'done', 'done'], 'what is written stays done');
+    for (const s of path.slice(4).filter((x) => !x.done)) {
+      assert.equal(s.state, 'todo', s.title);
+      assert.equal(s.action, null, s.title);
+      assert.match(s.text, /Waits for the 1 error/);
+    }
+    assert.equal(path.filter((s) => s.state === 'now').length, 0, 'the errors come first, so no step is next');
+  } finally {
+    S.diag = saved.diag;
+    S.exp = saved.exp;
+  }
+});
+
 test('a search for a word finds the list, the way to make one and the page, whether it is written as one or many', () => {
   const titles = (q) => pagesFor(q).map((p) => p.title);
   assert.ok(titles('attack steps').includes('Attack steps'), 'the list of a kind');
@@ -102,4 +121,19 @@ test('the open items that a change made are the ones that were not open before',
   assert.deepEqual(newOpen(before, before), []);
   assert.deepEqual(newOpen(null, after), [], 'a project that had errors has no list to compare with');
   assert.deepEqual(newOpen(before, null), []);
+});
+
+test('the asset of a threat scenario is read from its id, also when it has a name of its own after a dot', () => {
+  const words = ['spoofing', 'tampering', 'repudiation', 'disclosure', 'denial'];
+  assert.equal(subjectOf('update-package-tampering', words), 'update-package');
+  assert.equal(subjectOf('update-package-tampering.ota', words), 'update-package');
+  assert.equal(subjectOf('ecu.fw-denial.bus', words), 'ecu.fw');
+  assert.equal(subjectOf('update-package', words), '');
+  assert.equal(subjectOf('x-tampering.', words), '');
+});
+
+test('the link of a risk is made from its uid and the port of the project, as RiskLink in Go makes it', () => {
+  assert.equal(riskLink('R-0007', {}), 'http://127.0.0.1:8484/#/risk/R-0007');
+  assert.equal(riskLink('R-0007', { port: 9200 }), 'http://127.0.0.1:9200/#/risk/R-0007');
+  assert.equal(riskLink('', {}), '');
 });

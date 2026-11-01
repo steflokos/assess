@@ -166,6 +166,17 @@
       "additionalProperties": false,
       "description": "How attack potential is added up and turned into a feasibility level.",
       "properties": {
+        "cap": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "true stops each factor of a path at the points of the highest key of its table, after the steps and the controls are combined. Steps and controls that add up then cannot rate an attacker beyond the top of the scale, such as more expertise than multiple experts. Leave it out to let the points add up without a limit."
+        },
         "combine": {
           "anyOf": [
             {
@@ -176,6 +187,17 @@
             }
           ],
           "description": "How the effort of the parts of a path adds up, factor by factor. sum adds the numbers and max takes the largest. Write one table for the attack steps and one for the controls the attacker has to defeat, each with all five factors. At an or, assess always takes the easiest path."
+        },
+        "days": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "true adds up elapsed time as days instead of points, where combine says sum for time. Each key counts as the longest time it covers: ET0 1 day, ET1 7, ET2 30, ET3 180 and ET4 365. The total turns back into the first key that covers it, and the path gets the points of that key. Three steps of a week each are then ET2, about three weeks, and not 1 + 1 + 1 points. Leave it out to add up the points."
         },
         "levels": {
           "anyOf": [
@@ -284,6 +306,24 @@
           ],
           "description": "Turns total points back into an impact level, for a stage that is sum. The first band that matches from the top wins. Each band except the last gives the highest total it covers. The last band has none."
         },
+        "parties": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Stakeholders of your own, besides roaduser, oem and supplier, each a word of small letters with a name, such as fleet: Fleet operator. A damage scenario rates them under impact like the road user, and stakeholders can count them."
+        },
         "points": {
           "anyOf": [
             {
@@ -328,7 +368,7 @@
               "type": "null"
             }
           ],
-          "description": "Whose impact counts for the risk. A stakeholder a damage scenario does not rate is skipped."
+          "description": "Whose impact counts for the risk: roaduser, oem, supplier or one of parties. A stakeholder a damage scenario does not rate is skipped."
         }
       },
       "type": "object"

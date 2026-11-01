@@ -613,8 +613,32 @@ func TestAUsageErrorIsAJSONDocumentToo(t *testing.T) {
 			t.Errorf("%s: exit %d, stdout %q", cmd, r.code, r.out)
 		}
 	}
-	r := run(t, "validate", dir, "-strict")
-	if r.code != 2 || !strings.Contains(r.err, "-strict is in the wrong place") || !strings.Contains(r.err, "Put the flags first") {
+}
+
+// A flag works wherever it is written: before the arguments, between them or after them. After -- every word is an argument.
+func TestFlagsGoAnywhere(t *testing.T) {
+	dir := testproject.Copy(t)
+	for _, args := range [][]string{
+		{"validate", dir, "-format", "json"},
+		{"eval", dir, "-format=json"},
+		{"explain", "update-package-tampering", dir, "-format", "json", "-all"},
+		{"explain", "-all", "update-package-tampering", "-format", "json", dir},
+	} {
+		r := run(t, args...)
+		var env envelope
+		if r.code != 0 || json.Unmarshal([]byte(r.out), &env) != nil || !env.OK {
+			t.Errorf("%v: exit %d\n%s%s", args, r.code, r.out, r.err)
+		}
+	}
+	if r := run(t, "explain", "update-package-tampering", dir, "-all"); r.code != 0 || !strings.Contains(r.out, "path #2") {
+		t.Errorf("-all after the folder is not taken: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// after --, a word that looks like a flag is the folder
+	if r := run(t, "validate", "--", "-strict"); r.code == 0 || !strings.Contains(r.out+r.err, "no assess.yaml") {
+		t.Errorf("-- does not end the flags: %+v", r)
+	}
+	// a flag that does not exist is still refused, wherever it is
+	if r := run(t, "validate", dir, "-nope"); r.code != 2 || !strings.Contains(r.err, "flag provided but not defined: -nope") {
 		t.Errorf("%+v", r)
 	}
 }

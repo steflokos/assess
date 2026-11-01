@@ -33,6 +33,7 @@ type command struct {
 func commands() []command {
 	return []command{
 		{"apply", "change records from a change set (JSON or YAML), after checking the result", runApply},
+		{"check", "run every check for a pipeline: validate, the rules, what is open and the iterations", runCheck},
 		{"delete", "delete a record, and with -cascade what depends on it", runDelete},
 		{"describe", "describe how to write the files: kinds, attributes and values (JSON for programs)", runDescribe},
 		{"diagram", "draw the architecture as one SVG image", runDiagram},
@@ -125,7 +126,7 @@ func usage(w io.Writer, cmds []command) {
 		fmt.Fprintf(w, "  %-10s %s\n", c.name, c.summary)
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Flags go before the directory. Run `assess help <command>` to see how a command is used.")
+	fmt.Fprintln(w, "Flags can come before or after the other words. Run `assess help <command>` to see how a command is used.")
 	fmt.Fprintln(w, "To start a project, run `assess init my-tara`.")
 }
 
@@ -163,10 +164,34 @@ func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	return fs
 }
 
+// parseArgs parses the flags of a command wherever they are written, before, between or after the other arguments, so that
+// `assess explain <id> -all` works as well as `assess explain -all <id>`. The flag package stops at the first word that is not
+// a flag. parseArgs takes that word as an argument and goes on. After `--` every word is an argument, and so is a lone `-`, which
+// stands for standard input. Afterwards fl.Args() holds the arguments in the order they were written.
+func parseArgs(fl *flag.FlagSet, args []string) error {
+	var positional []string
+	for {
+		if err := fl.Parse(args); err != nil {
+			return err
+		}
+		rest := fl.Args()
+		if len(rest) == 0 {
+			break
+		}
+		if used := len(args) - len(rest); used > 0 && args[used-1] == "--" {
+			positional = append(positional, rest...) // the parser stopped at --: the rest are arguments, even when they look like flags
+			break
+		}
+		positional = append(positional, rest[0])
+		args = rest[1:]
+	}
+	return fl.Parse(append([]string{"--"}, positional...))
+}
+
 func runVersion(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("version", stderr)
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -179,10 +204,25 @@ func runVersion(args []string, stdout, stderr io.Writer) int {
 	if fl.NArg() > 0 {
 		return o.fail("version takes no argument, got %q", fl.Arg(0))
 	}
+	commit, modified := model.Build()
 	if o.json {
-		return o.finish(exitOK, nil, nil)
+		var result any
+		if commit != "" {
+			result = struct {
+				Commit   string `json:"commit"`
+				Modified bool   `json:"modified,omitempty"`
+			}{commit, modified}
+		}
+		return o.finish(exitOK, nil, result)
 	}
 	showLogo(stdout, stderr)
 	fmt.Fprintf(stdout, "assess %s\n", model.ToolVersion)
+	if commit != "" { // on stderr, so that what a script reads from stdout stays one line
+		changes := ""
+		if modified {
+			changes = ", with changes that were not committed"
+		}
+		fmt.Fprintf(stderr, "built from commit %s%s\n", shortHash(commit), changes)
+	}
 	return exitOK
 }

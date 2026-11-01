@@ -5,6 +5,7 @@ package model
 
 import (
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -39,6 +40,21 @@ func missing(v reflect.Value, path string, out *[]Gap) {
 		}
 		name, opts, _ := strings.Cut(tag, ",")
 		fv := v.Field(i)
+		if strings.Contains(opts, "inline") && fv.Kind() == reflect.Map {
+			// more keys of one type, such as the parties of an impact: each is searched like an attribute
+			keys := fv.MapKeys()
+			sort.Slice(keys, func(a, b int) bool { return keys[a].String() < keys[b].String() })
+			for _, k := range keys {
+				p := k.String()
+				if path != "" {
+					p = path + "." + p
+				}
+				if inner := fv.MapIndex(k); inner.Kind() == reflect.Pointer && !inner.IsNil() {
+					missing(inner.Elem(), p, out)
+				}
+			}
+			continue
+		}
 		if strings.Contains(opts, "inline") {
 			missing(fv, path, out)
 			continue
@@ -125,6 +141,9 @@ func refs(v reflect.Value, path string, out *[]RefUse) {
 		}
 		name, opts, _ := strings.Cut(tag, ",")
 		fv := v.Field(i)
+		if strings.Contains(opts, "inline") && fv.Kind() == reflect.Map {
+			continue // the parties of an impact hold no references
+		}
 		if strings.Contains(opts, "inline") {
 			refs(fv, path, out)
 			continue

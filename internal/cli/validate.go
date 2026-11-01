@@ -22,7 +22,7 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("validate", stderr)
 	format := fs.String("format", "text", "output format: text or json")
 	strict := fs.Bool("strict", false, "treat warnings as errors")
-	if err := fs.Parse(args); err != nil {
+	if err := parseArgs(fs, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

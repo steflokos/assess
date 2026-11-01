@@ -427,9 +427,19 @@ func TestDecisionsOfTheTestProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := iteration.Decisions(res.Workspace, rep)
+	got, err := iteration.Decisions(res.Workspace, rep, model.IterationVersion)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// the format of now keeps the whole digest of the rationale and the reference
+	v2, err := iteration.Decisions(res.Workspace, rep, model.IterationV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, d := range v2 {
+		if !strings.HasPrefix(d, got[id]) || len(d) != len(got[id])-8+64 {
+			t.Errorf("%s: v2 %q against v1 %q", id, d, got[id])
+		}
 	}
 	if len(got) != 4 {
 		t.Fatalf("one decision for each risk, got %v", got)
@@ -451,7 +461,7 @@ func TestDecisionsNeedARiskForEveryThreat(t *testing.T) {
 	testproject.Replace(t, dir, "concept/risks.yaml", "risk api-interface-spoofing:", "risk some-other-risk:")
 	res := load.Load(dir)
 	rep, _ := engine.Run(res.Workspace, engine.Options{})
-	if _, err := iteration.Decisions(res.Workspace, rep); err == nil || !strings.Contains(err.Error(), "api-interface-spoofing has no risk") {
+	if _, err := iteration.Decisions(res.Workspace, rep, model.IterationFormat); err == nil || !strings.Contains(err.Error(), "api-interface-spoofing has no risk") {
 		t.Errorf("error %v", err)
 	}
 }
@@ -613,5 +623,56 @@ func TestAddSignatureErrors(t *testing.T) {
 	}
 	if _, err := iteration.AddSignature([]byte(": : :"), 1, model.Signature{}); err == nil {
 		t.Error("a file that is not YAML")
+	}
+}
+
+// An iteration of v2 names its format, and its text starts with it. A chain may hold iterations of both formats: the old ones keep
+// the text and the hash they were made with. Taking the format away changes the text, and so the hash.
+func TestAChainOfBothFormatsIsIntactAndTheFormatIsCovered(t *testing.T) {
+	its := chainOf(2)
+	v2 := model.Iteration{
+		Number: 3, Format: model.IterationV2, Date: "2026-10-03T09:30:00Z", By: []string{"Jane Doe"}, Tool: "v0.1.0", Inputs: "sha256:in3",
+		Decisions: map[string]string{"alpha": model.DecisionIn(model.IterationV2, "Reduce", ptr(5), ptr(2), "why", nil)},
+		Previous:  its[1].Hash,
+	}
+	its = append(its, seal(v2))
+	if ps := iteration.Chain(its); len(ps) != 0 {
+		t.Fatalf("a chain of v1 and v2 is intact: %v", codes(ps))
+	}
+	if !strings.HasPrefix(its[2].Canonical(), model.IterationV2+"\n") || !strings.HasPrefix(its[0].Canonical(), model.IterationVersion+"\n") {
+		t.Error("the text of an iteration starts with its format")
+	}
+	if d := its[2].Decisions["alpha"]; len(strings.Fields(d)[2]) != 64 {
+		t.Errorf("v2 keeps the whole digest: %q", d)
+	}
+
+	gone := append([]model.Iteration(nil), its...)
+	gone[2].Format = ""
+	if got := codes(iteration.Chain(gone)); strings.Join(got, " ") != "3:hash" {
+		t.Errorf("taking the format away: %v", got)
+	}
+	future := append([]model.Iteration(nil), its...)
+	future[2].Format = "assess-iteration-v9"
+	if got := codes(iteration.Chain(future)); strings.Join(got, " ") != "3:format" {
+		t.Errorf("a format from the future: %v", got)
+	}
+}
+
+func ptr(v int) *int { return &v }
+
+// Two branches each finalize the next iteration, and a merge keeps both. The chain then has two iterations that follow the same
+// one, and verify says so, instead of only that the numbers and the links are wrong.
+func TestTwoBranchesThatEachFinalizedAreAFork(t *testing.T) {
+	its := chainOf(2)
+	other := its[1]
+	other.Note = "the other branch"
+	other = seal(other)
+	merged := append(its, other)
+	got := codes(iteration.Chain(merged))
+	if strings.Join(got, " ") != "2:fork" {
+		t.Errorf("%v", got)
+	}
+	if ps := iteration.Chain(merged); !strings.Contains(ps[0].Message, "same iteration as iteration 2") {
+		t.Errorf("%s", ps[0].Message)
 	}
 }

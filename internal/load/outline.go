@@ -6,6 +6,7 @@ package load
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -159,7 +160,7 @@ func (l *loader) record(key, val *yaml.Node, word, id string, parent *rec) {
 		return
 	}
 	// An id with a suffix says something the record would otherwise repeat: a threat
-	// is "<asset>-<stride>", so the asset and the property are read from it.
+	// is "<asset>-<stride>" or "<asset>-<stride>.<name>", so the asset and the property are read from it.
 	subject, suffix := id, ""
 	if len(kind.Suffixes) > 0 {
 		var ok bool
@@ -287,6 +288,12 @@ func (l *loader) add(v any, id string) {
 		ws.Assets = append(ws.Assets, *x)
 	case *model.Risk:
 		ws.Risks = append(ws.Risks, *x)
+	case *model.Goal:
+		ws.Goals = append(ws.Goals, *x)
+	case *model.Claim:
+		ws.Claims = append(ws.Claims, *x)
+	case *model.Requirement:
+		ws.Requirements = append(ws.Requirements, *x)
 	case *model.Rule:
 		ws.Rules = append(ws.Rules, *x)
 	}
@@ -318,6 +325,12 @@ func newRecordValue(word string) any {
 		return &model.Asset{}
 	case "risk":
 		return &model.Risk{}
+	case "goal":
+		return &model.Goal{}
+	case "claim":
+		return &model.Claim{}
+	case "requirement":
+		return &model.Requirement{}
 	case "rule":
 		return &model.Rule{}
 	default:
@@ -351,6 +364,12 @@ func recordOf(v any) *model.Record {
 		return &x.Record
 	case *model.Risk:
 		return &x.Record
+	case *model.Goal:
+		return &x.Record
+	case *model.Claim:
+		return &x.Record
+	case *model.Requirement:
+		return &x.Record
 	case *model.Rule:
 		return &x.Record
 	default:
@@ -382,10 +401,17 @@ func (l *loader) checkAttrs(n *yaml.Node, t reflect.Type, childWords []string) b
 		for _, f := range fields {
 			byName[f.Name] = f
 		}
+		extra, takesExtra := model.Extra(t)
 		ok := true
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			key, val := n.Content[i], n.Content[i+1]
 			f, known := byName[key.Value]
+			if !known && takesExtra && l.party(key.Value) {
+				if !l.checkAttrs(val, extra, nil) {
+					ok = false
+				}
+				continue
+			}
 			if !known {
 				l.unknownAttribute(key, t, fields, childWords)
 				ok = false
@@ -410,10 +436,25 @@ func (l *loader) checkAttrs(n *yaml.Node, t reflect.Type, childWords []string) b
 	return true
 }
 
+// party says whether a word is a stakeholder of the project's own, which the policy names in impact.parties.
+func (l *loader) party(word string) bool {
+	if l.ws == nil {
+		return false
+	}
+	_, ok := l.ws.Policy.Impact.Parties[word]
+	return ok
+}
+
 func (l *loader) unknownAttribute(key *yaml.Node, t reflect.Type, fields []model.Field, childWords []string) {
 	names := make([]string, len(fields))
 	for i, f := range fields {
 		names[i] = f.Name
+	}
+	if _, takesExtra := model.Extra(t); takesExtra && l.ws != nil {
+		for w := range l.ws.Policy.Impact.Parties {
+			names = append(names, w)
+		}
+		sort.Strings(names[len(fields):])
 	}
 	text := fmt.Sprintf("%s is not allowed in %s", key.Value, withArticle(noun(t)))
 	if near, ok := closest(key.Value, append(append([]string{}, names...), childWords...)); ok {

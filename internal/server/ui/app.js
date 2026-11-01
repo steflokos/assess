@@ -4,7 +4,7 @@
 
 import { $, h, put, clear, plural, toast, toasts, api, tokenValue, paintTheme, nextTheme, currentTheme, remember, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
-import { S, load, nameOf, kindTitle, workflow, newOpen } from './data.js';
+import { S, load, nameOf, kindTitle, workflow, newOpen, riskByUid } from './data.js';
 import { editor } from './editor.js';
 import { overview, list, decisions, openItems, calc, explain, reportView, diagramView, iterations, files, welcome } from './views.js';
 import { openPalette } from './palette.js';
@@ -56,7 +56,7 @@ window.addEventListener('beforeunload', (e) => { if (state.dirty) { e.preventDef
 const GROUPS = [
   { key: 'describe', title: 'Describe', steps: [1], kinds: ['item', 'assumption', 'function', 'component', 'interface', 'channel', 'data'] },
   { key: 'analyse', title: 'Analyse', steps: [2, 3, 4, 5], kinds: ['asset', 'damage', 'threat', 'step', 'control'] },
-  { key: 'decide', title: 'Decide', steps: [6], kinds: ['risk'], extra: [{ label: 'Decisions', icon: 'checkCircle', parts: ['decisions'] }] },
+  { key: 'decide', title: 'Decide', steps: [6], kinds: ['risk', 'goal', 'claim', 'requirement'], extra: [{ label: 'Decisions', icon: 'checkCircle', parts: ['decisions'] }] },
   { key: 'share', title: 'Share', steps: [7], extra: [
     { label: 'Open items', icon: 'list', parts: ['open'], count: () => S.open.length }, { label: 'Calculation', icon: 'chart', parts: ['calc'] },
     { label: 'Report', icon: 'page', parts: ['report'] }, { label: 'Diagram', icon: 'image', parts: ['diagram'] }, { label: 'Iterations', icon: 'clock', parts: ['iterations'] }] },
@@ -117,8 +117,11 @@ function render() {
   const top = $('#main').scrollTop; // read before the page is cleared, which sets it to 0
   const main = clear($('#main'));
   if (S.fatal) {
+    if (S.fatal === 'token' && location.hash.startsWith('#/') && location.hash.length > 2) {
+      try { sessionStorage.setItem('assess-after', location.hash); } catch (e) { /* no storage */ } // where a link went, for after the token
+    }
     main.append(h('div', { class: 'page' }, h('div', { class: 'card' }, empty('lock', S.fatal === 'token' ? 'This page needs the address that assess serve printed' : 'Something went wrong',
-      S.fatal === 'token' ? 'The address has a token at its end. Copy the whole line from the terminal into the address bar.' : S.fatal))));
+      S.fatal === 'token' ? 'The address has a token at its end. Open the whole line from the terminal once, in this tab or another one, and then this page and the links to risks work, also after assess serve starts again.' : S.fatal))));
     return;
   }
   document.body.classList.toggle('noproject', S.noProject);
@@ -133,6 +136,10 @@ function render() {
   else if (a === 'kind' && b && c) view = editor(b, c, false, ui);
   else if (a === 'kind' && b) view = list(b, ui);
   else if (a === 'new' && b) view = editor(b, '', true, ui);
+  else if (a === 'risk' && b) { // the link of a risk: its uid stays the same when the ids change
+    const r = riskByUid(b);
+    view = r ? editor('risk', r.id, false, ui) : notFound('No risk has the uid ' + b + '. It may have been deleted, or the link belongs to another project.');
+  }
   else if (a === 'decisions') view = decisions(ui);
   else if (a === 'open') view = openItems(ui);
   else if (a === 'calc') view = b ? explain(b) : calc();

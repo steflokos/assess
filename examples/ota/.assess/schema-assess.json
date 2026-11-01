@@ -44,6 +44,17 @@
           ],
           "description": "Path to the policy file, relative to the project. If you leave it out, it is policy.yaml."
         },
+        "port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The port of assess serve on this computer, from 1024 to 65535. The links to the risks use it, so they stay the same from one run to the next. If you leave it out, it is 8484."
+        },
         "template": {
           "anyOf": [
             {

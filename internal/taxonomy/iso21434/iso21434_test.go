@@ -20,6 +20,12 @@ func TestThreatIdsEndInAStrideWord(t *testing.T) {
 		{"tampering", "", "", false}, // no asset
 		{"firmware-image", "", "", false},
 		{"firmware-image-elevation", "", "", false},
+		// another threat scenario to the same property has a name of its own after a dot
+		{"firmware-image-tampering.ota", "firmware-image", "tampering", true},
+		{"ecu.fw-tampering.debug-port", "ecu.fw", "tampering", true},
+		{"a-tampering.b-denial", "a-tampering.b", "denial", true}, // the end decides first
+		{"firmware-image-tampering.", "", "", false},              // no name after the dot
+		{"-tampering.x", "", "", false},                           // no asset
 	}
 	for _, c := range cases {
 		subject, suffix, ok := iso21434.Threat.SplitID(c.id)

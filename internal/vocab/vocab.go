@@ -19,6 +19,7 @@ package vocab
 import (
 	"reflect"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/steflokos/assess/internal/engine"
@@ -50,6 +51,7 @@ type Assumption struct {
 	Steps       []string          `doc:"The ids of the attack steps that assume it."`
 	Controls    []string          `doc:"The ids of the controls that assume it."`
 	Risks       []string          `doc:"The ids of the risks that assume it."`
+	Claims      []string          `doc:"The ids of the claims that assume it."`
 	Notes       map[string]string `doc:"The notes on the record, as a map of text. A note you did not write is not there, so ask with has(x.notes.key) before you read x.notes.key."`
 }
 
@@ -181,6 +183,40 @@ type Risk struct {
 	Reference   []string          `doc:"The ids of the risk in an external tool such as Jira."`
 	Assumes     []string          `doc:"The ids of the assumptions it relies on."`
 	Threat      *Threat           `doc:"The threat scenario this is the risk of."`
+	Goals       []string          `doc:"The ids of the goals that treat it."`
+	Claims      []string          `doc:"The ids of the claims about it."`
+	Notes       map[string]string `doc:"The notes on the record, as a map of text. A note you did not write is not there, so ask with has(x.notes.key) before you read x.notes.key."`
+}
+
+// Goal is a cybersecurity goal.
+type Goal struct {
+	ID           string            `doc:"The id of the goal."`
+	Name         string            `doc:"The statement of the goal."`
+	Description  string            `doc:"The description you wrote. Empty when there is none."`
+	Threats      []string          `doc:"The ids of the threat scenarios whose risk it treats."`
+	CAL          string            `doc:"Its cybersecurity assurance level, CAL1 to CAL4. Empty when it has none."`
+	Requirements []string          `doc:"The ids of the requirements that serve it."`
+	Notes        map[string]string `doc:"The notes on the record, as a map of text. A note you did not write is not there, so ask with has(x.notes.key) before you read x.notes.key."`
+}
+
+// Claim is a cybersecurity claim.
+type Claim struct {
+	ID          string            `doc:"The id of the claim."`
+	Name        string            `doc:"The statement of the claim."`
+	Description string            `doc:"The description you wrote. Empty when there is none."`
+	Threats     []string          `doc:"The ids of the threat scenarios whose risk it is about."`
+	Assumes     []string          `doc:"The ids of the assumptions it relies on."`
+	Notes       map[string]string `doc:"The notes on the record, as a map of text. A note you did not write is not there, so ask with has(x.notes.key) before you read x.notes.key."`
+}
+
+// Requirement is a cybersecurity requirement.
+type Requirement struct {
+	ID          string            `doc:"The id of the requirement."`
+	Name        string            `doc:"The statement of the requirement."`
+	Description string            `doc:"The description you wrote. Empty when there is none."`
+	Goals       []string          `doc:"The ids of the goals it serves."`
+	Target      []string          `doc:"The ids of the elements it is allocated to."`
+	Controls    []string          `doc:"The ids of the controls that meet it."`
 	Notes       map[string]string `doc:"The notes on the record, as a map of text. A note you did not write is not there, so ask with has(x.notes.key) before you read x.notes.key."`
 }
 
@@ -227,6 +263,9 @@ var Kinds = []Kind{
 	{On: iso21434.Step.Word, Var: "step", List: "steps", Type: reflect.TypeFor[Step](), Doc: "An attack step."},
 	{On: iso21434.Control.Word, Var: "control", List: "controls", Type: reflect.TypeFor[Control](), Doc: "A control."},
 	{On: iso21434.Risk.Word, Var: "risk", List: "risks", Type: reflect.TypeFor[Risk](), Doc: "A risk, as written in concept/risks.yaml."},
+	{On: iso21434.Goal.Word, Var: "goal", List: "goals", Type: reflect.TypeFor[Goal](), Doc: "A cybersecurity goal, with the requirements that serve it."},
+	{On: iso21434.Claim.Word, Var: "claim", List: "claims", Type: reflect.TypeFor[Claim](), Doc: "A cybersecurity claim."},
+	{On: iso21434.Requirement.Word, Var: "requirement", List: "requirements", Type: reflect.TypeFor[Requirement](), Doc: "A cybersecurity requirement."},
 }
 
 // Kind is what a rule on one kind of record sees.
@@ -390,6 +429,9 @@ func Build(ws *model.Workspace, rep *engine.Report) *Data {
 	for _, x := range ws.Risks {
 		rely("risk", x.ID, x.Assumes)
 	}
+	for _, x := range ws.Claims {
+		rely("claim", x.ID, x.Assumes)
+	}
 
 	d := &Data{Policy: ToMap(Policy{Affinity: ws.Policy.Risk.Affinity, Excluded: nonNil(ws.Policy.Controls.Exclude)}), Records: map[string][]map[string]any{}}
 	if ws.Item != nil {
@@ -402,7 +444,7 @@ func Build(ws *model.Workspace, rep *engine.Report) *Data {
 	for _, x := range ws.Assumptions {
 		r := reliers[x.ID]
 		d.add(iso21434.Assumption.Word, Assumption{ID: x.ID, Name: x.Name, Description: x.Description, Notes: notes(x.Notes),
-			Threats: nonNil(r["threat"]), Steps: nonNil(r["step"]), Controls: nonNil(r["control"]), Risks: nonNil(r["risk"])})
+			Threats: nonNil(r["threat"]), Steps: nonNil(r["step"]), Controls: nonNil(r["control"]), Risks: nonNil(r["risk"]), Claims: nonNil(r["claim"])})
 	}
 	elementKind := map[string]string{}
 	for _, e := range ws.Elements() {
@@ -479,9 +521,37 @@ func Build(ws *model.Workspace, rep *engine.Report) *Data {
 		d.add(iso21434.Control.Word, Control{ID: x.ID, Name: x.Name, Target: nonNil(x.Target), Rationale: x.Rationale,
 			Rated: rated(x.Reduction), Mitigates: nonNil(b.mitigates[x.ID]), Excluded: b.excluded[x.ID], Assumes: nonNil(x.Assumes), Notes: notes(x.Notes)})
 	}
+	goalsOf, claimsOf, servedBy := map[string][]string{}, map[string][]string{}, map[string][]string{}
+	for _, g := range ws.Goals {
+		for _, t := range g.Threats {
+			goalsOf[t] = append(goalsOf[t], g.ID)
+		}
+	}
+	for _, c := range ws.Claims {
+		for _, t := range c.Threats {
+			claimsOf[t] = append(claimsOf[t], c.ID)
+		}
+	}
+	for _, r := range ws.Requirements {
+		for _, g := range r.Goals {
+			servedBy[g] = append(servedBy[g], r.ID)
+		}
+	}
+	for _, x := range ws.Goals {
+		d.add(iso21434.Goal.Word, Goal{ID: x.ID, Name: x.Name, Description: x.Description, Threats: nonNil(x.Threats), CAL: string(x.CAL),
+			Requirements: nonNil(servedBy[x.ID]), Notes: notes(x.Notes)})
+	}
+	for _, x := range ws.Claims {
+		d.add(iso21434.Claim.Word, Claim{ID: x.ID, Name: x.Name, Description: x.Description, Threats: nonNil(x.Threats), Assumes: nonNil(x.Assumes), Notes: notes(x.Notes)})
+	}
+	for _, x := range ws.Requirements {
+		d.add(iso21434.Requirement.Word, Requirement{ID: x.ID, Name: x.Name, Description: x.Description, Goals: nonNil(x.Goals),
+			Target: nonNil(x.Target), Controls: nonNil(x.Controls), Notes: notes(x.Notes)})
+	}
 	for _, x := range ws.Risks {
 		v := Risk{ID: x.ID, Name: x.Name, Description: x.Description, Treatment: string(x.Treatment), Rationale: x.Rationale,
-			Reference: nonNil(x.Reference), Assumes: nonNil(x.Assumes), Notes: notes(x.Notes)}
+			Reference: nonNil(x.Reference), Assumes: nonNil(x.Assumes), Notes: notes(x.Notes),
+			Goals: nonNil(goalsOf[x.ID]), Claims: nonNil(claimsOf[x.ID])}
 		if r := b.threat[x.ID]; r != nil && r.Risk != nil {
 			if r.Risk.Type != "" {
 				t := r.Risk.Type
@@ -542,6 +612,25 @@ func ratings(x model.DamageScenario) []Rating {
 		name string
 		si   *model.StakeholderImpact
 	}{{"roaduser", x.Impact.RoadUser}, {"oem", x.Impact.OEM}, {"supplier", x.Impact.Supplier}} {
+		if who.si == nil {
+			continue
+		}
+		for _, c := range who.si.Categories() {
+			if c.Rating != nil {
+				out = append(out, Rating{Who: who.name, Category: c.Name, Level: string(c.Rating.Level), Rationale: c.Rating.Rationale})
+			}
+		}
+	}
+	parties := make([]string, 0, len(x.Impact.Parties))
+	for p := range x.Impact.Parties {
+		parties = append(parties, p)
+	}
+	sort.Strings(parties)
+	for _, p := range parties {
+		who := struct {
+			name string
+			si   *model.StakeholderImpact
+		}{p, x.Impact.Parties[p]}
 		if who.si == nil {
 			continue
 		}

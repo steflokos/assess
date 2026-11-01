@@ -84,3 +84,23 @@ func TestPreviewShortensLongLists(t *testing.T) {
 		t.Errorf("%q", got)
 	}
 }
+
+// A value that differs from an allowed one only in case, spaces, hyphens or underscores is named in the message.
+func TestDecodeEnumNamesTheValueThatWasMeant(t *testing.T) {
+	allowed := []string{"Severe", "Major", "Fleet-Wide", "Non Repudiation"}
+	for value, want := range map[string]string{
+		"major":           "(did you mean Major?)",
+		"fleet wide":      "(did you mean Fleet-Wide?)",
+		"Non-Repudiation": "(did you mean Non Repudiation?)",
+		"Huge":            "",
+	} {
+		_, err := yamlx.DecodeEnum(node(t, value), "level", allowed)
+		msg := yamlx.Messages(err)[0]
+		if want == "" && strings.Contains(msg, "did you mean") || want != "" && !strings.Contains(msg, want) {
+			t.Errorf("%s: %s", value, msg)
+		}
+	}
+	if v, err := yamlx.DecodeEnum(node(t, "Major"), "level", allowed); err != nil || v != "Major" {
+		t.Errorf("%q %v", v, err)
+	}
+}

@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -46,7 +47,7 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	dry := fl.Bool("dry-run", false, "show what would change and write nothing")
 	src := fl.String("source", "", "write this name as notes.source on every record that is created or changed")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -56,14 +57,12 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	if flagAfter(o, fl) {
-		return exitUsage
-	}
-	setName, dir := "-", "."
+	setName, dir := "-", ""
 	switch fl.NArg() {
 	case 0:
+		dir = here(stderr)
 	case 1:
-		setName = fl.Arg(0)
+		setName, dir = fl.Arg(0), here(stderr)
 	case 2:
 		setName, dir = fl.Arg(0), fl.Arg(1)
 	default:
@@ -141,9 +140,11 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	}
 	defer unlock()
 	res, before := checkProject(dir)
-	// A change set that only writes the plain files may be the one that repairs them, so errors in the project do not stop
-	// it. What it would leave is judged below, on the project as it would be.
-	if res.Workspace == nil || (before.Count(diag.Error) > 0 && !writesOnly(set)) {
+	// A project with errors still takes a change, such as the one that repairs it, as long as the change adds no error of its own:
+	// what it would leave is judged below, on the project as it would be. A file that does not parse is different, because the
+	// records in it cannot be found, so a change of records waits until it parses. A change set that only writes the plain files
+	// may be the one that repairs them, so it goes on even then.
+	if res.Workspace == nil || (len(res.Unparsed) > 0 && !writesOnly(set)) {
 		return projectRefused(o, res, before)
 	}
 	files := map[string][]byte{}
@@ -181,18 +182,20 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 	for _, d := range before {
 		known[d.Code+"\x00"+d.Message] = true
 	}
+	added := newErrors(before, after, writtenFiles(set)) // the errors that the change makes: the ones that were there before are not its fault
 	var diags diag.List
 	for _, d := range after {
-		if d.Severity == diag.Error || !known[d.Code+"\x00"+d.Message] {
+		if d.Severity == diag.Error && contains(added, d) || d.Severity != diag.Error && !known[d.Code+"\x00"+d.Message] {
 			diags = append(diags, d)
 		}
 	}
+	remaining := after.Count(diag.Error) - len(added)
 	if opt.person && len(out.Deleted) == 0 {
-		return o.fail("there is no %s %s", set.Changes[0].Kind, set.Changes[0].ID)
+		return o.fail("there is no %s %s%s", set.Changes[0].Kind, set.Changes[0].ID, nearID(res.Index, set.Changes[0].Kind, set.Changes[0].ID))
 	}
 	result := applyResult{DryRun: opt.dry, Created: refs(out.Created), Updated: refs(out.Updated), Deleted: refs(out.Deleted), Unchanged: refs(out.Unchanged), Files: sortedNames(out.Files), Diff: out.Diff}
-	if after.Count(diag.Error) > 0 {
-		result.Blocked = blockedBy(files, out.Files, after)
+	if len(added) > 0 {
+		result.Blocked = blockedBy(files, out.Files, added)
 		if plan := usedBy(files, opt); plan != nil && !o.json {
 			fmt.Fprintf(o.text(), "%s %s is used by other records. To delete it, you also have to delete or change this:\n", set.Changes[0].Kind, set.Changes[0].ID)
 			listChanges(o.text(), plan, 20)
@@ -208,7 +211,7 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 			o.show(beyond)
 		} else {
 			o.show(diags)
-			fmt.Fprintf(o.stderr, "assess %s: the result would have %s. Nothing was written\n", o.cmd, plural(after.Count(diag.Error), "error"))
+			fmt.Fprintf(o.stderr, "assess %s: the change would add %s. Nothing was written\n", o.cmd, plural(len(added), "error"))
 		}
 		if opt.hint != "" {
 			fmt.Fprintf(o.stderr, "assess %s: %s\n", o.cmd, opt.hint)
@@ -216,7 +219,10 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 		return o.finish(exitFindings, diags, result)
 	}
 
-	result.Effects = effectsOf(res.Workspace, staged.Workspace)
+	brokenBefore, _ := isolation(res, before)
+	brokenAfter, _ := isolation(staged, after)
+	result.Effects = effectsOf(res.Workspace, staged.Workspace, brokenBefore, brokenAfter)
+	result.RemainingErrors = remaining
 
 	w := o.text()
 	if opt.person {
@@ -248,7 +254,13 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 			refreshIDs(dir, load.Load(dir))
 		}
 	}
+	if !o.json {
+		printEffects(w, result.Effects)
+	}
 	o.show(diags)
+	if remaining > 0 {
+		fmt.Fprintf(o.stderr, "assess %s: the project still has %s that it had before the change. Run assess validate\n", o.cmd, plural(remaining, "error"))
+	}
 	switch {
 	case opt.person:
 		verb := "deleted"
@@ -321,6 +333,9 @@ type applyResult struct {
 	Effects []effect `json:"effects,omitempty"`
 	// Conflicts, when there are any, say what changed in the files after the change set was written. Nothing is written then.
 	Conflicts []edit.Conflict `json:"conflicts,omitempty"`
+	// RemainingErrors counts the errors that the project had before the change and still has after it. A change that adds no
+	// error is written even then, so that a project with errors can be repaired a step at a time.
+	RemainingErrors int `json:"remainingErrors,omitempty"`
 }
 
 // blocked is a record that an error of the result is about.
@@ -513,4 +528,53 @@ func conflictText(c edit.Conflict) string {
 		return fmt.Sprintf("%s %s is not there any more", c.Kind, c.ID)
 	}
 	return fmt.Sprintf("%s %s: %s was %s when you read it and is %s now", c.Kind, c.ID, c.Attribute, show(c.Was), show(c.Now))
+}
+
+// newErrors are the errors of after that before does not have, which are the errors that a change makes. Two errors are the same
+// when they have the same code and the same message once the places in it are taken out, because a change that adds lines above
+// an old error moves it, and the message of some errors names the place of another record. An error that is there more often
+// than before counts as many times more.
+//
+// A plain file that the change writes as a whole has to be right afterwards, so every error in it counts as new.
+func newErrors(before, after diag.List, written map[string]bool) diag.List {
+	key := func(d diag.Diagnostic) string { return d.Code + "\x00" + placeRe.ReplaceAllString(d.Message, "") }
+	had := map[string]int{}
+	for _, d := range before {
+		if d.Severity == diag.Error {
+			had[key(d)]++
+		}
+	}
+	var out diag.List
+	for _, d := range after {
+		if d.Severity != diag.Error {
+			continue
+		}
+		if k := key(d); had[k] > 0 && !written[d.Loc.File] {
+			had[k]--
+		} else {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+// placeRe matches a place in a message: a file with its line and column, or a line.
+var placeRe = regexp.MustCompile(`[^\s(]+\.ya?ml:\d+(:\d+)?|line \d+(:\d+)?`)
+
+func contains(list diag.List, d diag.Diagnostic) bool {
+	for _, x := range list {
+		if x == d {
+			return true
+		}
+	}
+	return false
+}
+
+// writtenFiles are the plain files that a change set writes as a whole.
+func writtenFiles(set *edit.Set) map[string]bool {
+	out := map[string]bool{}
+	for _, c := range set.Writes() {
+		out[c.File] = true
+	}
+	return out
 }

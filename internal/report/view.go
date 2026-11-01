@@ -131,6 +131,9 @@ type OpenItem struct {
 	Kind string `json:"kind,omitempty"` // the kind of record it is about, as a heading word
 	ID   string `json:"id,omitempty"`   // the id of that record
 	Rule string `json:"rule,omitempty"` // the rule that found it, for a rule finding
+	// Link opens the risk that the item is about in the web interface, when the item is about a risk or a threat scenario whose
+	// risk has a uid.
+	Link string `json:"link,omitempty"`
 }
 
 // Section is a numbered part of the report.
@@ -272,6 +275,8 @@ type Line struct {
 	Label string
 	Text  string
 	Ref   string
+	// Href is an address outside the page that the text links to, such as the link of a risk in the web interface.
+	Href  string
 	Note  string
 	Class string
 }
@@ -357,5 +362,8 @@ const (
 	aStep     = "step-"
 	aControl  = "ctl-"
 	aRisk     = "risk-"
+	aGoal     = "goal-"
+	aClaim    = "claim-"
+	aReq      = "req-"
 	aSheet    = "sheet-"
 )

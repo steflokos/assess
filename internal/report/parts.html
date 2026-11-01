@@ -81,5 +81,5 @@
 {{else}}{{with .Caption}}<h4>{{.}}</h4>
 {{end}}<p class="empty">{{.Empty}}</p>
 {{end}}{{end}}
-{{define "text"}}{{if and .Ref (known .Ref)}}<a href="#{{.Ref}}">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}
+{{define "text"}}{{if .Href}}<a class="out" href="{{.Href}}" title="Open it in assess serve">{{.Text}}</a>{{else if and .Ref (known .Ref)}}<a href="#{{.Ref}}">{{.Text}}</a>{{else}}{{.Text}}{{end}}{{end}}
 {{define "cell"}}{{with .Single}}{{template "text" .}}{{else}}{{range .Items}}{{if or (not .Optional) (known .Ref)}}<div{{with .Class}} class="{{.}}"{{end}}{{if .Depth}} style="--d:{{.Depth}}"{{end}}>{{with .Label}}<span class="label">{{.}}</span> {{end}}{{template "text" .}}{{with .Note}} <span class="note">{{.}}</span>{{end}}</div>{{end}}{{end}}{{end}}{{end}}

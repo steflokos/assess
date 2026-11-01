@@ -15,6 +15,7 @@
 #   and: [...]  or: [...]    boolean logic over step ids, nested as needed
 #   kind <id>: ...           a record: a heading, then an indented block of attributes and child records
 #                            A threat is written threat <asset>-<stride>: the id names the asset and the property.
+#                            Another threat to the same property has a name of its own after a dot: <asset>-<stride>.<name>
 #                            An asset is written asset <element-id>: with the id of its element.
 #                            A risk is written risk <threat-id>: with the id of its threat scenario.
 #
@@ -45,6 +46,9 @@ policy: <text>
 # optional. Where assess verify finds the public keys to check signatures with. This is a file, or a
 # folder of .pub and .pem files, relative to the project. Keep private keys out of the project.
 keys: <text>
+# optional. The port of assess serve on this computer, from 1024 to 65535. The links to the risks
+# use it, so they stay the same from one run to the next. If you leave it out, it is 8484.
+port: <number>
 # optional. Path to the report template, relative to the project. The template is an HTML page with
 # placeholders that say where each part of the report goes. If you leave it out, assess uses the
 # standard template. Run assess template to get a copy to start from.
@@ -139,6 +143,17 @@ feasibility:
     # required. For the controls the attacker has to defeat. They apply on top of the steps. For
     # example, time: max and the others sum, so a control that is in place raises the other factors.
     controls: <same as feasibility.combine.steps>
+  # optional. true stops each factor of a path at the points of the highest key of its table, after
+  # the steps and the controls are combined. Steps and controls that add up then cannot rate an
+  # attacker beyond the top of the scale, such as more expertise than multiple experts. Leave it out
+  # to let the points add up without a limit.
+  cap: true | false
+  # optional. true adds up elapsed time as days instead of points, where combine says sum for time.
+  # Each key counts as the longest time it covers: ET0 1 day, ET1 7, ET2 30, ET3 180 and ET4 365.
+  # The total turns back into the first key that covers it, and the path gets the points of that
+  # key. Three steps of a week each are then ET2, about three weeks, and not 1 + 1 + 1 points. Leave
+  # it out to add up the points.
+  days: true | false
 # optional. Which impact counts for the risk and how the impact of a damage scenario is worked out.
 impact:
   # optional. How the four impact categories of one stakeholder become one level. max takes the
@@ -148,9 +163,13 @@ impact:
   # adds their points and looks the total up in levels. Every stakeholder that counts, counts the
   # same.
   between: max | sum
-  # optional. Whose impact counts for the risk. A stakeholder a damage scenario does not rate is
-  # skipped.
+  # optional. Whose impact counts for the risk: roaduser, oem, supplier or one of parties. A
+  # stakeholder a damage scenario does not rate is skipped.
   stakeholders: [roaduser | oem | supplier]
+  # optional. Stakeholders of your own, besides roaduser, oem and supplier, each a word of small
+  # letters with a name, such as fleet: Fleet operator. A damage scenario rates them under impact
+  # like the road user, and stakeholders can count them.
+  parties: {key: value}
   # optional. Points of each impact level, for a stage that is sum. Write every level.
   points: {Severe: <number>, Major: <number>, Moderate: <number>, Negligible: <number>}
   # optional. Turns total points back into an impact level, for a stage that is sum. The first band
@@ -193,6 +212,10 @@ risk:
 iterations:
   # required. The number of the iteration. Numbers start at 1 and have no gap.
   - number: <number>
+    # optional. The format of the text the hash is made from. assess-iteration-v2 keeps the whole
+    # SHA-256 digest of the rationale and the reference of each decision. An iteration without it is
+    # assess-iteration-v1, which keeps 8 hex characters of it.
+    format: <text>
     # required. The date and time it was finalized, as RFC 3339 with the time zone, such as
     # 2026-10-18T14:32:07+02:00.
     date: <text>
@@ -446,9 +469,11 @@ damage <id>:
 # The id says which property of which asset. It is the asset id, a hyphen and a STRIDE word, and the
 # word stands for the property (spoofing is Authenticity, tampering is Integrity, repudiation is Non
 # Repudiation, disclosure is Confidentiality, denial is Availability). The asset must list that
-# property. There is one threat scenario for each asset property. The different ways to carry it out
-# are alternatives inside steps.
-threat <asset>-<stride>:
+# property. An asset property can have several threat scenarios, each with its own risk and
+# treatment: write the others with a name of their own after a dot, such as
+# update-package-tampering.ota. The different ways to carry out one threat scenario are alternatives
+# inside its steps.
+threat <asset>-<stride>[.<name>]:
   # required. A short name that a person can read.
   name: <text>
   # optional. What this is and its role in the item.
@@ -583,6 +608,11 @@ risk <threat-id>:
   # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
   # not there, so ask with has(x.notes.key) first.
   notes: {key: value}
+  # optional. A short id of the risk that never changes, such as R-0007. A link to the risk in the
+  # web interface is made from it, so it keeps working when the threat scenario or its asset gets
+  # another id. assess generate risks gives one to every risk that has none. Each risk has its own.
+  # Do not change it once others use it.
+  uid: <text>
   # optional. Calculated by assess. It is Goal when the base risk, before any control, is above the
   # risk affinity of the policy. It is Claim when the base risk is at or below it. assess generate
   # risks writes it. Do not edit it.
@@ -604,6 +634,66 @@ risk <threat-id>:
   # optional. The assumptions this depends on. The treatment holds only while they hold. One id or a
   # list of ids.
   assumes: <id of an assumption>
+
+# goal: A cybersecurity goal (ISO/SAE 21434 clause 9.4): what the item has to achieve so that the
+# risk of threat scenarios that are reduced or avoided is treated. Its name is the statement of the
+# goal. It can have a cybersecurity assurance level.
+# Written in concept/, at the top level.
+goal <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The threat scenarios whose risk the goal treats. One id or a list of ids.
+  threats: <id of a threat scenario>
+  # optional. The cybersecurity assurance level of the goal (ISO/SAE 21434 Annex E): CAL1 to CAL4.
+  # It says how much rigour the work that meets the goal needs. Leave it out when your method does
+  # not use CALs.
+  cal: CAL1 | CAL2 | CAL3 | CAL4
+
+# claim: A cybersecurity claim (ISO/SAE 21434 clause 9.4): a statement about the risk of threat
+# scenarios that are accepted or shared, such as who carries a shared risk or why an accepted one
+# holds. Its name is the statement of the claim.
+# Written in concept/, at the top level.
+claim <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The threat scenarios whose risk the claim is about. One id or a list of
+  # ids.
+  threats: <id of a threat scenario>
+  # optional. The assumptions the claim relies on. One id or a list of ids.
+  assumes: <id of an assumption>
+
+# requirement: A cybersecurity requirement of the concept (ISO/SAE 21434 clause 9.5): what a part of
+# the item has to do so that goals are met. Its name is the statement. It names the goals it serves,
+# where it is allocated and the controls that meet it.
+# Written in concept/, at the top level.
+requirement <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The goals the requirement serves. One id or a list of ids.
+  goals: <id of a cybersecurity goal>
+  # optional. Where the requirement is allocated: elements of the architecture. One id or a list of
+  # ids.
+  target: <id of a component, interface, channel or data element>
+  # optional. The controls that meet the requirement. One id or a list of ids.
+  controls: <id of a control>
 
 ---
 # rules/: The rules assess lint checks the project against, written in CEL. assess init writes a
@@ -673,6 +763,7 @@ rule <id>:
   # steps (list(string)) The ids of the attack steps that assume it.
   # controls (list(string)) The ids of the controls that assume it.
   # risks (list(string)) The ids of the risks that assume it.
+  # claims (list(string)) The ids of the claims that assume it.
   # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
   # is not there, so ask with has(x.notes.key) before you read x.notes.key.
 #
@@ -819,6 +910,39 @@ rule <id>:
   # reference (list(string)) The ids of the risk in an external tool such as Jira.
   # assumes (list(string)) The ids of the assumptions it relies on.
   # threat (Threat, open) The threat scenario this is the risk of.
+  # goals (list(string)) The ids of the goals that treat it.
+  # claims (list(string)) The ids of the claims about it.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# goal (the variable on: goal. The list goals holds all of them): A cybersecurity goal, with the
+# requirements that serve it.
+  # id (string) The id of the goal.
+  # name (string) The statement of the goal.
+  # description (string) The description you wrote. Empty when there is none.
+  # threats (list(string)) The ids of the threat scenarios whose risk it treats.
+  # cal (string) Its cybersecurity assurance level, CAL1 to CAL4. Empty when it has none.
+  # requirements (list(string)) The ids of the requirements that serve it.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# claim (the variable on: claim. The list claims holds all of them): A cybersecurity claim.
+  # id (string) The id of the claim.
+  # name (string) The statement of the claim.
+  # description (string) The description you wrote. Empty when there is none.
+  # threats (list(string)) The ids of the threat scenarios whose risk it is about.
+  # assumes (list(string)) The ids of the assumptions it relies on.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# requirement (the variable on: requirement. The list requirements holds all of them): A
+# cybersecurity requirement.
+  # id (string) The id of the requirement.
+  # name (string) The statement of the requirement.
+  # description (string) The description you wrote. Empty when there is none.
+  # goals (list(string)) The ids of the goals it serves.
+  # target (list(string)) The ids of the elements it is allocated to.
+  # controls (list(string)) The ids of the controls that meet it.
   # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
   # is not there, so ask with has(x.notes.key) before you read x.notes.key.
 #
@@ -867,6 +991,9 @@ RuleTarget:
   - step
   - control
   - risk
+  - goal
+  - claim
+  - requirement
 
 Severity:
   - Error  # A failed rule makes assess lint fail.

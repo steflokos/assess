@@ -40,7 +40,7 @@ type Kind struct {
 func (k Kind) Heading() string {
 	switch {
 	case len(k.Suffixes) > 0:
-		return k.Word + " <asset>-<stride>"
+		return k.Word + " <asset>-<stride>[.<name>]"
 	case len(k.Of) > 0:
 		return k.Word + " <" + k.OfLabel + "-id>"
 	}
@@ -56,15 +56,23 @@ func (k Kind) Key(id string) string {
 	return k.Word + ":" + id
 }
 
-// SplitID splits the id of a kind with suffixes into the part the author chose
-// and the suffix word. It reports false when the id does not end with one.
+// SplitID splits the id of a kind with suffixes into the part the author chose and the suffix word. The id ends with
+// the suffix after a hyphen, as in update-package-tampering, or has a name of its own after it and a dot, as in
+// update-package-tampering.ota, so that one asset property can have several threat scenarios. It reports false when
+// the id is neither.
 func (k Kind) SplitID(id string) (subject, suffix string, ok bool) {
 	for _, s := range k.Suffixes {
 		if rest, found := strings.CutSuffix(id, "-"+s); found && rest != "" {
 			return rest, s, true
 		}
 	}
-	return "", "", false
+	best := -1
+	for _, s := range k.Suffixes { // the last "-<suffix>." of the id, so that an asset id may itself hold dots
+		if i := strings.LastIndex(id, "-"+s+"."); i > 0 && i+len(s)+2 < len(id) && i > best {
+			best, subject, suffix = i, id[:i], s
+		}
+	}
+	return subject, suffix, best > 0
 }
 
 // Stride is a STRIDE category and the cybersecurity property whose loss it
@@ -139,11 +147,14 @@ var (
 	Step           = Kind{Word: "step", Singular: "attack step", Folder: FolderTara, TopLevel: true}
 	Control        = Kind{Word: "control", Singular: "control", Folder: FolderTara, TopLevel: true}
 	Risk           = Kind{Word: "risk", Singular: "risk", Folder: FolderConcept, TopLevel: true, Of: []string{"threat"}, OfLabel: "threat"}
+	Goal           = Kind{Word: "goal", Singular: "cybersecurity goal", Folder: FolderConcept, TopLevel: true}
+	Claim          = Kind{Word: "claim", Singular: "cybersecurity claim", Folder: FolderConcept, TopLevel: true}
+	Requirement    = Kind{Word: "requirement", Singular: "cybersecurity requirement", Folder: FolderConcept, TopLevel: true}
 	Rule           = Kind{Word: "rule", Singular: "rule", Folder: FolderRules, TopLevel: true}
 )
 
 // Kinds lists every kind in authoring order.
-var Kinds = []Kind{Item, Assumption, Function, Component, Interface, Channel, Data, Asset, DamageScenario, Threat, Step, Control, Risk, Rule}
+var Kinds = []Kind{Item, Assumption, Function, Component, Interface, Channel, Data, Asset, DamageScenario, Threat, Step, Control, Risk, Goal, Claim, Requirement, Rule}
 
 // KindByWord returns the kind written with the given heading word.
 func KindByWord(word string) (Kind, bool) {
@@ -300,7 +311,7 @@ func (v *Severity) UnmarshalYAML(n *yaml.Node) error {
 // RuleTarget is the kind of record a rule checks: the heading word of the kind.
 type RuleTarget string
 
-var ruleTargetValues = []string{Item.Word, Assumption.Word, Function.Word, Component.Word, Interface.Word, Channel.Word, Data.Word, Asset.Word, DamageScenario.Word, Threat.Word, Step.Word, Control.Word, Risk.Word}
+var ruleTargetValues = []string{Item.Word, Assumption.Word, Function.Word, Component.Word, Interface.Word, Channel.Word, Data.Word, Asset.Word, DamageScenario.Word, Threat.Word, Step.Word, Control.Word, Risk.Word, Goal.Word, Claim.Word, Requirement.Word}
 
 func RuleTargetValues() []string        { return slices.Clone(ruleTargetValues) }
 func (RuleTarget) EnumValues() []string { return slices.Clone(ruleTargetValues) }

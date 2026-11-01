@@ -61,6 +61,9 @@ type Workspace struct {
 	Assumptions     []Assumption
 	Assets          []Asset
 	Risks           []Risk
+	Goals           []Goal
+	Claims          []Claim
+	Requirements    []Requirement
 	Rules           []Rule
 	Policy          Policy
 	Iterations      Iterations // the closed iterations, from iterations.yaml

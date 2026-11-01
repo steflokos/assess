@@ -26,7 +26,7 @@ func runTemplate(args []string, stdout, stderr io.Writer) int {
 	outFile := fl.String("o", "", "file to write the standard template to, instead of standard output. It must not exist yet")
 	list := fl.Bool("list", false, "list the placeholders, and the parts of the report of the project in dir, instead of the template")
 	format := fl.String("format", "text", "with -list: output format, text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

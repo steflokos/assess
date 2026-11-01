@@ -150,10 +150,9 @@ function relate() {
     if (parent) add(r, [parent, r.parent]);
     const of = kindOfId(r.id, info.idOf);
     if (of) add(r, [of, r.id]);
-    // a threat scenario is written <asset>-<stride>
-    for (const s of info.idSuffixes || []) {
-      if (r.id.endsWith('-' + s) && S.byKey.has('asset:' + r.id.slice(0, -(s.length + 1)))) add(r, ['asset', r.id.slice(0, -(s.length + 1))]);
-    }
+    // a threat scenario is written <asset>-<stride>, or <asset>-<stride>.<name>
+    const asset = subjectOf(r.id, info.idSuffixes);
+    if (asset && S.byKey.has('asset:' + asset)) add(r, ['asset', asset]);
   }
 }
 
@@ -180,6 +179,8 @@ export function workflow() {
   const notCalc = openCount('not-calculated', 'policy-gap');
   const undecided = openCount('no-treatment');
   const riskGaps = openCount('no-risks', 'risk-missing', 'risk-stale', 'risk-not-calculated');
+  const errors = (S.diag || []).filter((d) => d.severity === 'error').length;
+  const waits = errors > 0 && !results; // the calculation, and so the steps that need it, wait for the errors to be fixed
   const its = (S.exp && S.exp.iterations) || [];
   const last = its[its.length - 1];
   const closed = !!last && last.inputs === (S.exp && S.exp.fingerprint);
@@ -234,11 +235,42 @@ export function workflow() {
         : risks > 0 ? { label: 'Close the iteration', finalize: true, primary: true } : null,
     },
   ];
+  if (waits) {
+    for (const s of list.slice(4)) { // rating, deciding and closing need the calculation
+      if (s.done) continue;
+      s.blocked = true;
+      s.text = 'Waits for the ' + plural(errors, 'error') + ' in the files to be fixed.';
+      s.action = null;
+    }
+  }
   let found = false;
   list.forEach((s, i) => {
     s.n = i + 1;
-    s.state = s.done ? 'done' : !found ? 'now' : 'todo';
+    s.state = s.done ? 'done' : !found && !s.blocked ? 'now' : 'todo'; // a step that waits for the errors is never the next one
     if (!s.done) found = true;
   });
   return list;
 }
+
+// subjectOf is the asset of a threat scenario's id, as SplitID in Go reads it: the id ends with "-<stride>", or has a name of its
+// own after "-<stride>.". It is empty for an id that is neither.
+export function subjectOf(id, suffixes) {
+  for (const s of suffixes || []) if (id.endsWith('-' + s) && id.length > s.length + 1) return id.slice(0, -(s.length + 1));
+  let best = -1;
+  for (const s of suffixes || []) {
+    const i = id.lastIndexOf('-' + s + '.');
+    if (i > 0 && i + s.length + 2 < id.length && i > best) best = i;
+  }
+  return best > 0 ? id.slice(0, best) : '';
+}
+
+// riskLink is the address that opens a risk in the web interface, as RiskLink in Go makes it: from the uid of the risk and the port of
+// assess.yaml, or 8484, so that it stays the same from one run of assess serve to the next. It is empty for a risk without a uid.
+export function riskLink(uid, config) {
+  if (!uid) return '';
+  const port = (config || {}).port || 8484;
+  return 'http://127.0.0.1:' + port + '/#/risk/' + uid;
+}
+
+// riskByUid is the risk that has a uid, or undefined.
+export const riskByUid = (uid) => (S.of.risk || []).find((r) => (r.attributes || {}).uid === uid);

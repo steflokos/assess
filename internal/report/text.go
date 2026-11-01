@@ -36,6 +36,12 @@ func Eval(w io.Writer, rep *engine.Report) {
 	}
 	if rep.Rules != nil {
 		fmt.Fprintf(w, "combine steps:    %s\ncombine controls: %s\n", ruleLine(rep.Rules.Steps), ruleLine(rep.Rules.Controls))
+		if rep.Rules.Cap {
+			fmt.Fprintln(w, "cap:              each factor stops at the points of the highest key of its table")
+		}
+		if rep.Rules.Days {
+			fmt.Fprintln(w, "days:             elapsed time adds up as days, and the total turns back into a key")
+		}
 	}
 	if rep.Risk != nil {
 		fmt.Fprintf(w, "impact:           categories %s, stakeholders %s\nscalability:      %s\n", rep.Risk.ImpactAcross, rep.Risk.ImpactBetween, scalabilityText(rep.Risk))
@@ -198,6 +204,9 @@ func Explain(w io.Writer, ws *model.Workspace, rep *engine.Report, r engine.Resu
 // explain is Explain with the index of the attack records, which a caller that writes many worksheets builds once.
 func explain(w io.Writer, x *attack.Index, ws *model.Workspace, rep *engine.Report, r engine.Result, all bool) {
 	fmt.Fprintf(w, "%s  %s\n", r.Threat, r.Name)
+	if r.Link != "" {
+		fmt.Fprintf(w, "risk %s  %s\n", r.UID, r.Link)
+	}
 	for _, p := range rep.Policy {
 		fmt.Fprintln(w, "policy:", p)
 	}
@@ -208,6 +217,12 @@ func explain(w io.Writer, x *attack.Index, ws *model.Workspace, rep *engine.Repo
 		fmt.Fprintln(tw, "  steps\t"+strings.Join(rep.Rules.Steps[:], "\t"))
 		fmt.Fprintln(tw, "  controls\t"+strings.Join(rep.Rules.Controls[:], "\t"))
 		tw.Flush()
+		if rep.Rules.Cap {
+			fmt.Fprintln(w, "cap: each factor stops at the points of the highest key of its table (feasibility.cap)")
+		}
+		if rep.Rules.Days {
+			fmt.Fprintln(w, "days: elapsed time adds up as days (ET0 1, ET1 7, ET2 30, ET3 180, ET4 365), and the total turns back into a key (feasibility.days)")
+		}
 		fmt.Fprintln(w, "levels: "+bandLine(ws.Policy.Feasibility.Levels))
 	}
 	for _, why := range r.Issues {
@@ -501,9 +516,16 @@ func printWorksheet(w io.Writer, p engine.Path, rules *engine.Rules) {
 			row(tw, "bypass", e.ID+" (bypassed by its threatenedby steps, which are among the steps above)", make([]string, len(engine.Factors)))
 		}
 	}
+	before := p.Vector
+	if p.Uncapped != nil {
+		before = *p.Uncapped
+	}
 	if defeats {
 		row(tw, "stage 2", "controls combined by", rules.Controls[:])
-		row(tw, "", "result", numbers(p.Vector))
+		row(tw, "", "result", numbers(before))
+	}
+	if p.Uncapped != nil {
+		row(tw, "cap", "each factor stops at the top of its scale", numbers(p.Vector))
 	}
 	tw.Flush()
 	fmt.Fprintf(w, "  total %d = %s  ->  %s\n", p.Total, strings.Join(numbers(p.Vector), " + "), p.Level)

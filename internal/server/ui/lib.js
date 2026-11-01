@@ -87,14 +87,22 @@ export function remember(key, value) {
 }
 
 // ---- the token and the API -------------------------------------------------------------------------------------------
-// The address that assess serve prints has the token in its fragment. It is kept for this tab only, and taken out of the address bar.
+// The address that assess serve prints has the token in its fragment. It is taken out of the address bar and kept, so that a reload
+// works. It is kept in the storage of the origin too, so that a link that is opened in a new tab works: that tab finds it there. No
+// page that can run a script of a report template can read it, because the page loads the report from the other name of the server
+// (127.0.0.1 or localhost), which is another origin. At [::1] the report has to open in a tab of this origin, so there the token stays
+// with the tab. A new run of assess serve has a new token, and its address replaces the old one.
+const sharedToken = location.hostname !== '[::1]';
 let token = '';
-try { token = sessionStorage.getItem('assess-token') || ''; } catch (e) { /* no storage */ }
+try { token = sessionStorage.getItem('assess-token') || (sharedToken && localStorage.getItem('assess-token')) || ''; } catch (e) { /* no storage */ }
 const given = /[#&]t=([0-9a-f]+)/.exec(location.hash);
 if (given) {
   token = given[1];
   try { sessionStorage.setItem('assess-token', token); } catch (e) { /* no storage */ }
-  history.replaceState(null, '', location.pathname + '#/');
+  try { if (sharedToken) localStorage.setItem('assess-token', token); } catch (e) { /* no storage */ }
+  let after = '';
+  try { after = sessionStorage.getItem('assess-after') || ''; sessionStorage.removeItem('assess-after'); } catch (e) { /* no storage */ }
+  history.replaceState(null, '', location.pathname + (after.startsWith('#/') ? after : '#/'));
 }
 export const tokenValue = () => token;
 
@@ -161,4 +169,9 @@ export function ask(opt) {
     document.body.append(dlg);
     dlg.showModal();
   });
+}
+
+// copyText puts a text on the clipboard and says so.
+export async function copyText(text, done) {
+  try { await navigator.clipboard.writeText(text); toast(done); } catch (e) { toast('The browser did not allow copying.', 'warn'); }
 }

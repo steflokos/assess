@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: build install vet fmt-check test race vendor-check vuln check
+.PHONY: build install vet fmt-check test race fuzz vendor-check vuln check
 
 # Builds bin/assess inside this folder. It is not on your PATH; make install puts it there.
 build:
@@ -31,8 +31,11 @@ vendor-check:
 	$(GO) mod verify
 	git diff --exit-code -- go.mod go.sum vendor
 
+# govulncheck has a fixed version, so that a check does not change by itself. It is built with the Go of this module, which it
+# needs to read the code: go run would otherwise build it with the older Go that its own module asks for.
+GOVULNCHECK ?= golang.org/x/vuln/cmd/govulncheck@v1.9.0
 vuln:
-	$(GO) run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	GOTOOLCHAIN=$$($(GO) env GOVERSION) $(GO) run $(GOVULNCHECK) ./...
 
 # Runs every test. The tests in cmd/assess build the program once and run it.
 test:
@@ -41,5 +44,12 @@ test:
 # The same with the race detector, which is slower. The lock and the atomic writes need it most.
 race:
 	$(GO) test -race ./...
+
+# Runs each fuzz test of the text editor for a while: FUZZTIME=5m for longer. An input that fails is written to
+# internal/edit/testdata/fuzz, and go test runs it from then on.
+FUZZTIME ?= 30s
+fuzz:
+	$(GO) test ./internal/edit -run '^$$' -fuzz '^FuzzPutText$$' -fuzztime $(FUZZTIME)
+	$(GO) test ./internal/edit -run '^$$' -fuzz '^FuzzParseSet$$' -fuzztime $(FUZZTIME)
 
 check: fmt-check vet

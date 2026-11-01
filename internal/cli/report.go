@@ -45,7 +45,7 @@ func runReport(args []string, stdout, stderr io.Writer) int {
 	outFile := fl.String("o", "", "file to write, or - for standard output (default "+defaultReport+" in the project)")
 	tmplFile := fl.String("template", "", "report template to use instead of the one in assess.yaml. assess template writes the standard one")
 	strict := fl.Bool("strict", false, "exit 1 when the report has open items")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -167,10 +167,18 @@ func makeView(dir string, res *load.Result, extra ...namedBytes) (*report.View, 
 
 // reportInput calculates the project and gathers everything a report is made of.
 func reportInput(dir string, res *load.Result, extra ...namedBytes) (report.Input, error) {
-	rep, err := engine.Run(res.Workspace, engine.Options{})
+	return isolatedInput(dir, res, nil, false, extra...)
+}
+
+// isolatedInput is reportInput for a project that may have errors in its records: the threat scenarios that use a broken record
+// are not calculated, and when the project has errors the rules are not run, because a record with an error may have lost a value
+// that a rule reads.
+func isolatedInput(dir string, res *load.Result, broken map[string]string, hasErrors bool, extra ...namedBytes) (report.Input, error) {
+	rep, err := engine.Run(res.Workspace, engine.Options{Broken: broken})
 	if err != nil {
 		return report.Input{}, err
 	}
+	engine.Link(res.Workspace, rep)
 	files := inputFiles(res)
 	inputs, err := fingerprint(dir, files)
 	if err != nil {
@@ -183,10 +191,15 @@ func reportInput(dir string, res *load.Result, extra ...namedBytes) (report.Inpu
 		}
 	}
 	drift, none := riskFileDrift(res, rep)
-	set, _ := rules.Compile(res.Workspace, res.Index) // loadChecked has already refused rules that do not compile
+	var findings []diag.Finding
+	checked := 0
+	if !hasErrors {
+		set, _ := rules.Compile(res.Workspace, res.Index) // loadChecked has already refused rules that do not compile
+		findings, checked = rules.Run(set, res.Workspace, rep, res.Index), len(set.Rules)
+	}
 	return report.Input{
 		Workspace: res.Workspace, Report: rep, Drift: drift, NoRisks: none, Files: files,
-		Findings: rules.Run(set, res.Workspace, rep, res.Index), RulesChecked: len(set.Rules),
+		Findings: findings, RulesChecked: checked,
 		Meta: report.Meta{
 			Tool:        "assess " + model.ToolVersion,
 			Fingerprint: print,

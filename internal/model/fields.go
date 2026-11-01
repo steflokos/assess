@@ -18,7 +18,7 @@ func init() {
 	for _, v := range []any{
 		Config{}, Project{}, Source{}, Block{}, Policy{}, ControlPolicy{}, Feasibility{}, Combination{}, FactorRules{}, Points{}, Band{}, ImpactPolicy{}, ImpactBand{}, ScalabilityPolicy{}, RiskPolicy{},
 		Assumption{}, Asset{}, Threat{}, AttackStep{}, Control{}, Risk{}, Rule{}, AttackPotential{}, Item{}, Function{}, Component{}, Interface{}, Channel{}, Data{},
-		DamageScenario{}, FlowStep{}, ImpactSet{}, StakeholderImpact{}, Rating{},
+		DamageScenario{}, FlowStep{}, ImpactSet{}, StakeholderImpact{}, Rating{}, Goal{}, Claim{}, Requirement{},
 	} {
 		t := reflect.TypeOf(v)
 		types[t.Name()] = t
@@ -27,20 +27,23 @@ func init() {
 
 // RecordTypes maps a heading word to the struct that holds that kind's attributes.
 var RecordTypes = map[string]reflect.Type{
-	"item":       reflect.TypeOf(Item{}),
-	"function":   reflect.TypeOf(Function{}),
-	"component":  reflect.TypeOf(Component{}),
-	"interface":  reflect.TypeOf(Interface{}),
-	"channel":    reflect.TypeOf(Channel{}),
-	"data":       reflect.TypeOf(Data{}),
-	"assumption": reflect.TypeOf(Assumption{}),
-	"asset":      reflect.TypeOf(Asset{}),
-	"damage":     reflect.TypeOf(DamageScenario{}),
-	"threat":     reflect.TypeOf(Threat{}),
-	"step":       reflect.TypeOf(AttackStep{}),
-	"control":    reflect.TypeOf(Control{}),
-	"risk":       reflect.TypeOf(Risk{}),
-	"rule":       reflect.TypeOf(Rule{}),
+	"item":        reflect.TypeOf(Item{}),
+	"function":    reflect.TypeOf(Function{}),
+	"component":   reflect.TypeOf(Component{}),
+	"interface":   reflect.TypeOf(Interface{}),
+	"channel":     reflect.TypeOf(Channel{}),
+	"data":        reflect.TypeOf(Data{}),
+	"assumption":  reflect.TypeOf(Assumption{}),
+	"asset":       reflect.TypeOf(Asset{}),
+	"damage":      reflect.TypeOf(DamageScenario{}),
+	"threat":      reflect.TypeOf(Threat{}),
+	"step":        reflect.TypeOf(AttackStep{}),
+	"control":     reflect.TypeOf(Control{}),
+	"risk":        reflect.TypeOf(Risk{}),
+	"goal":        reflect.TypeOf(Goal{}),
+	"claim":       reflect.TypeOf(Claim{}),
+	"requirement": reflect.TypeOf(Requirement{}),
+	"rule":        reflect.TypeOf(Rule{}),
 }
 
 // Field describes one YAML attribute of a model struct.
@@ -68,6 +71,9 @@ func Fields(t reflect.Type) []Field {
 		}
 		name, opts, _ := strings.Cut(tag, ",")
 		if strings.Contains(opts, "inline") {
+			if f.Type.Kind() == reflect.Map {
+				continue // more keys of one type, such as the parties of an impact: see Extra
+			}
 			out = append(out, Fields(f.Type)...)
 			continue
 		}
@@ -106,4 +112,16 @@ func Types() map[string]reflect.Type {
 		out[k] = v
 	}
 	return out
+}
+
+// Extra returns the type of the value that a struct takes under keys of its own besides its attributes, such as the impact on
+// a stakeholder that the policy names, and true. It reports false for a struct that takes only its attributes.
+func Extra(t reflect.Type) (reflect.Type, bool) {
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if _, opts, _ := strings.Cut(f.Tag.Get("yaml"), ","); strings.Contains(opts, "inline") && f.Type.Kind() == reflect.Map {
+			return f.Type.Elem(), true
+		}
+	}
+	return nil, false
 }

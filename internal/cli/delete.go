@@ -26,7 +26,7 @@ func runDelete(args []string, stdout, stderr io.Writer) int {
 	cascade := fl.Bool("cascade", false, "also delete what belongs to the record, and take its id out of the records that only mention it")
 	dry := fl.Bool("dry-run", false, "show what would change and write nothing")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -36,15 +36,15 @@ func runDelete(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	if flagAfter(o, fl) {
-		return exitUsage
-	}
 	if fl.NArg() < 2 || fl.NArg() > 3 {
 		return o.fail("expected a kind and an id, and at most one directory: assess delete [-cascade] <kind> <id> [dir]")
 	}
-	kind, id, dir := fl.Arg(0), fl.Arg(1), "."
+	kind, id := fl.Arg(0), fl.Arg(1)
+	dir := ""
 	if fl.NArg() == 3 {
 		dir = fl.Arg(2)
+	} else {
+		dir = here(stderr)
 	}
 	if _, known := iso21434.KindByWord(kind); !known {
 		return o.fail("%q is not a kind of record. The kinds are %s", kind, strings.Join(iso21434.Words(), ", "))

@@ -45,7 +45,29 @@ func DecodeEnum(n *yaml.Node, typeName string, allowed []string) (string, error)
 			return a, nil
 		}
 	}
-	return "", Errf(n, "%q is not a valid %s. The allowed values are %s", n.Value, typeName, Preview(allowed))
+	hint := ""
+	if near, ok := sameLetters(n.Value, allowed); ok {
+		hint = fmt.Sprintf(" (did you mean %s?)", near)
+	}
+	return "", Errf(n, "%q is not a valid %s%s. The allowed values are %s", n.Value, typeName, hint, Preview(allowed))
+}
+
+// sameLetters returns the one allowed value that a value only differs from in case, spaces, hyphens or underscores, such as
+// major for Major or fleet-wide for Fleet-Wide or Non-Repudiation for Non Repudiation.
+func sameLetters(value string, allowed []string) (string, bool) {
+	fold := func(s string) string {
+		return strings.ToLower(strings.NewReplacer(" ", "", "-", "", "_", "").Replace(s))
+	}
+	want, found := fold(value), ""
+	for _, a := range allowed {
+		if fold(a) == want {
+			if found != "" {
+				return "", false // two values fit, so neither is meant for sure
+			}
+			found = a
+		}
+	}
+	return found, found != ""
 }
 
 // Preview renders at most ten values for an error message.

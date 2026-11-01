@@ -33,6 +33,7 @@ type Config struct {
 	Version    string `yaml:"version,omitempty" doc:"The version of assess that wrote this project, such as v0.1.0. assess init writes it. assess warns when you run an older version, because it may not read the files right."`
 	Policy     string `yaml:"policy,omitempty" doc:"Path to the policy file, relative to the project. If you leave it out, it is policy.yaml."`
 	Keys       string `yaml:"keys,omitempty" doc:"Where assess verify finds the public keys to check signatures with. This is a file, or a folder of .pub and .pem files, relative to the project. Keep private keys out of the project."`
+	Port       int    `yaml:"port,omitempty" doc:"The port of assess serve on this computer, from 1024 to 65535. The links to the risks use it, so they stay the same from one run to the next. If you leave it out, it is 8484."`
 	Template   string `yaml:"template,omitempty" doc:"Path to the report template, relative to the project. The template is an HTML page with placeholders that say where each part of the report goes. If you leave it out, assess uses the standard template. Run assess template to get a copy to start from."`
 }
 
@@ -192,6 +193,23 @@ type ImpactSet struct {
 	RoadUser *StakeholderImpact `yaml:"roaduser" req:"always" doc:"Impact on the road user. Required."`
 	OEM      *StakeholderImpact `yaml:"oem,omitempty" doc:"Impact on the vehicle manufacturer."`
 	Supplier *StakeholderImpact `yaml:"supplier,omitempty" doc:"Impact on suppliers and other third parties: tier-1, tier-2 and further manufacturers."`
+	// Parties are the stakeholders of the project's own, which the policy names in impact.parties, written next to the
+	// others under their own word, such as fleet.
+	Parties map[string]*StakeholderImpact `yaml:",inline"`
+}
+
+// Of returns the impact on a stakeholder: one of the three that every project has, or one of the policy's parties. It is
+// nil when the damage scenario does not rate it.
+func (s ImpactSet) Of(who string) *StakeholderImpact {
+	switch who {
+	case "roaduser":
+		return s.RoadUser
+	case "oem":
+		return s.OEM
+	case "supplier":
+		return s.Supplier
+	}
+	return s.Parties[who]
 }
 
 // StakeholderImpact rates the four ISO/SAE 21434 impact categories.

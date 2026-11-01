@@ -4,10 +4,11 @@
 
 import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, short, firstSentence, upper, when, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
-import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow } from './data.js';
+import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow, recordAt } from './data.js';
 import { choice } from './form.js';
 import { hrefOf, diagnostics, diagnostic, said, diff, effects, conflicts, crumbs, empty, notFound, opened, OPEN_TITLES, noAdvice } from './parts.js';
 import { signIteration } from './sign.js';
+import { linkButton } from './editor.js';
 
 // ---- doing what a step of the path asks ---------------------------------------------------------------------------------------------
 export async function act(action, ui) {
@@ -46,6 +47,22 @@ async function finalizeDialog(ui) {
   else await ask({ title: 'The iteration was not closed', noCancel: true, body: h('div', {}, said(env), diagnostics((env.diagnostics || []).slice(0, 10))) });
 }
 
+// errorsCard lists the errors of the project for a page that cannot do its work while there are any: what waits for them, the first
+// few errors with a link to where each one is, and a link to the overview for the rest.
+function errorsCard(errors, waits) {
+  return h('div', { class: 'card errors' }, h('h2', {}, icon('alert', 18), ' ' + plural(errors.length, 'error') + ' to fix first'),
+    h('p', { class: 'muted', text: waits + ' Fix the errors in the files: each one says where it is. The page follows within a few seconds.' }),
+    diagnostics(errors.slice(0, 5)),
+    errors.length > 5 ? h('p', { class: 'muted small' }, '… and ' + (errors.length - 5) + ' more on the ', h('a', { href: '#/', text: 'overview' }), '.') : null);
+}
+
+// errorHref is where the first error can be fixed: the page of the record it is in, or the files page for a plain file.
+function errorHref(d) {
+  const at = d && d.file ? recordAt(d.file, d.line || 1) : null;
+  if (at) return hrefOf('kind', at.kind, at.id);
+  return d && ['assess.yaml', 'project.yaml', 'policy.yaml'].includes(d.file) ? '#/files' : '';
+}
+
 // ---- the overview ---------------------------------------------------------------------------------------------------------------------
 function actionButton(a, ui) {
   const b = h('button', { class: 'btn ' + (a.primary ? 'primary' : ''), type: 'button', onclick: () => {
@@ -72,7 +89,12 @@ export function overview(ui) {
   }
 
   const left = h('div', { class: 'stack' });
-  if (next) {
+  if (errors.length) { // the errors come first: what they touch is not calculated, and a report waits for them
+    const href = errorHref(errors[0]);
+    left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step' }), h('h2', { text: 'Fix ' + plural(errors.length, 'error') }),
+      h('p', { class: 'muted', text: 'A threat scenario that uses a record with an error is not calculated, and the report waits for the project to have none. Each error above says where it is.' }),
+      href ? h('div', { class: 'row' }, h('a', { class: 'btn primary', href }, 'Open the first one')) : null));
+  } else if (next) {
     left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step, ' + next.n + ' of ' + path.length }),
       h('h2', { text: next.title }), h('p', { class: 'muted', text: next.text }),
       next.action ? h('div', { class: 'row' }, actionButton(Object.assign({}, next.action, { primary: true }), ui)) : h('p', { class: 'muted small', text: 'Finish the steps before it first.' })));
@@ -97,7 +119,8 @@ export function overview(ui) {
   }
   const open = S.open.length;
   right.append(h('div', { class: 'card' }, h('h2', { text: 'What needs you' }),
-    open ? h('p', {}, h('strong', { text: plural(open, 'item') }), ' open. ', h('a', { href: '#/open', text: 'See them' })) : h('p', { class: 'muted', text: results ? 'Nothing is open.' : 'Nothing yet.' }),
+    open ? h('p', {}, h('strong', { text: plural(open, 'item') }), ' open. ', h('a', { href: '#/open', text: 'See them' }))
+      : h('p', { class: 'muted', text: results ? 'Nothing is open.' : errors.length ? 'The errors come first. What is open is worked out once there are none.' : 'Nothing yet.' }),
     S.diag.filter((d) => d.severity !== 'error').length ? h('p', { class: 'muted small', text: plural(S.diag.filter((d) => d.severity !== 'error').length, 'warning') + ' in the files.' }) : null));
   const its = exp.iterations || [];
   if (its.length) {
@@ -137,6 +160,28 @@ function details(kind, r) {
 // the name of the record that a record is written inside
 const parentName = (kind, r) => { const k = r.parent && kindOfId(r.parent, (S.kinds[kind] || {}).parents); return k ? nameOf(k, r.parent) : r.parent || ''; };
 
+// sortable makes the heads of a table that sort it. A head is [key, text] or [key, text, -1]: a head with a key is a button, and -1
+// says that it sorts from the highest first, as a risk value is wanted. state keeps the key and the direction, and draw is called after
+// a click. order sorts a list by the key of the moment, with value(row, key) as the thing to compare, and mark shows the direction.
+function sortable(heads, state, draw) {
+  const th = heads.map(([key, text, first]) => h('th', { 'aria-sort': 'none' }, key ? h('button', { type: 'button', class: 'sort', onclick: () => {
+    state.dir = state.sort === key ? -state.dir : first || 1;
+    state.sort = key;
+    draw();
+  } }, text, h('span', { class: 'arrow' })) : text));
+  const mark = () => th.forEach((el, i) => { const key = heads[i][0]; el.setAttribute('aria-sort', key && key === state.sort ? (state.dir > 0 ? 'ascending' : 'descending') : 'none'); });
+  const order = (list, value) => {
+    mark();
+    if (!state.sort) return list;
+    return [...list].sort((a, b) => { const x = value(a, state.sort), y = value(b, state.sort); return (x < y ? -1 : x > y ? 1 : 0) * state.dir; });
+  };
+  return { th, order };
+}
+
+// a value that is not there sorts below every number
+const num = (v) => (typeof v === 'number' ? v : -1);
+const LEVEL_RANK = { 'Very Low': 1, Low: 2, Medium: 3, High: 4 };
+
 const sortValue = (kind, r, key) => {
   const a = r.attributes || {};
   if (key === 'name') return (a.name || r.id).toLowerCase();
@@ -154,12 +199,8 @@ export function list(kind, ui) {
   const count = h('span', { class: 'muted small' });
   const filter = h('input', { class: 'filter', type: 'search', placeholder: 'Filter by name or id', 'aria-label': 'Filter the list', oninput: () => { state.q = filter.value.trim().toLowerCase(); draw(); } });
   const nested = rows.some((r) => r.parent);
-  const heads = [['name', 'Name'], [kind === 'risk' || kind === 'threat' ? 'risk' : '', kind === 'risk' || kind === 'threat' ? 'Risk, before → with controls' : 'Details'], ...(nested ? [['inside', 'Inside']] : [])];
-  const th = heads.map(([key, text]) => h('th', { 'aria-sort': 'none' }, key ? h('button', { type: 'button', class: 'sort', onclick: () => {
-    state.dir = state.sort === key ? -state.dir : 1;
-    state.sort = key;
-    draw();
-  } }, text, h('span', { class: 'arrow' })) : text));
+  const heads = [['name', 'Name'], [kind === 'risk' || kind === 'threat' ? 'risk' : '', kind === 'risk' || kind === 'threat' ? 'Risk, before → with controls' : 'Details', -1], ...(nested ? [['inside', 'Inside']] : [])];
+  const { th, order } = sortable(heads, state, () => draw());
 
   const draw = () => {
     clear(body);
@@ -169,8 +210,7 @@ export function list(kind, ui) {
       if (state.only === 'undecided' && (r.attributes || {}).treatment) return false;
       return true;
     });
-    if (state.sort) list = [...list].sort((a, b) => { const x = sortValue(kind, a, state.sort), y = sortValue(kind, b, state.sort); return (x < y ? -1 : x > y ? 1 : 0) * state.dir; });
-    th.forEach((el, i) => { const key = heads[i][0]; el.setAttribute('aria-sort', key && key === state.sort ? (state.dir > 0 ? 'ascending' : 'descending') : 'none'); });
+    list = order(list, (r, key) => sortValue(kind, r, key));
     for (const r of list) {
       const name = (r.attributes || {}).name || r.id;
       body.append(h('tr', { class: 'row-link', onclick: (e) => { if (!e.target.closest('a')) ui.go('kind', kind, r.id); } },
@@ -209,14 +249,20 @@ export function decisions(ui) {
   const page = h('div', { class: 'page wide' }, crumbs({ text: 'Risks', href: hrefOf('kind', 'risk') }, { text: 'Decisions' }));
   page.append(h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Decisions' }),
     h('p', { class: 'muted', text: 'What you do about each risk: avoid it, reduce it, share it or accept it. Changes are checked together and saved together.' }))));
+  const errors = S.diag.filter((d) => d.severity === 'error');
+  if (errors.length) page.append(errorsCard(errors, 'A decision is saved as long as it adds no error, and the risks of the threat scenarios that use a record with an error are not calculated.'));
   if (!risks.length) {
     page.append(h('div', { class: 'card' }, empty('scale', 'No risks yet', 'assess writes a risk for each threat scenario once it can be calculated.', S.exp.results && S.threats.size ? { label: 'Write the risks', run: () => act({ generate: 'risks' }, ui) } : null)));
     return page;
   }
 
   const pending = new Map(); // risk id to what changed
-  const state = { only: risks.some((r) => !(r.attributes || {}).treatment) ? 'undecided' : '', q: '' };
+  const state = { only: risks.some((r) => !(r.attributes || {}).treatment) ? 'undecided' : '', q: '', type: '', sort: '', dir: 1 };
   const body = h('tbody');
+  // the treatment as it is on the page: the one that is chosen and not saved yet, or the one in the file
+  const treatmentOf = (r) => { const c = pending.get(r.id) || {}; return c.treatment !== undefined ? c.treatment || '' : (r.attributes || {}).treatment || ''; };
+  const { th, order } = sortable([['name', 'Risk'], ['value', 'Value', -1], ['treatment', 'Treatment']], state, () => draw());
+  const value = (r, key) => { const a = r.attributes || {}; return key === 'name' ? (a.name || r.id).toLowerCase() : key === 'value' ? (num(a.base) + 1) * 10 + num(a.residual) + 1 : treatmentOf(r); };
   const status = h('div', { 'aria-live': 'polite' });
   const save = h('button', { class: 'btn primary', type: 'button', disabled: true }, 'Save');
   let seq = 0;
@@ -249,7 +295,7 @@ export function decisions(ui) {
     save.disabled = false;
   };
   const checkLater = debounce(check, 350);
-  const touch = () => { ui.setDirty(pending.size > 0); clear(status); if (pending.size) status.append(h('p', { class: 'muted small', text: 'Checking…' })); save.disabled = true; checkLater(); };
+  const touch = () => { ui.setDirty(pending.size > 0); clear(status); if (pending.size) status.append(h('p', { class: 'muted small', text: 'Checking…' })); save.disabled = true; recount(); checkLater(); };
   const set = (r, key, value) => {
     const a = r.attributes || {};
     const c = pending.get(r.id) || {};
@@ -260,12 +306,13 @@ export function decisions(ui) {
 
   const draw = () => {
     clear(body);
-    const shown = risks.filter((r) => {
+    const shown = order(risks.filter((r) => {
       const a = r.attributes || {};
       const name = (a.name || '').toLowerCase();
       if (state.q && !(name.includes(state.q) || r.id.toLowerCase().includes(state.q))) return false;
-      return state.only !== 'undecided' || !a.treatment;
-    });
+      if (state.type && a.type !== state.type) return false;
+      return state.only !== 'undecided' || !treatmentOf(r);
+    }), value);
     for (const r of shown) {
       const a = r.attributes || {};
       const t = S.threats.get(r.id);
@@ -274,16 +321,18 @@ export function decisions(ui) {
       why.value = (pending.get(r.id) || {}).rationale !== undefined ? (pending.get(r.id) || {}).rationale || '' : a.rationale || '';
       const wrap = h('div', { hidden: true }, why);
       body.append(h('tr', {},
-        h('td', {}, h('a', { class: 'nm', href: hrefOf('kind', 'risk', r.id), text: a.name || r.id }), h('div', { class: 'faint small mono', text: r.id })),
+        h('td', {}, h('a', { class: 'nm', href: hrefOf('kind', 'risk', r.id), text: a.name || r.id }), h('div', { class: 'faint small mono', text: r.id }), linkButton('risk', r)),
         h('td', {}, h('span', { class: 'row tight' }, chip(a.base, 'Before the controls'), h('span', { class: 'faint', text: '→' }), chip(a.residual, 'With the controls'), a.type ? h('span', { class: 'tag', text: a.type }) : null)),
         h('td', {}, treat.node, h('button', { type: 'button', class: 'linkish', title: why.value, onclick: () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) why.focus(); } }, why.value ? 'Show the reason' : 'Add a reason'), wrap)));
     }
     if (!shown.length) body.append(h('tr', {}, h('td', { colspan: 3, class: 'muted center', text: state.only === 'undecided' ? 'Every risk has a decision.' : 'Nothing matches.' })));
   };
+  const undecided = () => risks.filter((r) => !treatmentOf(r)).length;
+  const seg = choice({ values: ['', 'undecided'], text: (v) => (v ? 'Undecided (' + undecided() + ')' : 'All (' + risks.length + ')'), label: 'Which risks', value: state.only, required: true, onChange: () => { state.only = seg.get(); draw(); } });
+  // the count follows the choices on the page, before they are saved. The row of a risk that was just decided stays until the list is drawn again.
+  const recount = () => { const b = seg.node.querySelectorAll('button')[1]; if (b) b.textContent = 'Undecided (' + undecided() + ')'; };
+  const type = choice({ values: ['', 'Goal', 'Claim'], text: (v) => (v ? v + 's' : 'All types'), label: 'Which type of risk', value: '', required: true, onChange: () => { state.type = type.get(); draw(); } });
   draw();
-
-  const undecided = risks.filter((r) => !(r.attributes || {}).treatment).length;
-  const seg = choice({ values: ['', 'undecided'], text: (v) => (v ? 'Undecided (' + undecided + ')' : 'All (' + risks.length + ')'), label: 'Which risks', value: state.only, required: true, onChange: () => { state.only = seg.get(); draw(); } });
   const filter = h('input', { class: 'filter', type: 'search', placeholder: 'Filter by name or id', 'aria-label': 'Filter the risks', oninput: () => { state.q = filter.value.trim().toLowerCase(); draw(); } });
 
   save.addEventListener('click', async () => {
@@ -309,8 +358,8 @@ export function decisions(ui) {
   window.addEventListener('assess:save', keySave);
   window.addEventListener('assess:leave', () => window.removeEventListener('assess:save', keySave), { once: true });
 
-  page.append(h('div', { class: 'row', style: 'margin-bottom: 12px' }, filter, seg.node),
-    h('div', { class: 'card flush scroll' }, h('table', { class: 't decide' }, h('thead', {}, h('tr', {}, ['Risk', 'Value', 'Treatment'].map((t) => h('th', { text: t })))), body)),
+  page.append(h('div', { class: 'row', style: 'margin-bottom: 12px' }, filter, seg.node, type.node),
+    h('div', { class: 'card flush scroll' }, h('table', { class: 't decide' }, h('thead', {}, h('tr', {}, th)), body)),
     h('div', { class: 'sticky' }, status, h('div', { class: 'row' }, save, h('span', { class: 'faint small', text: mod + ' S' }))));
   return page;
 }
@@ -321,7 +370,8 @@ export function openItems(ui) {
   const items = S.open;
   const page = h('div', { class: 'page' }, crumbs({ text: 'Open items' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Open items' }),
     h('p', { class: 'muted', text: 'What is not calculated, what has no decision yet and what the rules found. It is the same list as in the report.' }))));
-  if (!S.exp.results) page.append(h('div', { class: 'alert warn', text: 'The project has errors, so the list is not there yet. See the findings in the overview.' }));
+  const errors = S.diag.filter((d) => d.severity === 'error');
+  if (!S.exp.results) page.append(errors.length ? errorsCard(errors, 'The list is worked out once the project has no errors.') : h('div', { class: 'alert warn', text: 'The list is not there yet.' }));
   else if (!items.length) page.append(h('div', { class: 'card' }, empty('checkCircle', 'Nothing is open', 'Every threat scenario is calculated and every risk has its decision.')));
   else page.append(h('div', { class: 'card flush scroll' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, ['What', 'Where', 'Details'].map((t) => h('th', { text: t })))),
     h('tbody', {}, items.map((it) => h('tr', {},
@@ -341,17 +391,47 @@ export function calc() {
   const r = S.exp.results;
   const page = h('div', { class: 'page' }, crumbs({ text: 'Calculation' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Calculation' }),
     h('p', { class: 'muted', text: 'The risk of each threat scenario, before the controls and with them. Open one to see how each number came out.' }))));
-  if (!r) { page.append(h('div', { class: 'alert warn', text: 'The project has errors, so nothing is calculated yet.' })); return page; }
+  if (!r) {
+    const errors = S.diag.filter((d) => d.severity === 'error');
+    page.append(errors.length ? errorsCard(errors, 'Nothing is calculated while the project has errors.') : h('div', { class: 'alert warn', text: 'Nothing is calculated yet.' }));
+    return page;
+  }
+  const errs = S.diag.filter((d) => d.severity === 'error');
+  if (errs.length) page.append(errorsCard(errs, 'The threat scenarios that use a record with an error are not calculated. The others are.'));
   page.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('strong', { text: 'The item' }), chip(r.item.base, 'Before the controls'), h('span', { class: 'muted', text: 'before, decided by' }),
     r.item.baseBy ? h('a', { href: hrefOf('kind', 'threat', r.item.baseBy), class: 'cp link', text: nameOf('threat', r.item.baseBy) || r.item.baseBy }) : null,
     chip(r.item.residual, 'With the controls'), h('span', { class: 'muted', text: 'with the controls' }))));
-  page.append(h('div', { class: 'card flush scroll' }, h('table', { class: 't' },
-    h('thead', {}, h('tr', {}, ['Threat scenario', 'Before', 'With controls', 'Type', 'Feasibility'].map((t) => h('th', { text: t })))),
-    h('tbody', {}, r.threats.map((t) => h('tr', {},
-      h('td', {}, h('a', { class: 'nm', href: hrefOf('calc', t.threat), text: t.name || t.threat }), h('div', { class: 'faint small mono', text: t.threat })),
-      h('td', {}, chip(t.risk && t.risk.base, 'Before the controls')), h('td', {}, chip(t.risk && t.risk.residual, 'With the controls')),
-      h('td', { text: (t.risk && t.risk.type) || '' }),
-      h('td', { class: 'small', text: (t.base && t.base.level ? t.base.level : '–') + ' → ' + (t.residual && t.residual.level ? t.residual.level : '–') })))))));
+  // The table sorts by any column, the risk values from the highest first, and filters by a word and by the type of the risk.
+  const state = { sort: '', dir: 1, q: '', type: '' };
+  const body = h('tbody');
+  const count = h('span', { class: 'muted small' });
+  const { th, order } = sortable([['name', 'Threat scenario'], ['base', 'Before', -1], ['residual', 'With controls', -1], ['type', 'Type'], ['feasibility', 'Feasibility', -1]], state, () => draw());
+  const risk = (t, which) => num(t.risk && t.risk[which]) + 1;
+  const level = (t, which) => LEVEL_RANK[t[which] && t[which].level] || 0;
+  const value = (t, key) => key === 'name' ? (t.name || t.threat).toLowerCase()
+    : key === 'base' ? risk(t, 'base') * 10 + risk(t, 'residual') // a tie goes to the higher value with the controls
+      : key === 'residual' ? risk(t, 'residual') * 10 + risk(t, 'base')
+        : key === 'type' ? (t.risk && t.risk.type) || ''
+          : level(t, 'base') * 10 + level(t, 'residual');
+  const draw = () => {
+    clear(body);
+    const list = order(r.threats.filter((t) => (!state.q || (t.name || '').toLowerCase().includes(state.q) || t.threat.toLowerCase().includes(state.q)) &&
+      (!state.type || (t.risk && t.risk.type) === state.type)), value);
+    for (const t of list) {
+      body.append(h('tr', {},
+        h('td', {}, h('a', { class: 'nm', href: hrefOf('calc', t.threat), text: t.name || t.threat }), h('div', { class: 'faint small mono', text: t.threat })),
+        h('td', {}, chip(t.risk && t.risk.base, 'Before the controls')), h('td', {}, chip(t.risk && t.risk.residual, 'With the controls')),
+        h('td', { text: (t.risk && t.risk.type) || '' }),
+        h('td', { class: 'small', text: (t.base && t.base.level ? t.base.level : '–') + ' → ' + (t.residual && t.residual.level ? t.residual.level : '–') })));
+    }
+    if (!list.length) body.append(h('tr', {}, h('td', { colspan: 5, class: 'muted center', text: 'Nothing matches.' })));
+    count.textContent = list.length === r.threats.length ? plural(list.length, 'threat scenario') : list.length + ' of ' + plural(r.threats.length, 'threat scenario');
+  };
+  draw();
+  const filter = h('input', { class: 'filter', type: 'search', placeholder: 'Filter by name or id', 'aria-label': 'Filter the threat scenarios', oninput: () => { state.q = filter.value.trim().toLowerCase(); draw(); } });
+  const type = choice({ values: ['', 'Goal', 'Claim'], text: (v) => (v ? v + 's' : 'All types'), label: 'Which type of risk', value: '', required: true, onChange: () => { state.type = type.get(); draw(); } });
+  page.append(h('div', { class: 'row', style: 'margin-bottom: 12px' }, filter, type.node, count),
+    h('div', { class: 'card flush scroll' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, th)), body)));
   return page;
 }
 

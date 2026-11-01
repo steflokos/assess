@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -66,7 +67,6 @@ func TestApplyAndGenerateSayWhatIsWrongWithWhatWasGiven(t *testing.T) {
 	}{
 		"a folder for the change set":    {[]string{"apply", dir}, "is a folder. Give the change set first"},
 		"a change set that is not there": {[]string{"apply", filepath.Join(dir, "no-such.json")}, "does not exist"},
-		"a flag after the folder":        {[]string{"generate", "assets", dir, "-force"}, "Put the flags first"},
 		"a word that is almost one":      {[]string{"generate", "asets", dir}, "Did you mean assets?"},
 		"nothing to generate":            {[]string{"generate", dir}, "say what to generate"},
 		"a folder without a project":     {[]string{"lint", t.TempDir()}, "has no assess.yaml"},
@@ -91,7 +91,7 @@ func TestUsageListsEveryCommand(t *testing.T) {
 			names = append(names, strings.Fields(line)[0])
 		}
 	}
-	want := []string{"apply", "delete", "describe", "diagram", "eval", "explain", "export", "finalize", "generate", "init", "lint", "open", "report", "schema", "serve", "sign", "template", "validate", "verify", "version"}
+	want := []string{"apply", "check", "delete", "describe", "diagram", "eval", "explain", "export", "finalize", "generate", "init", "lint", "open", "report", "schema", "serve", "sign", "template", "validate", "verify", "version"}
 	if strings.Join(names, " ") != strings.Join(want, " ") {
 		t.Errorf("commands:\n got %v\nwant %v", names, want)
 	}
@@ -195,7 +195,7 @@ func TestInitWritesAStarterThatIsValid(t *testing.T) {
 	if r, env := runJSON(t, "validate", dir); r.code != 0 || len(env.Diagnostics) != 0 {
 		t.Errorf("validate: %+v", env.Diagnostics)
 	}
-	if r := run(t, "lint", "-strict", dir); r.code != 0 || !strings.Contains(r.out+r.err, "5 rules checked") {
+	if r := run(t, "lint", "-strict", dir); r.code != 0 || !strings.Contains(r.out+r.err, "7 rules checked") {
 		t.Errorf("lint: exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }
@@ -603,7 +603,7 @@ func TestOpenListsWhatWaits(t *testing.T) {
 		{"a risk without a treatment", edit{"concept/risks.yaml", "  treatment: Accept\n", "  treatment:\n"}, "no-treatment", "risk", "device-key-disclosure"},
 		{"a step without a rating", edit{"tara/attack-steps.yaml", "  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq1}\n  rationale: The port is on the board", "  rationale: The port is on the board"}, "not-calculated", "", ""},
 		{"a risk that is out of date", edit{"concept/risks.yaml", "  base: 5\n", "  base: 3\n"}, "risk-stale", "risk", "update-package-tampering"},
-		{"a risk that is not written", edit{"concept/risks.yaml", "risk api-interface-spoofing:\n  name: Risk of spoofing of API interface\n  type: Claim\n  base: 1\n  residual: 1\n  description: Somebody with a stolen key acts as a gateway.\n  treatment: Share\n  rationale: The operator of the interface takes the risk in the contract.\n  reference: TEST-104\n", ""}, "risk-missing", "threat", "api-interface-spoofing"},
+		{"a risk that is not written", edit{"concept/risks.yaml", "risk api-interface-spoofing:\n  name: Risk of spoofing of API interface\n  uid: R-0004\n  type: Claim\n  base: 1\n  residual: 1\n  description: Somebody with a stolen key acts as a gateway.\n  treatment: Share\n  rationale: The operator of the interface takes the risk in the contract.\n  reference: TEST-104\n", ""}, "risk-missing", "threat", "api-interface-spoofing"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -831,7 +831,7 @@ func TestDescribe(t *testing.T) {
 			}
 		}
 	}
-	want := "item assumption function component interface channel data asset damage threat step control risk rule"
+	want := "item assumption function component interface channel data asset damage threat step control risk goal claim requirement rule"
 	if strings.Join(kinds, " ") != want {
 		t.Errorf("kinds %v", kinds)
 	}
@@ -1030,5 +1030,136 @@ func TestDiagramOfAnAttackTree(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "out/attack-device-key-disclosure.svg")); err != nil {
 		t.Errorf("the default file of an attack tree: %v", err)
+	}
+}
+
+// A command that is given no folder finds the project in the folders above, the way git finds its repository, and says which
+// one it took. serve does not, because in a folder without a project it offers to create one.
+func TestACommandFindsTheProjectAbove(t *testing.T) {
+	dir := testproject.Copy(t)
+	t.Chdir(filepath.Join(dir, "tara"))
+	r := run(t, "validate")
+	if r.code != 0 || !strings.Contains(r.err, "using the project in ..") {
+		t.Errorf("validate from tara/: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	if r := run(t, "explain", "update-package-tampering"); r.code != 0 || !strings.Contains(r.out, "update-package-tampering") {
+		t.Errorf("explain from tara/: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// in the project itself there is nothing to say
+	t.Chdir(dir)
+	if r := run(t, "validate"); r.code != 0 || strings.Contains(r.err, "using the project") {
+		t.Errorf("validate in the project: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// a folder that no project contains still says that there is no project
+	t.Chdir(t.TempDir())
+	if r := run(t, "validate"); r.code == 0 || !strings.Contains(r.out+r.err, "no assess.yaml") {
+		t.Errorf("validate outside a project: %+v", r)
+	}
+}
+
+// An id that is almost the id of a record of that kind is met with the one that was meant.
+func TestATypoInAnIdIsMetWithTheOneThatWasMeant(t *testing.T) {
+	dir := testproject.Copy(t)
+	for _, args := range [][]string{
+		{"explain", "update-package-tamperin", dir},
+		{"diagram", "-threat", "update-package-tamperin", "-o", "-", dir},
+	} {
+		if r := run(t, args...); r.code != 2 || !strings.Contains(r.err, "Did you mean update-package-tampering?") {
+			t.Errorf("%v: exit %d\n%s", args, r.code, r.err)
+		}
+	}
+	if r := run(t, "delete", "step", "compromise-build-servr", dir); r.code != 2 || !strings.Contains(r.err, "Did you mean compromise-build-server?") {
+		t.Errorf("delete: exit %d\n%s", r.code, r.err)
+	}
+	if r := run(t, "explain", "something-else-entirely", dir); r.code != 2 || strings.Contains(r.err, "Did you mean") {
+		t.Errorf("a word that is not near any id: %+v", r)
+	}
+}
+
+// assess open says where the record of each open item is written, so that an editor or a terminal can jump to it. A risk is found
+// in the risk file, and not at its threat scenario, which has the same id.
+func TestOpenSaysWhereEachItemIs(t *testing.T) {
+	dir := testproject.Copy(t)
+	risks := testproject.Read(t, dir, "concept/risks.yaml")
+	cleared := strings.Replace(risks, "treatment: Reduce", "treatment:", 1)
+	if cleared == risks {
+		t.Fatal("the test project has no risk treated by Reduce")
+	}
+	testproject.Write(t, dir, "concept/risks.yaml", cleared)
+	r := run(t, "open", dir)
+	if !regexp.MustCompile(`(?m)^concept/risks\.yaml:\d+:\d+: \[no-treatment\] `).MatchString(r.out) {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
+	}
+}
+
+// A dry run says for a person what the change moves in the calculation, and not only in JSON.
+func TestADryRunSaysWhatTheChangeMoves(t *testing.T) {
+	dir := testproject.Copy(t)
+	r := run(t, "delete", "-cascade", "-dry-run", "control", "signed-packages", dir)
+	if r.code != 0 || !strings.Contains(r.out, "what the change moves in the calculation") ||
+		!regexp.MustCompile(`threat update-package-tampering +risk 5 / 2 -> 5, feasibility High / Very Low -> High`).MatchString(r.out) {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// in JSON the effects are in the document, and nothing else is written to stdout
+	r = run(t, "delete", "-cascade", "-dry-run", "-format", "json", "control", "signed-packages", dir)
+	var env envelope
+	if json.Unmarshal([]byte(r.out), &env) != nil || strings.Contains(r.err, "what the change moves") {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
+	}
+}
+
+// ids.json follows the records, so a new project leaves it out of git, and a command writes it again when it is missing from a
+// project with editor support, as after a clone.
+func TestIDsAreWrittenAgainWhenTheFileIsMissing(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "p")
+	mustRun(t, "init", dir)
+	if gi := testproject.Read(t, dir, ".gitignore"); !strings.Contains(gi, ".assess/ids.json") {
+		t.Errorf(".gitignore does not leave out the ids:\n%s", gi)
+	}
+	if err := os.Remove(filepath.Join(dir, ".assess", "ids.json")); err != nil {
+		t.Fatal(err)
+	}
+	run(t, "validate", dir)
+	if _, err := os.Stat(filepath.Join(dir, ".assess", "ids.json")); err != nil {
+		t.Errorf("validate did not write the ids again: %v", err)
+	}
+	// a project without editor support gets no folder
+	bare := testproject.Copy(t)
+	run(t, "validate", bare)
+	if _, err := os.Stat(filepath.Join(bare, ".assess")); err == nil {
+		t.Error("a project without .assess got one")
+	}
+}
+
+// An asset property can have more than one threat scenario: the others have a name of their own after a dot. Each one is calculated
+// and has its own risk and treatment, and assess generate threats counts any of them as covering the property.
+func TestAnAssetPropertyCanHaveSeveralThreatScenarios(t *testing.T) {
+	dir := testproject.Copy(t)
+	threats := testproject.Read(t, dir, "tara/threat-scenarios.yaml")
+	testproject.Write(t, dir, "tara/threat-scenarios.yaml", threats+`
+threat update-package-tampering.debug:
+  name: Tampering with the update package through the debug port
+  damages: unsafe-software-runs
+  steps: reflash-over-debug-port
+`)
+	if r := run(t, "validate", dir); r.code != 0 {
+		t.Fatalf("validate: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	r := run(t, "generate", "-format", "json", "threats", dir)
+	if strings.Contains(r.out, "update-package-tampering") && strings.Contains(r.out, `"added"`) && strings.Contains(r.out, `"update-package-tampering"`) {
+		t.Errorf("generate threats added one for a property that is covered:\n%s", r.out)
+	}
+	mustRun(t, "generate", "risks", dir)
+	if !strings.Contains(testproject.Read(t, dir, "concept/risks.yaml"), "risk update-package-tampering.debug:") {
+		t.Error("the second threat scenario has no risk of its own")
+	}
+	_, env := runJSON(t, "explain", "update-package-tampering.debug", dir)
+	if !env.OK {
+		t.Errorf("explain: %+v", env)
+	}
+	// deleting the asset with -cascade takes both threat scenarios
+	r = run(t, "delete", "-cascade", "-dry-run", "asset", "update-package", dir)
+	if !strings.Contains(r.out, "update-package-tampering.debug") {
+		t.Errorf("a cascade misses the second threat scenario:\n%s%s", r.out, r.err)
 	}
 }

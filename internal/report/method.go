@@ -26,6 +26,12 @@ func (b *builder) method() Section {
 		file = txt(b.ws.PolicyFile)
 	}
 	facts := []Fact{{"Policy file", file}}
+	if pol.Feasibility.Cap {
+		facts = append(facts, Fact{"Cap of the attack potential", txt("each factor of a path stops at the points of the highest key of its table")})
+	}
+	if pol.Feasibility.Days {
+		facts = append(facts, Fact{"Elapsed time in days", txt("elapsed time adds up as days (ET0 1, ET1 7, ET2 30, ET3 180, ET4 365), and the total turns back into the first key that covers it")})
+	}
 	if r := b.rep.Risk; r != nil {
 		facts = append(facts,
 			Fact{"Impact of a damage scenario", txt(fmt.Sprintf("the categories of one stakeholder combine by %s, the stakeholders by %s", r.ImpactAcross, r.ImpactBetween))},
@@ -38,7 +44,14 @@ func (b *builder) method() Section {
 		facts = append(facts, Fact{"Impact and scalability", open("the policy does not set them completely")})
 	}
 	if len(pol.Impact.Stakeholders) > 0 {
-		facts = append(facts, Fact{"Stakeholders counted", txt(strings.Join(strs(pol.Impact.Stakeholders), ", "))})
+		names := make([]string, len(pol.Impact.Stakeholders))
+		for i, s := range pol.Impact.Stakeholders {
+			names[i] = string(s)
+			if name := pol.Impact.Parties[string(s)]; name != "" {
+				names[i] += " (" + name + ")"
+			}
+		}
+		facts = append(facts, Fact{"Stakeholders counted", txt(strings.Join(names, ", "))})
 	}
 	if len(b.rep.Excluded) > 0 {
 		facts = append(facts, Fact{"Controls left out of the residual value", links(aControl, b.rep.Excluded)})

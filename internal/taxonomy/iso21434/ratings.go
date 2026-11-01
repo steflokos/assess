@@ -372,3 +372,20 @@ func (v *Equipment) UnmarshalYAML(n *yaml.Node) error {
 	*v = Equipment(s)
 	return nil
 }
+
+// CAL is a cybersecurity assurance level (ISO/SAE 21434 Annex E): how much rigour the work that meets a goal needs.
+type CAL string
+
+var calValues = []string{"CAL1", "CAL2", "CAL3", "CAL4"}
+
+func CALValues() []string        { return slices.Clone(calValues) }
+func (CAL) EnumValues() []string { return slices.Clone(calValues) }
+func (v CAL) Valid() bool        { return slices.Contains(calValues, string(v)) }
+func (v *CAL) UnmarshalYAML(n *yaml.Node) error {
+	s, err := yamlx.DecodeEnum(n, "cybersecurity assurance level", calValues)
+	if err != nil {
+		return err
+	}
+	*v = CAL(s)
+	return nil
+}

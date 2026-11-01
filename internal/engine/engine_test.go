@@ -612,3 +612,56 @@ func TestOthersKeepsTheNextEasiestPaths(t *testing.T) {
 		}
 	}
 }
+
+// With feasibility.cap, each factor stops at the points of the highest key of its table, so that controls and steps that add up
+// cannot rate an attacker beyond the scale. The result before the cap is kept for the worksheet. Without the cap nothing changes.
+func TestTheCapStopsEachFactorAtTheTopOfItsScale(t *testing.T) {
+	capOn := [2]string{"  combine:", "  cap: true\n  combine:"}
+	steps := step("x", pot(1, 2, 0, 0, 0), "Single Vehicle", "mitigatedby: c")
+	controls := control("c", pot(0, 3, 0, 0, 0), "")
+	tree := "or:\n  - x"
+
+	// without the cap: expertise 6 + 8 = 14, which is beyond SE3 = 8
+	without := one(t, steps, controls, tree)
+	if without.Residual == nil || without.Residual.Total != 1+14 || without.Residual.Best.Uncapped != nil {
+		t.Fatalf("without the cap: %+v", without.Residual)
+	}
+	capped := one(t, steps, controls, tree, capOn)
+	best := capped.Residual.Best
+	if capped.Residual.Total != 1+8 || best.Vector[1] != 8 || best.Uncapped == nil || best.Uncapped[1] != 14 || best.Uncapped.Total() != 15 {
+		t.Errorf("with the cap: total %d, vector %v, uncapped %v", capped.Residual.Total, best.Vector, best.Uncapped)
+	}
+	if capped.Base.Total != without.Base.Total || capped.Base.Best.Uncapped != nil {
+		t.Errorf("a path within the scale is not touched: %+v", capped.Base)
+	}
+
+	// elapsed time that adds up along a path stops at ET4 = 19
+	long := step("a", timeOnly(4), "Single Vehicle", "") + step("b", timeOnly(4), "Single Vehicle", "")
+	if r := one(t, long, "", "and:\n  - a\n  - b", capOn); r.Base == nil || r.Base.Total != 19 {
+		t.Errorf("two steps of ET4: %+v", r.Base)
+	}
+	if r := one(t, long, "", "and:\n  - a\n  - b"); r.Base == nil || r.Base.Total != 38 {
+		t.Errorf("without the cap, ET4 + ET4: %+v", r.Base)
+	}
+}
+
+// With feasibility.days, elapsed time adds up as days where the policy sums it, and the total turns back into a key. Three steps
+// of a week each are about three weeks, ET2, and two of a month each are about two months, ET3. Without it the points add up.
+func TestElapsedTimeAddsUpAsDaysWithTheFlag(t *testing.T) {
+	daysOn := [2]string{"  combine:", "  days: true\n  combine:"}
+	weeks := step("a", timeOnly(1), "Single Vehicle", "") + step("b", timeOnly(1), "Single Vehicle", "") + step("c", timeOnly(1), "Single Vehicle", "")
+	tree := "and:\n  - a\n  - b\n  - c"
+	if r := one(t, weeks, "", tree); r.Base == nil || r.Base.Total != 3 {
+		t.Fatalf("without the flag the points add up to 3: %+v", r.Base)
+	}
+	if r := one(t, weeks, "", tree, daysOn); r.Base == nil || r.Base.Total != 4 || r.Base.Vector[0] != 4 {
+		t.Errorf("three weeks are ET2 = 4: %+v", r.Base)
+	}
+	months := step("a", timeOnly(2), "Single Vehicle", "") + step("b", timeOnly(2), "Single Vehicle", "")
+	if r := one(t, months, "", "and:\n  - a\n  - b", daysOn); r.Base == nil || r.Base.Total != 17 {
+		t.Errorf("two months are ET3 = 17: %+v", r.Base)
+	}
+	if r := one(t, step("a", timeOnly(1), "Single Vehicle", ""), "", "or:\n  - a", daysOn); r.Base == nil || r.Base.Total != 1 {
+		t.Errorf("one step keeps its own key: %+v", r.Base)
+	}
+}

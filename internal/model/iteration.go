@@ -27,6 +27,7 @@ type Iterations struct {
 // Iteration is one closed round. It holds what was decided, and a hash that links it to the round before.
 type Iteration struct {
 	Number     int               `yaml:"number" json:"number" req:"always" doc:"The number of the iteration. Numbers start at 1 and have no gap."`
+	Format     string            `yaml:"format,omitempty" json:"format,omitempty" doc:"The format of the text the hash is made from. assess-iteration-v2 keeps the whole SHA-256 digest of the rationale and the reference of each decision. An iteration without it is assess-iteration-v1, which keeps 8 hex characters of it."`
 	Date       string            `yaml:"date" json:"date" req:"always" doc:"The date and time it was finalized, as RFC 3339 with the time zone, such as 2026-10-18T14:32:07+02:00."`
 	By         []string          `yaml:"by,omitempty" json:"by,omitempty" doc:"Who finalized it. This is the list of assessors in project.yaml, unless you gave -by."`
 	Note       string            `yaml:"note,omitempty" json:"note,omitempty" doc:"What this iteration was, in a sentence."`
@@ -45,14 +46,40 @@ type Signature struct {
 	Sig string `yaml:"sig" json:"sig" req:"always" doc:"The signature, in base64."`
 }
 
-// IterationVersion starts the text that is hashed and the text that is signed. A later change of the method gets a
-// new version, so it cannot be mistaken for this one.
+// IterationVersion starts the text that is hashed for an iteration of the first format, and the text that is signed for every
+// iteration. A later change of the method gets a new version, so it cannot be mistaken for this one.
 const IterationVersion = "assess-iteration-v1"
 
-// Decision writes your decision about one risk the way an iteration records it: the treatment, the values and a short
-// digest of the rationale and the reference. The digest changes when your reasoning changes, so assess does not have
-// to keep the text. An open value is written as a dash.
+// IterationV2 is the second format. It is v1 with the whole SHA-256 digest of the rationale and the reference of a decision,
+// where v1 keeps 8 hex characters of it. Someone who wants to change a rationale without changing its digest then has to find a
+// collision of SHA-256, where 8 hex characters take a laptop minutes.
+const IterationV2 = "assess-iteration-v2"
+
+// IterationFormat is the format that assess finalize writes now.
+const IterationFormat = IterationV2
+
+// KnownIterationFormat says whether this version of assess can check an iteration of a format. No format is v1.
+func KnownIterationFormat(format string) bool {
+	return format == "" || format == IterationVersion || format == IterationV2
+}
+
+// Version is the format of an iteration: the one it names, or v1 when it names none.
+func (it Iteration) Version() string {
+	if it.Format == "" {
+		return IterationVersion
+	}
+	return it.Format
+}
+
+// Decision writes your decision about one risk the way an iteration of the first format records it. DecisionIn says more.
 func Decision(treatment string, base, residual *int, rationale string, reference []string) string {
+	return DecisionIn(IterationVersion, treatment, base, residual, rationale, reference)
+}
+
+// DecisionIn writes your decision about one risk the way an iteration of a format records it: the treatment, the values and a
+// digest of the rationale and the reference, which is the whole SHA-256 in v2 and 8 hex characters of it in v1. The digest changes
+// when your reasoning changes, so assess does not have to keep the text. An open value is written as a dash.
+func DecisionIn(format, treatment string, base, residual *int, rationale string, reference []string) string {
 	num := func(v *int) string {
 		if v == nil {
 			return "-"
@@ -63,7 +90,11 @@ func Decision(treatment string, base, residual *int, rationale string, reference
 		treatment = "-"
 	}
 	sum := sha256.Sum256([]byte(rationale + "\x00" + strings.Join(reference, "\x00")))
-	return fmt.Sprintf("%s %s>%s %s", treatment, num(base), num(residual), hex.EncodeToString(sum[:])[:8])
+	digest := hex.EncodeToString(sum[:])
+	if format == IterationVersion {
+		digest = digest[:8]
+	}
+	return fmt.Sprintf("%s %s>%s %s", treatment, num(base), num(residual), digest)
 }
 
 // Canonical is the text that the hash is made from. It does not depend on how the file is written. It leaves out the
@@ -71,7 +102,7 @@ func Decision(treatment string, base, residual *int, rationale string, reference
 func (it Iteration) Canonical() string {
 	var b strings.Builder
 	line := func(format string, args ...any) { fmt.Fprintf(&b, format+"\n", args...) }
-	line("%s", IterationVersion)
+	line("%s", it.Version()) // the text of v1 is as it always was, so an iteration of v1 keeps its hash
 	line("number %d", it.Number)
 	line("date %s", it.Date)
 	by := make([]string, len(it.By))
@@ -105,5 +136,7 @@ func (it Iteration) ComputeHash() string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-// SignedMessage is what a signature of an iteration signs. It holds the hash, which covers the iterations before it.
+// SignedMessage is what a signature of an iteration signs. It holds the hash, which covers the iterations before it. It starts
+// with the name of v1 for an iteration of every format: the hash already covers the format, because the text it is made from
+// starts with it, and a signature made in a browser does not have to know the format.
 func SignedMessage(hash string) []byte { return []byte(IterationVersion + "\n" + hash) }

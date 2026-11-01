@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/steflokos/assess/internal/attack"
 	"github.com/steflokos/assess/internal/diag"
@@ -25,7 +24,7 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("eval", stderr)
 	format := fl.String("format", "text", "output format: text or json")
 	strict := fl.Bool("strict", false, "exit 1 when a threat scenario cannot be calculated or the policy lacks values")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -39,14 +38,17 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	res, ok := loadChecked(o, dir)
+	res, errs, broken, ok := loadIsolated(o, dir)
 	if !ok {
 		return exitFindings
 	}
-	rep, err := engine.Run(res.Workspace, engine.Options{})
+	rep, err := engine.Run(res.Workspace, engine.Options{Broken: broken})
 	if err != nil {
 		return o.fail("%v", err)
 	}
+	engine.Link(res.Workspace, rep)
+	o.show(errs)
+	isolatedNote(o, errs)
 	if !o.json {
 		report.Eval(stdout, rep)
 	}
@@ -64,10 +66,10 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, d)
 	}
 	code := exitOK
-	if *strict && (open > 0 || len(rep.Policy) > 0 || len(stale) > 0) {
+	if len(errs) > 0 || *strict && (open > 0 || len(rep.Policy) > 0 || len(stale) > 0) {
 		code = exitFindings
 	}
-	return o.finish(code, stale, rep)
+	return o.finish(code, append(errs, stale...), rep)
 }
 
 // riskFileFindings says what is out of date in the risks written in concept/, as warnings. A project
@@ -97,7 +99,14 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 		return nil, rep.Item.Base != nil || rep.Item.Residual != nil
 	}
 	plan := generate.Risks(ws, res.Index, riskValues(rep))
+	blocked := map[string]bool{}
+	for _, r := range rep.Threats {
+		blocked[r.Threat] = r.Blocked
+	}
 	for _, c := range plan.Changed {
+		if blocked[c.ID] {
+			continue // not calculated because of an error, so its risk is not known, and not out of date
+		}
 		problems := make([]string, len(c.Values))
 		for i, v := range c.Values {
 			problems[i] = v.Problem()
@@ -105,36 +114,24 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 		drift = append(drift, report.Drift{ID: c.ID, Problems: problems, Loc: c.Loc})
 	}
 	for _, id := range plan.Added {
+		if blocked[id] {
+			continue
+		}
 		drift = append(drift, report.Drift{ID: id, Missing: true, Loc: res.Index.At(id, "")})
 	}
 	return drift, false
 }
 
-// oneDir returns the directory argument, "." when there is none.
+// oneDir returns the directory argument. When there is none, it is the project that the current folder is in (see here).
 func oneDir(fl *flag.FlagSet, o *output) (string, bool) {
-	if flagAfter(o, fl) {
-		return "", false
-	}
 	switch fl.NArg() {
 	case 0:
-		return ".", true
+		return here(o.stderr), true
 	case 1:
 		return fl.Arg(0), true
 	}
 	o.fail("expected at most one folder")
 	return "", false
-}
-
-// flagAfter says so, and returns true, when what comes after the folder or the other arguments looks like a flag. The flag package stops
-// at the first word that is not a flag, so a flag written after it is taken for an argument, and the message that follows says something else.
-func flagAfter(o *output, fl *flag.FlagSet) bool {
-	for _, a := range fl.Args() {
-		if strings.HasPrefix(a, "-") && a != "-" {
-			o.fail("%s is in the wrong place: it comes after an argument, where it is not a flag. Put the flags first", a)
-			return true
-		}
-	}
-	return false
 }
 
 // runExplain shows how one threat scenario got its numbers, as a worksheet that
@@ -145,7 +142,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("explain", stderr)
 	all := fl.Bool("all", false, "show every path as a full table, not only the easiest")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -159,16 +156,21 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: assess explain [-all] [-format text|json] <threat-id> [dir]")
 		return exitUsage
 	}
-	id, dir := fl.Arg(0), "."
+	id := fl.Arg(0)
+	dir := ""
 	if fl.NArg() == 2 {
 		dir = fl.Arg(1)
+	} else {
+		dir = here(stderr)
 	}
-	res, ok := loadChecked(o, dir)
+	res, errs, broken, ok := loadIsolated(o, dir)
 	if !ok {
 		return exitFindings
 	}
+	o.show(errs)
+	isolatedNote(o, errs)
 	ws := res.Workspace
-	opt := engine.Options{}
+	opt := engine.Options{Broken: broken}
 	if *all {
 		opt.Others = engine.DefaultMaxPaths
 	}
@@ -176,13 +178,14 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return o.fail("%v", err)
 	}
+	engine.Link(ws, rep)
 	for _, r := range rep.Threats {
 		if r.Threat == id {
 			if !o.json {
 				report.Explain(stdout, ws, rep, r, *all)
 			}
 			code := exitOK
-			if r.Base == nil || r.Residual == nil {
+			if r.Base == nil || r.Residual == nil || len(errs) > 0 {
 				code = exitFindings
 			}
 			out := explainResult{Threat: r, Rules: rep.Rules, Risk: rep.Risk}
@@ -194,10 +197,10 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 			if r.Residual != nil {
 				out.Outline.Residual = x.PathOutline(r.Residual.Best, true)
 			}
-			return o.finish(code, nil, out)
+			return o.finish(code, errs, out)
 		}
 	}
-	return o.fail("no threat scenario with id %s", id)
+	return o.fail("no threat scenario with id %s%s", id, nearID(res.Index, "threat", id))
 }
 
 // explainResult is what assess explain says in JSON: the result of one threat scenario and the rules

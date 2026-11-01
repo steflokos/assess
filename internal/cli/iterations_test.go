@@ -76,7 +76,7 @@ func TestFinalizeClosesTheDecisionsAsAnIteration(t *testing.T) {
 	text := iterationsFile(t, dir)
 	for _, want := range []string{
 		"# yaml-language-server: $schema=.assess/schema-iterations.json\n",
-		"iterations:\n  - number: 1\n    date: \"2026-10-20T09:30:00Z\"\n",
+		"iterations:\n  - number: 1\n    format: assess-iteration-v2\n    date: \"2026-10-20T09:30:00Z\"\n",
 		"    by:\n      - Jane Doe\n      - Ops\n",
 		"    note: First round\n",
 		"    tool: v0.1.0\n",
@@ -725,4 +725,35 @@ func TestASignatureThatDoesNotFitIsRefusedAndNothingIsWritten(t *testing.T) {
 // signedBy says whether the output of verify has the line of a signature: who, the start of the key and the state.
 func signedBy(out, who, state string) bool {
 	return regexp.MustCompile(`signed by ` + regexp.QuoteMeta(who) + ` \(key [0-9a-f]+\): ` + state).MatchString(out)
+}
+
+// The example holds iterations of v1, with short digests. A new iteration is written in v2, and the decisions are compared with the
+// last one in its own format, so a change to another file does not make every rationale look changed.
+func TestANewIterationAfterOneOfV1ComparesInItsFormat(t *testing.T) {
+	dir := example(t)
+	testproject.Replace(t, dir, "project.yaml", "description:", "description: Changed.")
+	r := run(t, "finalize", "-dry-run", "-format", "json", "-date", "2026-11-01T09:00:00Z", dir)
+	var env struct {
+		OK     bool `json:"ok"`
+		Result struct {
+			Iteration struct {
+				Format    string            `json:"format"`
+				Decisions map[string]string `json:"decisions"`
+			} `json:"iteration"`
+			Changes []struct {
+				ID string `json:"id"`
+			} `json:"changes"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(r.out), &env); err != nil || !env.OK {
+		t.Fatalf("exit %d: %v\n%s%s", r.code, err, r.out, r.err)
+	}
+	if env.Result.Iteration.Format != "assess-iteration-v2" || len(env.Result.Changes) != 0 {
+		t.Errorf("format %q, changes %v", env.Result.Iteration.Format, env.Result.Changes)
+	}
+	for id, d := range env.Result.Iteration.Decisions {
+		if f := strings.Fields(d); len(f) != 3 || len(f[2]) != 64 {
+			t.Errorf("%s: %q", id, d)
+		}
+	}
 }

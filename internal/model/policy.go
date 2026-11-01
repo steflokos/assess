@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -32,6 +33,8 @@ type Feasibility struct {
 	Points  Points      `yaml:"points,omitempty" doc:"Points for each rating key. The five factors of a step add up to its attack potential. Write all five tables, each with every key."`
 	Levels  []Band      `yaml:"levels,omitempty" doc:"Turns attack potential into a feasibility level. The first band that matches from the top wins. Each band except the last gives the highest attack potential it covers. The last band has none."`
 	Combine Combination `yaml:"combine,omitempty" doc:"How the effort of the parts of a path adds up, factor by factor. sum adds the numbers and max takes the largest. Write one table for the attack steps and one for the controls the attacker has to defeat, each with all five factors. At an or, assess always takes the easiest path."`
+	Cap     bool        `yaml:"cap,omitempty" doc:"true stops each factor of a path at the points of the highest key of its table, after the steps and the controls are combined. Steps and controls that add up then cannot rate an attacker beyond the top of the scale, such as more expertise than multiple experts. Leave it out to let the points add up without a limit."`
+	Days    bool        `yaml:"days,omitempty" doc:"true adds up elapsed time as days instead of points, where combine says sum for time. Each key counts as the longest time it covers: ET0 1 day, ET1 7, ET2 30, ET3 180 and ET4 365. The total turns back into the first key that covers it, and the path gets the points of that key. Three steps of a week each are then ET2, about three weeks, and not 1 + 1 + 1 points. Leave it out to add up the points."`
 }
 
 // Combination holds the two tables of combination rules. The steps of a path are
@@ -90,7 +93,8 @@ type Band struct {
 type ImpactPolicy struct {
 	Across       iso21434.Aggregate            `yaml:"across,omitempty" doc:"How the four impact categories of one stakeholder become one level. max takes the worst. sum adds their points and looks the total up in levels."`
 	Between      iso21434.Aggregate            `yaml:"between,omitempty" doc:"How the stakeholders become one level. max takes the worst and is the default. sum adds their points and looks the total up in levels. Every stakeholder that counts, counts the same."`
-	Stakeholders []iso21434.Stakeholder        `yaml:"stakeholders,omitempty" doc:"Whose impact counts for the risk. A stakeholder a damage scenario does not rate is skipped."`
+	Stakeholders []iso21434.Stakeholder        `yaml:"stakeholders,omitempty" doc:"Whose impact counts for the risk: roaduser, oem, supplier or one of parties. A stakeholder a damage scenario does not rate is skipped."`
+	Parties      map[string]string             `yaml:"parties,omitempty" doc:"Stakeholders of your own, besides roaduser, oem and supplier, each a word of small letters with a name, such as fleet: Fleet operator. A damage scenario rates them under impact like the road user, and stakeholders can count them."`
 	Points       map[iso21434.ImpactLevel]*int `yaml:"points,omitempty" doc:"Points of each impact level, for a stage that is sum. Write every level."`
 	Levels       []ImpactBand                  `yaml:"levels,omitempty" doc:"Turns total points back into an impact level, for a stage that is sum. The first band that matches from the top wins. Each band except the last gives the highest total it covers. The last band has none."`
 }
@@ -250,6 +254,9 @@ func (p *Policy) Problems() []Problem {
 				add(fmt.Sprintf("impact.stakeholders[%d]", i), "impact.stakeholders lists %s twice", s)
 			}
 			seen[s] = true
+			if _, party := im.Parties[string(s)]; !s.Valid() && !party {
+				add(fmt.Sprintf("impact.stakeholders[%d]", i), "impact.stakeholders lists %s, which is not roaduser, oem, supplier or one of impact.parties", s)
+			}
 		}
 		if im.Across == "sum" || im.Between == "sum" {
 			for _, lv := range iso21434.ImpactLevelValues() {
@@ -268,6 +275,21 @@ func (p *Policy) Problems() []Problem {
 		}
 		checkBands("impact.levels", len(im.Levels),
 			func(i int) *int { return im.Levels[i].Upto }, func(i int) string { return string(im.Levels[i].Level) })
+	}
+	words := make([]string, 0, len(im.Parties))
+	for word := range im.Parties {
+		words = append(words, word)
+	}
+	sort.Strings(words) // the findings come in the same order every time
+	for _, word := range words {
+		switch name := im.Parties[word]; {
+		case !partyRe.MatchString(word):
+			add("impact.parties."+word, "impact.parties.%s is not a word of small letters and digits that starts with a letter", word)
+		case iso21434.Stakeholder(word).Valid():
+			add("impact.parties."+word, "impact.parties.%s is a stakeholder already. Leave it out of parties", word)
+		case strings.TrimSpace(name) == "":
+			add("impact.parties."+word, "impact.parties.%s has no name", word)
+		}
 	}
 
 	// scalability: the shift for a batch and for the fleet, once the section is written
@@ -310,3 +332,7 @@ func asStrings[K ~string](m map[K]*int) map[string]*int {
 	}
 	return out
 }
+
+// partyRe is how the word of a party is written: small letters and digits, starting with a letter, so that it reads like
+// roaduser and cannot be taken for a category of impact.
+var partyRe = regexp.MustCompile(`^[a-z][a-z0-9]*$`)

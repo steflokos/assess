@@ -85,7 +85,7 @@ func runSchema(args []string, stdout, stderr io.Writer) int {
 	toStdout := fl.Bool("stdout", false, "print the schema instead of writing the files into a project")
 	watch := fl.Bool("watch", false, "keep running and rewrite the ids the editor offers whenever a file of the project changes")
 	format := fl.String("format", "yaml", "with -stdout: yaml (schema.yaml, for people) or json (the editor schema)")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -112,9 +112,10 @@ func runSchema(args []string, stdout, stderr io.Writer) int {
 		stdout.Write(raw)
 		return exitOK
 	}
-	dir := "."
+	dir := ""
 	switch fl.NArg() {
 	case 0:
+		dir = here(stderr)
 	case 1:
 		dir = fl.Arg(0)
 	default:
@@ -206,7 +207,11 @@ func refreshIDs(dir string, res *load.Result) {
 	path := filepath.Join(dir, filepath.FromSlash(idsFile))
 	have, err := os.ReadFile(path)
 	if err != nil {
-		return
+		// A project with editor support gets the file back, as after a clone of a repository that ignores it, as it should.
+		// A project without the folder does not get one.
+		if info, statErr := os.Stat(filepath.Dir(path)); !errors.Is(err, fs.ErrNotExist) || statErr != nil || !info.IsDir() {
+			return
+		}
 	}
 	if raw, _, err := idsOf(res); err == nil && !bytes.Equal(have, raw) {
 		_ = atomic.WriteFile(path, raw, 0o644)

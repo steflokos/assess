@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/steflokos/assess/internal/attack"
@@ -440,11 +441,25 @@ func (b *builder) damages() Section {
 		sum.Rows = append(sum.Rows, Row{ID: aDamage + d.ID, Cells: []Cell{txt(d.ID), txt(d.Name), prose(d.Description), comp, impact, caused, decides}})
 
 		rt := &Table{Caption: d.ID + ": " + d.Name, Head: []string{"Stakeholder", "Safety", "Financial", "Operational", "Privacy", "Counted for the risk"}}
-		for _, who := range []struct {
+		type party struct {
 			name string
 			key  string
 			si   *model.StakeholderImpact
-		}{{"Road user", "roaduser", d.Impact.RoadUser}, {"OEM", "oem", d.Impact.OEM}, {"Supplier", "supplier", d.Impact.Supplier}} {
+		}
+		whos := []party{{"Road user", "roaduser", d.Impact.RoadUser}, {"OEM", "oem", d.Impact.OEM}, {"Supplier", "supplier", d.Impact.Supplier}}
+		var own []string
+		for key := range d.Impact.Parties {
+			own = append(own, key)
+		}
+		sort.Strings(own)
+		for _, key := range own {
+			name := b.ws.Policy.Impact.Parties[key]
+			if name == "" {
+				name = key
+			}
+			whos = append(whos, party{name, key, d.Impact.Parties[key]})
+		}
+		for _, who := range whos {
 			if who.si == nil {
 				continue
 			}
@@ -664,6 +679,14 @@ func (b *builder) treatment() Section {
 		Empty: "No risks are written yet.",
 	}
 	checked := b.rep.Item != nil && len(b.rep.Policy) == 0
+	uids := false // the column of the links is there when a risk has a uid
+	for _, r := range b.ws.Risks {
+		uids = uids || r.UID != ""
+	}
+	if uids {
+		t.Head = append([]string{t.Head[0], "uid"}, t.Head[1:]...)
+		t.Names = append([]string{t.Names[0], "uid"}, t.Names[1:]...)
+	}
 	for _, r := range b.ws.Risks {
 		treat := open("no decision yet")
 		if r.Treatment != "" {
@@ -681,13 +704,23 @@ func (b *builder) treatment() Section {
 		if r.Type != "" {
 			typ = txt(string(r.Type))
 		}
-		t.Rows = append(t.Rows, Row{ID: aRisk + r.ID, Cells: []Cell{
-			link(r.ID, aThreat+r.ID), txt(r.Name), typ, intCell(r.Base), intCell(r.Residual), treat, prose(r.Rationale), externalRef(r.Reference), prose(r.Description), status,
-		}})
+		cells := []Cell{link(r.ID, aThreat+r.ID), txt(r.Name), typ, intCell(r.Base), intCell(r.Residual), treat, prose(r.Rationale), externalRef(r.Reference), prose(r.Description), status}
+		if uids {
+			uid := txt("-")
+			if r.UID != "" {
+				uid = Cell{Items: []Line{{Text: r.UID, Href: model.RiskLink(b.ws.Config.Port, r.UID)}}}
+			}
+			cells = append([]Cell{cells[0], uid}, cells[1:]...)
+		}
+		t.Rows = append(t.Rows, Row{ID: aRisk + r.ID, Cells: cells})
 	}
 	for _, d := range b.in.Drift {
 		if d.Missing {
-			t.Rows = append(t.Rows, Row{Cells: []Cell{link(d.ID, aThreat+d.ID), open("no risk written yet"), txt("-"), txt("-"), txt("-"), open(""), txt("-"), txt("-"), txt("-"), open("missing")}})
+			cells := []Cell{link(d.ID, aThreat+d.ID), open("no risk written yet"), txt("-"), txt("-"), txt("-"), open(""), txt("-"), txt("-"), txt("-"), open("missing")}
+			if uids {
+				cells = append([]Cell{cells[0], txt("-")}, cells[1:]...)
+			}
+			t.Rows = append(t.Rows, Row{Cells: cells})
 		}
 	}
 	s.Blocks = append(s.Blocks, Block{Table: t})
@@ -736,7 +769,60 @@ func (b *builder) goalsAndClaims() Section {
 		}
 		s.Blocks = append(s.Blocks, Block{Table: t})
 	}
+	s.Blocks = append(s.Blocks, b.conceptRecords()...)
 	return s
+}
+
+// conceptRecords are the goals, the claims and the requirements as you wrote them, with what links them. A project that has
+// written none of them gets nothing here.
+func (b *builder) conceptRecords() []Block {
+	ws := b.ws
+	if len(ws.Goals) == 0 && len(ws.Claims) == 0 && len(ws.Requirements) == 0 {
+		return nil
+	}
+	none := func(c Cell) Cell {
+		if len(c.Items) == 0 {
+			return txt("-")
+		}
+		return c
+	}
+	risks := func(ids []string) Cell {
+		var c Cell
+		for _, id := range ids {
+			ref := aRisk + id
+			if b.risk[id] == nil {
+				ref = aThreat + id
+			}
+			c.Items = append(c.Items, Line{Text: id, Ref: ref})
+		}
+		return none(c)
+	}
+	served := map[string][]string{}
+	for _, r := range ws.Requirements {
+		for _, g := range r.Goals {
+			served[g] = append(served[g], r.ID)
+		}
+	}
+	goals := &Table{Caption: "Cybersecurity goals as written", Key: true, Head: []string{"Goal", "Statement", "CAL", "Treats the risk of", "Requirements", "Description"},
+		Names: []string{"id", "statement", "cal", "risks", "requirements", "description"}, Empty: "No goal is written."}
+	for _, g := range ws.Goals {
+		cal := txt("-")
+		if g.CAL != "" {
+			cal = txt(string(g.CAL))
+		}
+		goals.Rows = append(goals.Rows, Row{ID: aGoal + g.ID, Cells: []Cell{txt(g.ID), txt(g.Name), cal, risks(g.Threats), none(links(aReq, served[g.ID])), prose(g.Description)}})
+	}
+	claims := &Table{Caption: "Cybersecurity claims as written", Key: true, Head: []string{"Claim", "Statement", "About the risk of", "Assumes", "Description"},
+		Names: []string{"id", "statement", "risks", "assumes", "description"}, Empty: "No claim is written."}
+	for _, c := range ws.Claims {
+		claims.Rows = append(claims.Rows, Row{ID: aClaim + c.ID, Cells: []Cell{txt(c.ID), txt(c.Name), risks(c.Threats), none(links(aAssume, c.Assumes)), prose(c.Description)}})
+	}
+	reqs := &Table{Caption: "Cybersecurity requirements", Key: true, Head: []string{"Requirement", "Statement", "Serves", "Allocated to", "Met by", "Description"},
+		Names: []string{"id", "statement", "goals", "target", "controls", "description"}, Empty: "No requirement is written."}
+	for _, r := range ws.Requirements {
+		reqs.Rows = append(reqs.Rows, Row{ID: aReq + r.ID, Cells: []Cell{txt(r.ID), txt(r.Name), none(links(aGoal, r.Goals)), none(links(aElement, r.Target)), none(links(aControl, r.Controls)), prose(r.Description)}})
+	}
+	return []Block{{Table: goals}, {Table: claims}, {Table: reqs}}
 }
 
 // ---- 4 concept ------------------------------------------------------------------------------

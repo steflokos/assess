@@ -30,7 +30,7 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	head := fl.String("head", "", "the last hash you kept somewhere else. It is the only way to tell that someone removed the newest iterations")
 	strict := fl.Bool("strict", false, "fail when a signature could not be checked because no key was given for it")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

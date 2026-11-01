@@ -20,7 +20,7 @@ import (
 )
 
 // files reads the record files of the test project into memory, as Apply takes them.
-func files(t *testing.T) map[string][]byte {
+func files(t testing.TB) map[string][]byte {
 	t.Helper()
 	dir := testproject.Copy(t)
 	out := map[string][]byte{}

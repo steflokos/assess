@@ -18,6 +18,10 @@ type Options struct {
 	// Others is how many paths after the easiest one an Outcome keeps, easiest
 	// first. The default is 3.
 	Others int
+	// Broken are the records that have an error, by the key the index gives them (the id, or asset:<id> for an asset), with
+	// the error. A threat scenario that uses one of them is not calculated: a record with an error may have lost a value, such
+	// as a list under a misspelled name, and a number made without it would look right and be wrong.
+	Broken map[string]string
 }
 
 // Report is the result of evaluating every threat scenario of a project.
@@ -54,11 +58,18 @@ type RiskRules struct {
 // Result is one threat scenario. Base ignores the controls, and Residual applies every control that mitigates a step.
 // Either is missing when it cannot be calculated, and Issues says why.
 type Result struct {
-	Threat   string   `json:"threat"`
-	Name     string   `json:"name"`
+	Threat string `json:"threat"`
+	Name   string `json:"name"`
+	// UID is the uid of the risk of the threat scenario, and Link the address that opens that risk in the web interface. Both are
+	// left out while the risk has no uid. The engine leaves them to its caller, which knows the risks (see Link).
+	UID      string   `json:"uid,omitempty"`
+	Link     string   `json:"link,omitempty"`
 	Base     *Outcome `json:"base,omitempty"`
 	Residual *Outcome `json:"residual,omitempty"`
 	Issues   []string `json:"issues,omitempty"`
+	// Blocked says that the threat scenario is not calculated because a record it uses has an error (Options.Broken). Its risk
+	// is then not out of date, only not known.
+	Blocked bool `json:"blocked,omitempty"`
 	// RiskIssues says why the risk of an otherwise calculated threat scenario is
 	// missing, for example a step on the deciding path without scalability.
 	RiskIssues []string `json:"riskIssues,omitempty"`
@@ -112,8 +123,10 @@ type Path struct {
 	Elems       []PathElem `json:"elems"`
 	StepsVector Vector     `json:"stepsVector"`
 	Vector      Vector     `json:"vector"`
-	Total       int        `json:"total"`
-	Level       string     `json:"level"`
+	// Uncapped is the effort before the cap of the policy, when the cap lowered a factor. Vector is then the effort after it.
+	Uncapped *Vector `json:"uncapped,omitempty"`
+	Total    int     `json:"total"`
+	Level    string  `json:"level"`
 	// Scalability is the scalability of this path, when the policy lets it count.
 	Scalability *PathScalability `json:"scalability,omitempty"`
 }
@@ -165,7 +178,7 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 		feasible = false
 		rep.Policy = append(rep.Policy, "feasibility.combine is not set in the policy")
 	} else {
-		rep.Rules = &Rules{Steps: ruleSet(steps), Controls: ruleSet(controls)}
+		rep.Rules = &Rules{Steps: ruleSet(steps), Controls: ruleSet(controls), Cap: pol.Feasibility.Cap, Days: pol.Feasibility.Days}
 	}
 	riskable := true
 	if len(pol.Impact.Stakeholders) == 0 || pol.Impact.Across == "" {
@@ -212,6 +225,11 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 	for i := range ws.Threats {
 		t := &ws.Threats[i]
 		res := Result{Threat: t.ID, Name: t.Name}
+		if why := brokenUse(g, t, opt.Broken); len(why) > 0 {
+			res.Issues, res.Blocked = why, true
+			rep.Threats = append(rep.Threats, res)
+			continue
+		}
 		if feasible {
 			var bIssues, rIssues []string
 			res.Base, bIssues = outcome(base, t.ID, pol, opt.Others)
@@ -357,12 +375,50 @@ func (e *enumerator) cost(p path, f model.Feasibility) Path {
 		}
 	}
 	stage1 := rules(f.Combine.Steps.List()).fold(stepVecs...)
+	var days int // the elapsed time of the steps in days, under feasibility.days
+	if f.Days && f.Combine.Steps.Time == "sum" && len(steps) > 0 {
+		for _, s := range steps {
+			days += daysOf(s.Keys[0])
+		}
+		stage1[0] = e.sc.points[0][keyForDays(days)]
+	} else if f.Days {
+		for _, s := range steps {
+			days = max(days, daysOf(s.Keys[0]))
+		}
+	}
 	final := rules(f.Combine.Controls.List()).fold(append([]Vector{stage1}, defeatVecs...)...)
+	if f.Days && f.Combine.Controls.Time == "sum" && len(defeats) > 0 {
+		for _, d := range defeats {
+			days += daysOf(d.Keys[0])
+		}
+		final[0] = e.sc.points[0][keyForDays(days)]
+	}
+	var uncapped *Vector
+	if f.Cap { // capping is the last stage. A path with more elements stays at least as costly, so the pruning of paths still holds
+		if capped := final.capAt(e.sc.top()); capped != final {
+			raw := final
+			uncapped, final = &raw, capped
+		}
+	}
 	elems := append(append(steps, defeats...), bypasses...)
-	return Path{Elems: elems, StepsVector: stage1, Vector: final, Total: final.Total()}
+	return Path{Elems: elems, StepsVector: stage1, Vector: final, Uncapped: uncapped, Total: final.Total()}
 }
 
 // keysOf lists the rating keys of a potential or a reduction in factor order.
 func keysOf(p model.AttackPotential) []string {
 	return []string{string(p.Time), string(p.Expertise), string(p.Knowledge), string(p.Window), string(p.Equipment)}
+}
+
+// Link gives each threat scenario of a report the uid of its risk and the link that opens the risk in the web interface, when the
+// risk has a uid.
+func Link(ws *model.Workspace, rep *Report) {
+	uid := map[string]string{}
+	for _, r := range ws.Risks {
+		uid[r.ID] = r.UID
+	}
+	for i := range rep.Threats {
+		if u := uid[rep.Threats[i].Threat]; u != "" {
+			rep.Threats[i].UID, rep.Threats[i].Link = u, model.RiskLink(ws.Config.Port, u)
+		}
+	}
 }

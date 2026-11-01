@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Cybersecurity claims (ISO/SAE 21434 clause 9.4): statements about a risk that is accepted or shared, such as who carries
+# a shared risk. Write one as  claim <id>:  with the claim as its name and the threat scenarios under threats.
+# schema.yaml lists every attribute.

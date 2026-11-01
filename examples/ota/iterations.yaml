@@ -119,3 +119,63 @@ iterations:
       workshop-interface-spoofing: Reduce 5>4 b94a7d98
     previous: sha256:97e870ce975a4efa7240a6c9a4af02cf4762c4f90aec8a024c58d956b3aa844a
     hash: sha256:750b74e8679ed73d797a70fd78d7e44fdcfe60cf87dfb9edd987a9b37a802059
+  - number: 3
+    format: assess-iteration-v2
+    date: "2026-11-01T09:30:00Z"
+    by:
+      - OTA security lead
+    note: Every risk has a uid, for the links into the web interface
+    tool: v0.1.0
+    inputs: sha256:ebe6cdc86f434a512e613fce2eeb7a4778d8bf42a753731465298feecffc005e
+    decisions:
+      approval-record-tampering: Reduce 5>3 68fcdaa7ec092029ea16e7992980840691ef8abdba78db0b986243b24a32b3e5
+      audit-log-repudiation: Reduce 5>2 cb17bb0df53e96b4508d660f2bbb097c14957eebebf29a3b8a2224947ff4fa49
+      audit-log-tampering: Reduce 3>2 6fded517cb4dc5beb5c54f828d8483b1c6ab40d909c2a4612e2d22fd74664c69
+      authorisation-signing-private-key-disclosure: Reduce 3>2 230002e309c47124f70d5fe1685813a11664cd3a4f09caa946148583c122dc94
+      backend-tls-private-key-disclosure: Reduce 3>2 e59aa6214b1d66e373d3710eb2d27cc0b6d3a37d9d422dc798e607044e6a1671
+      backoffice-portal-spoofing: Reduce 5>2 6cf2164124e6ab7665a7079f8a6a3337cf5a363fa8ec5faa080b7e02e6547e9c
+      bms-bootloader-tampering: Accept 2>2 334acd9a299ed10be7cfdc08457e5055a3b2acb2c1afdd565ea8a1456c3889f6
+      campaign-definition-tampering: Reduce 5>2 f483bc30b4f390aa1dbd9b8cf69a7251f34a0209d3b248c5ee901ff5d70cfc60
+      cellular-interface-spoofing: Share 2>2 9311b2a96cecf3bf878f83996e8f2cbfe153c5ba71e17d7eeca877b16276ae2a
+      central-gateway-tampering: Reduce 4>3 473f15a85a24af6caa4709e5267d89d5dae9f4d3111d954a2f974212ae920b24
+      certificate-revocation-list-denial: Reduce 1>1 6f52ebfa55102d80414ee3567dce9749bea2091978036a5ed72d26b7ae7ff5c1
+      consent-ui-tampering: Accept 2>1 8c1fa733e6995635016bf962d04051e0b7e82e1a900445b949128cbb4be09575
+      download-link-denial: Avoid 3>3 d8663264120cdc8a4c4b671f0fe9babb52043885ed96f43468733dcd40e20309
+      installed-root-certificate-tampering: Accept 2>2 9799ab145b538a359451aa63025f64fa1ffb9b2be4b16d0798e384506023f1b2
+      lifecycle-state-tampering: Accept 2>2 a8005cfa92dfcdae6fe48dc4bd03528edc04593cd4577f6db0ef380ed59e6c04
+      ota-client-tampering: Reduce 2>2 60795a67222d7532fe7c78f822f7f3c59917d23034dce69c7b3cf6c9ee3fd7be
+      package-verifier-tampering: Reduce 2>2 cd33ac61d8e8224d42614a63e8f6d2a0055c9fd73432e2f9afbd9f01e302a4c5
+      powertrain-can-tampering: Avoid 4>4 0f39fd2ecb00567b43bc9c7e855e5b0ce6a2b9d2199b35ded1b70bb174e06a37
+      provisioning-server-denial: Share 2>2 8dbdf40c5e2a2ec36bb391cfe103bc00bb8e9d75d46cb532bf839cb50437dcb1
+      provisioning-server-tampering: Reduce 2>2 c5414e38181dbaada5d67171ffd2854ed2eec00bfe440a81b75dbf3552b54270
+      registration-authority-tampering: Reduce 2>2 7483bfa529439ca644cd3780f06486732f15e17e6ab38f416fd4bf0794e84f87
+      release-candidate-tampering: Reduce 4>2 8aec1fc31de8800de3f41572a397a40656945dacf6cae3412835c276e54a29af
+      root-ca-private-key-denial: Reduce 2>2 70eec91704fc5f603b44b4565789f75e3feac0429db02ded549c97c3104fd0c2
+      root-ca-private-key-disclosure: Reduce 2>2 70a98a509f4532ee49b8fc9c0993bfbfb3830adc8d6d451477ed7b151d3fae3e
+      secure-boot-private-key-disclosure: Reduce 2>2 67b3e4af11cdc239266fcdb13e3a1ba92a228da5359de4f50f8d4d436aee41eb
+      secure-boot-public-key-tampering: Share 2>2 ba5888f6f5f962c14bb406c4dd8940f7e1c36400368cfadc2fce84e4a03cc697
+      secure-time-tampering: Reduce 3>2 8b6d71c9095c7aba3b23eea66167ed0a7895dae6d12e1ac293998d2de18d2b50
+      signing-service-tampering: Reduce 2>2 4b5af1463405a9499785f888af0f7aa54620a3990e5929d879fbba364ae0eb40
+      software-signing-certificate-spoofing: Reduce 4>2 c4af88c2748ba39921b4d210615e6b63910b6bd5bbb763de408cc4045af075db
+      software-signing-private-key-denial: Reduce 2>2 3777044afd637b0f504b5aedf3ad2e4284b00fdc3582b6c902c6a6a77d28de51
+      software-signing-private-key-disclosure: Reduce 2>2 86b0e1c6cd3ec4d9a02d82a25841cf3714b1a846ee195265a2b73fe656ed8772
+      supplier-delivery-tampering: Reduce 3>2 eaf0b0ce769f66a0aebbc21409108329e29990b0ea03b5c14da49842d9c5767d
+      tcu-debug-port-spoofing: Accept 4>2 b7e12bb28bc6206368de21bc1b2238ad217ad0abcee6500bb07ae6574d7de0fa
+      tcu-hsm-tampering: Accept 3>2 8f432a82329c5f1f564a32f05870cf14caaad025cce1929e0da705bd43d3b953
+      telematics-unit-tampering: Accept 3>2 a9e35181d8d2828aace85d5b7716df7d0bdcd0374c42691d2b4f5ad478df028d
+      trust-anchor-bundle-tampering: Reduce 3>2 f59fcc7a9d07ae0592e5fadb2bae58ccddacad2b20b00b543d68beb55d164bfe
+      update-director-tampering: Reduce 3>2 acdd0234454207221d959c1b5b660d011862cf38d13bdd3d45028de5eed57e79
+      update-orchestrator-tampering: Reduce 2>2 58b6eb67ab513c4f49bbecc192f9ddc5b96a4cb16c26f7c7806159dead68c29d
+      update-package-disclosure: Reduce 5>3 74c8790178cbbd98818737ddcb186a3ee337070fb616ce30e13b0c560194206b
+      update-package-tampering: Reduce 4>2 b6c03f2a674526cb888ed5aa4511f000128d9c56ff4db028d88f954d7a59d02e
+      vcu-bootloader-tampering: Accept 3>2 7b16e23e7e9e509b316d6e699a872335d54038410c684f181a0392b2654a2224
+      vcu-rollback-counter-tampering: Accept 1>1 a25473839c366ae93c3c9c78c823a95828e239bb21a986e6c63979ac9eb6038f
+      vehicle-api-gateway-denial: Reduce 5>2 fe570dd8274bdb3e31cbb6072a3ab19e188007946f698765456be7d00b2227fe
+      vehicle-api-gateway-spoofing: Accept 3>2 edb090a6d6960878228b01bbf6429c5501e5e47b272605c83f683016c4ff5ea7
+      vehicle-ca-tampering: Reduce 2>2 b196726ddc341cbaabf3a975ccef62014bd16e249252b366da6e6c6d1f471cb1
+      vehicle-configuration-disclosure: Reduce 5>2 57e85d8110c8b3dd182d5ef0053b531dc5bb24ddcc151c2237b5b1c5f0d31d03
+      vehicle-configuration-tampering: Reduce 4>2 9c1ee96a708c1701a5cd29d82b942bc93dc77c1c722f7fbebe74f5e8fd14769b
+      vehicle-private-key-disclosure: Accept 1>1 782aad463e8cb5b10c6c25854ddd25fdbd3633af87f31e64a407b968136168d7
+      workshop-interface-spoofing: Reduce 5>4 b94a7d98d0623099578d42f5e84bfd245b9bea6ebd8e2701a977eafb8e9a727c
+    previous: sha256:750b74e8679ed73d797a70fd78d7e44fdcfe60cf87dfb9edd987a9b37a802059
+    hash: sha256:31e006aa7239952cc4278dd55f13856ef184ee7819c7f62cf8a15a6179553202

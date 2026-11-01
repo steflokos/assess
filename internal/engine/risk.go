@@ -96,15 +96,7 @@ func impactOf(ds *model.DamageScenario, p model.ImpactPolicy) ImpactTrace {
 	var trace ImpactTrace
 	var levels []iso21434.ImpactLevel
 	for _, who := range p.Stakeholders {
-		var si *model.StakeholderImpact
-		switch who {
-		case "roaduser":
-			si = ds.Impact.RoadUser
-		case "oem":
-			si = ds.Impact.OEM
-		case "supplier":
-			si = ds.Impact.Supplier
-		}
+		si := ds.Impact.Of(string(who))
 		if si == nil {
 			continue
 		}

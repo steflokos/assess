@@ -86,6 +86,7 @@ func (o *outliner) legend() {
 #   and: [...]  or: [...]    boolean logic over step ids, nested as needed
 #   kind <id>: ...           a record: a heading, then an indented block of attributes and child records
 #                            A threat is written threat <asset>-<stride>: the id names the asset and the property.
+#                            Another threat to the same property has a name of its own after a dot: <asset>-<stride>.<name>
 #                            An asset is written asset <element-id>: with the id of its element.
 #                            A risk is written risk <threat-id>: with the id of its threat scenario.
 #
@@ -178,7 +179,7 @@ func (o *outliner) kind(k iso21434.Kind) {
 	o.comment(0, k.Word+": "+typeDocs[t.Name()])
 	o.comment(0, o.placement(k))
 	if len(k.Suffixes) > 0 {
-		o.comment(0, "The id says which property of which asset. It is the asset id, a hyphen and a STRIDE word, and the word stands for the property ("+strideMeaning()+"). The asset must list that property. There is one threat scenario for each asset property. The different ways to carry it out are alternatives inside steps.")
+		o.comment(0, "The id says which property of which asset. It is the asset id, a hyphen and a STRIDE word, and the word stands for the property ("+strideMeaning()+"). The asset must list that property. An asset property can have several threat scenarios, each with its own risk and treatment: write the others with a name of their own after a dot, such as update-package-tampering.ota. The different ways to carry out one threat scenario are alternatives inside its steps.")
 	}
 	if len(k.Of) > 0 {
 		of := ofName(k)
