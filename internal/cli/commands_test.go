@@ -1055,3 +1055,22 @@ func TestACommandFindsTheProjectAbove(t *testing.T) {
 		t.Errorf("validate outside a project: %+v", r)
 	}
 }
+
+// An id that is almost the id of a record of that kind is met with the one that was meant.
+func TestATypoInAnIdIsMetWithTheOneThatWasMeant(t *testing.T) {
+	dir := testproject.Copy(t)
+	for _, args := range [][]string{
+		{"explain", "update-package-tamperin", dir},
+		{"diagram", "-threat", "update-package-tamperin", "-o", "-", dir},
+	} {
+		if r := run(t, args...); r.code != 2 || !strings.Contains(r.err, "Did you mean update-package-tampering?") {
+			t.Errorf("%v: exit %d\n%s", args, r.code, r.err)
+		}
+	}
+	if r := run(t, "delete", "step", "compromise-build-servr", dir); r.code != 2 || !strings.Contains(r.err, "Did you mean compromise-build-server?") {
+		t.Errorf("delete: exit %d\n%s", r.code, r.err)
+	}
+	if r := run(t, "explain", "something-else-entirely", dir); r.code != 2 || strings.Contains(r.err, "Did you mean") {
+		t.Errorf("a word that is not near any id: %+v", r)
+	}
+}

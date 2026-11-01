@@ -49,7 +49,7 @@ func runDiagram(args []string, stdout, stderr io.Writer) int {
 	if *threat != "" {
 		var err error
 		if svg, err = attackSVG(res.Workspace, *threat); err != nil {
-			fmt.Fprintln(stderr, "assess diagram:", err)
+			fmt.Fprintf(stderr, "assess diagram: %v%s\n", err, nearID(res.Index, "threat", *threat))
 			return exitUsage
 		}
 		def = "out/attack-" + *threat + ".svg"

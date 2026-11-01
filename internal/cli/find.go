@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/steflokos/assess/internal/load"
+	"github.com/steflokos/assess/internal/source"
 )
 
 // here is the folder of the project for a command that was given no folder. It is the current folder when that has an
@@ -43,4 +44,22 @@ func here(stderr io.Writer) string {
 func isProject(dir string) bool {
 	info, err := os.Stat(filepath.Join(dir, load.ConfigFile))
 	return err == nil && !info.IsDir()
+}
+
+// nearID says which id of a kind an unknown id is most likely a typo of, as a sentence to put after a message, or says nothing.
+// kind is the heading word, such as threat or step.
+func nearID(ix *source.Index, kind, id string) string {
+	if ix == nil {
+		return ""
+	}
+	var ids []string
+	for _, known := range ix.IDs() {
+		if r := ix.Lookup(known); r != nil && r.Kind == kind {
+			ids = append(ids, known)
+		}
+	}
+	if near, ok := load.Closest(id, ids); ok {
+		return ". Did you mean " + near + "?"
+	}
+	return ""
 }

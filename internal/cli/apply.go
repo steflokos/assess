@@ -186,7 +186,7 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 		}
 	}
 	if opt.person && len(out.Deleted) == 0 {
-		return o.fail("there is no %s %s", set.Changes[0].Kind, set.Changes[0].ID)
+		return o.fail("there is no %s %s%s", set.Changes[0].Kind, set.Changes[0].ID, nearID(res.Index, set.Changes[0].Kind, set.Changes[0].ID))
 	}
 	result := applyResult{DryRun: opt.dry, Created: refs(out.Created), Updated: refs(out.Updated), Deleted: refs(out.Deleted), Unchanged: refs(out.Unchanged), Files: sortedNames(out.Files), Diff: out.Diff}
 	if after.Count(diag.Error) > 0 {

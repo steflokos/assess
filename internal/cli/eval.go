@@ -184,7 +184,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 			return o.finish(code, nil, out)
 		}
 	}
-	return o.fail("no threat scenario with id %s", id)
+	return o.fail("no threat scenario with id %s%s", id, nearID(res.Index, "threat", id))
 }
 
 // explainResult is what assess explain says in JSON: the result of one threat scenario and the rules
