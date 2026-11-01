@@ -4,7 +4,7 @@
 
 import { h, put, clear, plural, debounce, ask, toast, api, plainText, chip, short, firstSentence, upper, when, mod } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
-import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow } from './data.js';
+import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow, recordAt } from './data.js';
 import { choice } from './form.js';
 import { hrefOf, diagnostics, diagnostic, said, diff, effects, conflicts, crumbs, empty, notFound, opened, OPEN_TITLES, noAdvice } from './parts.js';
 import { signIteration } from './sign.js';
@@ -46,6 +46,22 @@ async function finalizeDialog(ui) {
   else await ask({ title: 'The iteration was not closed', noCancel: true, body: h('div', {}, said(env), diagnostics((env.diagnostics || []).slice(0, 10))) });
 }
 
+// errorsCard lists the errors of the project for a page that cannot do its work while there are any: what waits for them, the first
+// few errors with a link to where each one is, and a link to the overview for the rest.
+function errorsCard(errors, waits) {
+  return h('div', { class: 'card errors' }, h('h2', {}, icon('alert', 18), ' ' + plural(errors.length, 'error') + ' to fix first'),
+    h('p', { class: 'muted', text: waits + ' Fix the errors in the files: each one says where it is. The page follows within a few seconds.' }),
+    diagnostics(errors.slice(0, 5)),
+    errors.length > 5 ? h('p', { class: 'muted small' }, '… and ' + (errors.length - 5) + ' more on the ', h('a', { href: '#/', text: 'overview' }), '.') : null);
+}
+
+// errorHref is where the first error can be fixed: the page of the record it is in, or the files page for a plain file.
+function errorHref(d) {
+  const at = d && d.file ? recordAt(d.file, d.line || 1) : null;
+  if (at) return hrefOf('kind', at.kind, at.id);
+  return d && ['assess.yaml', 'project.yaml', 'policy.yaml'].includes(d.file) ? '#/files' : '';
+}
+
 // ---- the overview ---------------------------------------------------------------------------------------------------------------------
 function actionButton(a, ui) {
   const b = h('button', { class: 'btn ' + (a.primary ? 'primary' : ''), type: 'button', onclick: () => {
@@ -76,6 +92,11 @@ export function overview(ui) {
     left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step, ' + next.n + ' of ' + path.length }),
       h('h2', { text: next.title }), h('p', { class: 'muted', text: next.text }),
       next.action ? h('div', { class: 'row' }, actionButton(Object.assign({}, next.action, { primary: true }), ui)) : h('p', { class: 'muted small', text: 'Finish the steps before it first.' })));
+  } else if (errors.length) { // the steps that are left wait for the calculation, and the calculation waits for the errors
+    const href = errorHref(errors[0]);
+    left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step' }), h('h2', { text: 'Fix ' + plural(errors.length, 'error') }),
+      h('p', { class: 'muted', text: 'The calculation, the risks and the report wait for the project to have no errors. Each error above says where it is.' }),
+      href ? h('div', { class: 'row' }, h('a', { class: 'btn primary', href }, 'Open the first one')) : null));
   } else {
     left.append(h('div', { class: 'card next done' }, h('div', { class: 'label', text: 'All seven steps are done' }), h('h2', {}, icon('checkCircle', 22), ' The assessment is closed'),
       h('p', { class: 'muted', text: 'Nothing is open and the last iteration is up to date. Open the report to share it.' }), h('div', { class: 'row' }, h('a', { class: 'btn primary', href: '#/report' }, 'Open the report'))));
@@ -97,7 +118,8 @@ export function overview(ui) {
   }
   const open = S.open.length;
   right.append(h('div', { class: 'card' }, h('h2', { text: 'What needs you' }),
-    open ? h('p', {}, h('strong', { text: plural(open, 'item') }), ' open. ', h('a', { href: '#/open', text: 'See them' })) : h('p', { class: 'muted', text: results ? 'Nothing is open.' : 'Nothing yet.' }),
+    open ? h('p', {}, h('strong', { text: plural(open, 'item') }), ' open. ', h('a', { href: '#/open', text: 'See them' }))
+      : h('p', { class: 'muted', text: results ? 'Nothing is open.' : errors.length ? 'The errors come first. What is open is worked out once there are none.' : 'Nothing yet.' }),
     S.diag.filter((d) => d.severity !== 'error').length ? h('p', { class: 'muted small', text: plural(S.diag.filter((d) => d.severity !== 'error').length, 'warning') + ' in the files.' }) : null));
   const its = exp.iterations || [];
   if (its.length) {
@@ -209,6 +231,8 @@ export function decisions(ui) {
   const page = h('div', { class: 'page wide' }, crumbs({ text: 'Risks', href: hrefOf('kind', 'risk') }, { text: 'Decisions' }));
   page.append(h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Decisions' }),
     h('p', { class: 'muted', text: 'What you do about each risk: avoid it, reduce it, share it or accept it. Changes are checked together and saved together.' }))));
+  const errors = S.diag.filter((d) => d.severity === 'error');
+  if (errors.length) page.append(errorsCard(errors, 'A decision cannot be saved while the project has errors.'));
   if (!risks.length) {
     page.append(h('div', { class: 'card' }, empty('scale', 'No risks yet', 'assess writes a risk for each threat scenario once it can be calculated.', S.exp.results && S.threats.size ? { label: 'Write the risks', run: () => act({ generate: 'risks' }, ui) } : null)));
     return page;
@@ -321,7 +345,8 @@ export function openItems(ui) {
   const items = S.open;
   const page = h('div', { class: 'page' }, crumbs({ text: 'Open items' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Open items' }),
     h('p', { class: 'muted', text: 'What is not calculated, what has no decision yet and what the rules found. It is the same list as in the report.' }))));
-  if (!S.exp.results) page.append(h('div', { class: 'alert warn', text: 'The project has errors, so the list is not there yet. See the findings in the overview.' }));
+  const errors = S.diag.filter((d) => d.severity === 'error');
+  if (!S.exp.results) page.append(errors.length ? errorsCard(errors, 'The list is worked out once the project has no errors.') : h('div', { class: 'alert warn', text: 'The list is not there yet.' }));
   else if (!items.length) page.append(h('div', { class: 'card' }, empty('checkCircle', 'Nothing is open', 'Every threat scenario is calculated and every risk has its decision.')));
   else page.append(h('div', { class: 'card flush scroll' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, ['What', 'Where', 'Details'].map((t) => h('th', { text: t })))),
     h('tbody', {}, items.map((it) => h('tr', {},
@@ -341,7 +366,11 @@ export function calc() {
   const r = S.exp.results;
   const page = h('div', { class: 'page' }, crumbs({ text: 'Calculation' }), h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Calculation' }),
     h('p', { class: 'muted', text: 'The risk of each threat scenario, before the controls and with them. Open one to see how each number came out.' }))));
-  if (!r) { page.append(h('div', { class: 'alert warn', text: 'The project has errors, so nothing is calculated yet.' })); return page; }
+  if (!r) {
+    const errors = S.diag.filter((d) => d.severity === 'error');
+    page.append(errors.length ? errorsCard(errors, 'Nothing is calculated while the project has errors.') : h('div', { class: 'alert warn', text: 'Nothing is calculated yet.' }));
+    return page;
+  }
   page.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('strong', { text: 'The item' }), chip(r.item.base, 'Before the controls'), h('span', { class: 'muted', text: 'before, decided by' }),
     r.item.baseBy ? h('a', { href: hrefOf('kind', 'threat', r.item.baseBy), class: 'cp link', text: nameOf('threat', r.item.baseBy) || r.item.baseBy }) : null,
     chip(r.item.residual, 'With the controls'), h('span', { class: 'muted', text: 'with the controls' }))));

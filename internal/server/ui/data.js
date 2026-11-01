@@ -180,6 +180,8 @@ export function workflow() {
   const notCalc = openCount('not-calculated', 'policy-gap');
   const undecided = openCount('no-treatment');
   const riskGaps = openCount('no-risks', 'risk-missing', 'risk-stale', 'risk-not-calculated');
+  const errors = (S.diag || []).filter((d) => d.severity === 'error').length;
+  const waits = errors > 0 && !results; // the calculation, and so the steps that need it, wait for the errors to be fixed
   const its = (S.exp && S.exp.iterations) || [];
   const last = its[its.length - 1];
   const closed = !!last && last.inputs === (S.exp && S.exp.fingerprint);
@@ -234,10 +236,18 @@ export function workflow() {
         : risks > 0 ? { label: 'Close the iteration', finalize: true, primary: true } : null,
     },
   ];
+  if (waits) {
+    for (const s of list.slice(4)) { // rating, deciding and closing need the calculation
+      if (s.done) continue;
+      s.blocked = true;
+      s.text = 'Waits for the ' + plural(errors, 'error') + ' in the files to be fixed.';
+      s.action = null;
+    }
+  }
   let found = false;
   list.forEach((s, i) => {
     s.n = i + 1;
-    s.state = s.done ? 'done' : !found ? 'now' : 'todo';
+    s.state = s.done ? 'done' : !found && !s.blocked ? 'now' : 'todo'; // a step that waits for the errors is never the next one
     if (!s.done) found = true;
   });
   return list;
