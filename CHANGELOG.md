@@ -2,6 +2,24 @@
 
 assess uses semantic versioning.
 
+## Unreleased
+
+Changes to how assess is used. The format of a project and the JSON of the commands stay the same.
+
+- A flag can go anywhere on the command line, so `assess explain <threat-id> -all` works. After `--` every word is an argument. A flag
+  after the folder used to be refused.
+- A command that is given no folder finds the project in the nearest folder above that has an `assess.yaml`, the way git finds its
+  repository, and says which folder it took. `init` and `serve` still only look at the folder they are given.
+- `explain`, `delete` and `diagram -threat` name the id that was meant when the one given does not exist. A value of a fixed list that
+  differs from an allowed one only in case, spaces, hyphens or underscores, such as `major` for `Major`, is named in the error.
+- Each line of `assess open` starts with the `file:line:col` of its record, as a diagnostic does.
+- In text, `apply` and `delete` end with what the change moves in the calculation, also in a dry run. JSON had this as `effects` already.
+- On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
+- `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
+- In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open
+  items and decisions pages list the errors. The calculation and decisions tables sort by any column, the highest risk first, and filter
+  by goals or claims. The count of undecided risks follows the choices on the page.
+
 ## 0.1.0
 
 The first beta. Projects use the format `assess/v1beta1`.
@@ -47,6 +65,6 @@ Known limits of this beta:
 
 - The numbers in the policy that comes with assess are examples. Check them before you rely on a result.
 - Signing keys must be ed25519 keys in PKCS#8 form, without a passphrase.
-- The tests have only run on macOS so far. Where there is no `flock`, as on Windows, assess locks a project with a lock
-  file instead. That code is written but not yet tested on Windows.
+- The tests run on Linux, macOS and Windows in CI. Where there is no `flock`, as on Windows, assess locks a project with a lock
+  file instead, and readers do not wait for a change to finish. A command that was killed leaves the lock file behind for five minutes.
 - This is a beta, so expect some bugs. Later versions fix them and add features.

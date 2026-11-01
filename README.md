@@ -51,9 +51,10 @@ To build assess from a checkout, run `make build`. The program ends up in `bin/a
 it is not on your PATH. Run `make install` to use it from any folder. This puts `assess` in your Go bin
 directory (`GOBIN`, or `$GOPATH/bin`, usually `~/go/bin`). If that directory is not on your PATH, the command
 tells you. You can also run assess without building it, for example `go run ./cmd/assess init my-tara`. With Go 1.27.1 or newer,
-`go install github.com/steflokos/assess/cmd/assess@latest` installs the latest release.
+`go install github.com/steflokos/assess/cmd/assess@latest` installs assess from the main branch. There is no tagged release and no
+prebuilt program yet, so for now you need Go to install it.
 
-The folder `examples/ota` is a finished project, with every risk treated and one iteration closed. Read it, or run
+The folder `examples/ota` is a finished project, with every risk treated and two iterations closed. Read it, or run
 the commands below on it. An AI generated it and the data is made up, so it does not describe a real system and is not for production use.
 
 ```sh
