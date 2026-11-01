@@ -1091,3 +1091,19 @@ func TestOpenSaysWhereEachItemIs(t *testing.T) {
 		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }
+
+// A dry run says for a person what the change moves in the calculation, and not only in JSON.
+func TestADryRunSaysWhatTheChangeMoves(t *testing.T) {
+	dir := testproject.Copy(t)
+	r := run(t, "delete", "-cascade", "-dry-run", "control", "signed-packages", dir)
+	if r.code != 0 || !strings.Contains(r.out, "what the change moves in the calculation") ||
+		!regexp.MustCompile(`threat update-package-tampering +risk 5 / 2 -> 5, feasibility High / Very Low -> High`).MatchString(r.out) {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
+	}
+	// in JSON the effects are in the document, and nothing else is written to stdout
+	r = run(t, "delete", "-cascade", "-dry-run", "-format", "json", "control", "signed-packages", dir)
+	var env envelope
+	if json.Unmarshal([]byte(r.out), &env) != nil || strings.Contains(r.err, "what the change moves") {
+		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
+	}
+}

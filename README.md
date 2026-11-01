@@ -831,6 +831,8 @@ writes the records for it. It takes a change set, in JSON or in YAML:
 - `{"op": "write", "file": "policy.yaml", "text": "…", "was": "sha256:…"}` writes one of the plain files as a whole: `assess.yaml`,
   `project.yaml` or the policy. `export` gives the text of each of them with its hash, and a file that has another hash now is a
   conflict. The dry run shows the diff and the `effects`.
+- In text, `apply` and `delete` end with what the change moves in the calculation: one line for each threat scenario and for the
+  item, with the risk before the controls and with them, and the feasibility levels. A dry run shows it too.
 - In JSON, the result has `effects` when the change moves a result of the calculation. Each entry names a threat scenario, or the
   item, with its risk values and feasibility levels before and after. A threat scenario that the change creates or removes has only
   one of the two. It is left out when nothing moves, and when the project cannot be calculated.

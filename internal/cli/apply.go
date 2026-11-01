@@ -246,6 +246,9 @@ func applyChanges(o *output, set *edit.Set, dir string, opt applyOptions) int {
 			refreshIDs(dir, load.Load(dir))
 		}
 	}
+	if !o.json {
+		printEffects(w, result.Effects)
+	}
 	o.show(diags)
 	switch {
 	case opt.person:
