@@ -36,6 +36,9 @@ func Eval(w io.Writer, rep *engine.Report) {
 	}
 	if rep.Rules != nil {
 		fmt.Fprintf(w, "combine steps:    %s\ncombine controls: %s\n", ruleLine(rep.Rules.Steps), ruleLine(rep.Rules.Controls))
+		if rep.Rules.Cap {
+			fmt.Fprintln(w, "cap:              each factor stops at the points of the highest key of its table")
+		}
 	}
 	if rep.Risk != nil {
 		fmt.Fprintf(w, "impact:           categories %s, stakeholders %s\nscalability:      %s\n", rep.Risk.ImpactAcross, rep.Risk.ImpactBetween, scalabilityText(rep.Risk))
@@ -208,6 +211,9 @@ func explain(w io.Writer, x *attack.Index, ws *model.Workspace, rep *engine.Repo
 		fmt.Fprintln(tw, "  steps\t"+strings.Join(rep.Rules.Steps[:], "\t"))
 		fmt.Fprintln(tw, "  controls\t"+strings.Join(rep.Rules.Controls[:], "\t"))
 		tw.Flush()
+		if rep.Rules.Cap {
+			fmt.Fprintln(w, "cap: each factor stops at the points of the highest key of its table (feasibility.cap)")
+		}
 		fmt.Fprintln(w, "levels: "+bandLine(ws.Policy.Feasibility.Levels))
 	}
 	for _, why := range r.Issues {
@@ -501,9 +507,16 @@ func printWorksheet(w io.Writer, p engine.Path, rules *engine.Rules) {
 			row(tw, "bypass", e.ID+" (bypassed by its threatenedby steps, which are among the steps above)", make([]string, len(engine.Factors)))
 		}
 	}
+	before := p.Vector
+	if p.Uncapped != nil {
+		before = *p.Uncapped
+	}
 	if defeats {
 		row(tw, "stage 2", "controls combined by", rules.Controls[:])
-		row(tw, "", "result", numbers(p.Vector))
+		row(tw, "", "result", numbers(before))
+	}
+	if p.Uncapped != nil {
+		row(tw, "cap", "each factor stops at the top of its scale", numbers(p.Vector))
 	}
 	tw.Flush()
 	fmt.Fprintf(w, "  total %d = %s  ->  %s\n", p.Total, strings.Join(numbers(p.Vector), " + "), p.Level)

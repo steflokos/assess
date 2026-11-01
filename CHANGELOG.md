@@ -16,6 +16,10 @@ Changes to how assess is used. The format of a project and the JSON of the comma
 - In text, `apply` and `delete` end with what the change moves in the calculation, also in a dry run. JSON had this as `effects` already.
 - `assess check` runs validate, the rules, the open items and the iterations in one command, for a pipeline. `-format github` writes
   annotations for GitHub Actions and `-format sarif` a SARIF 2.1.0 document. The repository has a hook for pre-commit.
+- `feasibility.cap: true` in the policy stops each factor of a path at the points of the highest key of its table. Without it, controls
+  that add up can rate an attacker beyond the scale, which makes the residual risk look lower than it is. It is off unless you switch it
+  on, so no number of an existing project changes. `explain` shows the effort before the cap and after it, and the JSON of a path has
+  `uncapped` when the cap lowered it and `rules.cap`. A new project has the line as a comment in its policy.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

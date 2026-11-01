@@ -26,6 +26,9 @@ func (b *builder) method() Section {
 		file = txt(b.ws.PolicyFile)
 	}
 	facts := []Fact{{"Policy file", file}}
+	if pol.Feasibility.Cap {
+		facts = append(facts, Fact{"Cap of the attack potential", txt("each factor of a path stops at the points of the highest key of its table")})
+	}
 	if r := b.rep.Risk; r != nil {
 		facts = append(facts,
 			Fact{"Impact of a damage scenario", txt(fmt.Sprintf("the categories of one stakeholder combine by %s, the stakeholders by %s", r.ImpactAcross, r.ImpactBetween))},

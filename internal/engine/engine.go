@@ -112,8 +112,10 @@ type Path struct {
 	Elems       []PathElem `json:"elems"`
 	StepsVector Vector     `json:"stepsVector"`
 	Vector      Vector     `json:"vector"`
-	Total       int        `json:"total"`
-	Level       string     `json:"level"`
+	// Uncapped is the effort before the cap of the policy, when the cap lowered a factor. Vector is then the effort after it.
+	Uncapped *Vector `json:"uncapped,omitempty"`
+	Total    int     `json:"total"`
+	Level    string  `json:"level"`
 	// Scalability is the scalability of this path, when the policy lets it count.
 	Scalability *PathScalability `json:"scalability,omitempty"`
 }
@@ -165,7 +167,7 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 		feasible = false
 		rep.Policy = append(rep.Policy, "feasibility.combine is not set in the policy")
 	} else {
-		rep.Rules = &Rules{Steps: ruleSet(steps), Controls: ruleSet(controls)}
+		rep.Rules = &Rules{Steps: ruleSet(steps), Controls: ruleSet(controls), Cap: pol.Feasibility.Cap}
 	}
 	riskable := true
 	if len(pol.Impact.Stakeholders) == 0 || pol.Impact.Across == "" {
@@ -358,8 +360,15 @@ func (e *enumerator) cost(p path, f model.Feasibility) Path {
 	}
 	stage1 := rules(f.Combine.Steps.List()).fold(stepVecs...)
 	final := rules(f.Combine.Controls.List()).fold(append([]Vector{stage1}, defeatVecs...)...)
+	var uncapped *Vector
+	if f.Cap { // capping is the last stage. A path with more elements stays at least as costly, so the pruning of paths still holds
+		if capped := final.capAt(e.sc.top()); capped != final {
+			raw := final
+			uncapped, final = &raw, capped
+		}
+	}
 	elems := append(append(steps, defeats...), bypasses...)
-	return Path{Elems: elems, StepsVector: stage1, Vector: final, Total: final.Total()}
+	return Path{Elems: elems, StepsVector: stage1, Vector: final, Uncapped: uncapped, Total: final.Total()}
 }
 
 // keysOf lists the rating keys of a potential or a reduction in factor order.

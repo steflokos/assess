@@ -166,6 +166,17 @@
       "additionalProperties": false,
       "description": "How attack potential is added up and turned into a feasibility level.",
       "properties": {
+        "cap": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "true stops each factor of a path at the points of the highest key of its table, after the steps and the controls are combined. Steps and controls that add up then cannot rate an attacker beyond the top of the scale, such as more expertise than multiple experts. Leave it out to let the points add up without a limit."
+        },
         "combine": {
           "anyOf": [
             {

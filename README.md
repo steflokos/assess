@@ -322,6 +322,13 @@ factor in two stages:
 2. The controls the attacker has to defeat. `feasibility.combine.controls` says how they are applied on top of
    the steps. A control that is in place raises the other factors by adding.
 
+3. The cap, when the policy has `feasibility.cap: true`. Each factor stops at the points of the highest key of its table. Without
+   the cap, controls that add up can rate an attacker beyond the scale. Two controls of SE2 on a step of SE2 come to 18 points of
+   expertise, while the scale ends at SE3 with 8. That makes the residual feasibility, and the residual risk, look lower than any
+   attacker the scale describes. Elapsed time that adds up along a long path stops at ET4 in the same way. The cap is off unless
+   you switch it on, so the numbers of an existing project do not change. `assess explain` shows the effort before the cap and
+   after it.
+
 The five results add up to a total, and the total falls into a feasibility level. The easiest path decides the
 feasibility of the threat scenario. This is the **base** result.
 
@@ -404,7 +411,7 @@ The points, levels, rules and matrix are your data. They live in `policy.yaml`, 
 - The risk matrix is an example. The matrix in the standard is only informative, so use the matrix of your own
   method.
 - How effort combines along a path, how impact combines and the risk affinity are choices made by assess. The
-  standard does not fix them.
+  standard does not fix them. The cap of each factor at the top of its scale is written as a comment, for you to switch on.
 - Scalability is not part of the standard. It is left out as a commented section that you can switch on.
 
 All values are whole numbers. The same files always give the same numbers, because assess uses no floating

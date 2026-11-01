@@ -125,6 +125,25 @@ func (s scale) vector(p model.AttackPotential) (Vector, bool) {
 	}, true
 }
 
+// top is the highest number of points of each factor: the points of the highest key of its table. A cap stops a factor there.
+func (s scale) top() Vector {
+	var out Vector
+	for f, table := range s.points {
+		for _, p := range table {
+			out[f] = max(out[f], p)
+		}
+	}
+	return out
+}
+
+// capAt lowers every factor of v that is above the same factor of top to it.
+func (v Vector) capAt(top Vector) Vector {
+	for f := range v {
+		v[f] = min(v[f], top[f])
+	}
+	return v
+}
+
 // levelOf returns the feasibility level of a total: the first band it fits, the
 // last band covering everything above.
 func levelOf(total int, bands []model.Band) string {
@@ -183,6 +202,8 @@ func (r RuleSet) MarshalJSON() ([]byte, error) { return factorObject(r) }
 type Rules struct {
 	Steps    RuleSet `json:"steps"`
 	Controls RuleSet `json:"controls"`
+	// Cap says that each factor stops at the points of the highest key of its table (feasibility.cap in the policy).
+	Cap bool `json:"cap,omitempty"`
 }
 
 func ruleSet(r rules) RuleSet {

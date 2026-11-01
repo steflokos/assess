@@ -40,6 +40,8 @@ feasibility:
       knowledge: sum
       window:    sum
       equipment: sum
+  # cap: true                    # stop each factor at the points of its highest key. Without it, controls that add up can rate an
+                                  # attacker beyond the scale (more than SE3), which makes the residual risk look lower than it is
 
 impact:
   across: max                     # max or sum: how the four impact categories of one stakeholder become one level
