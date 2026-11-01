@@ -204,10 +204,25 @@ func runVersion(args []string, stdout, stderr io.Writer) int {
 	if fl.NArg() > 0 {
 		return o.fail("version takes no argument, got %q", fl.Arg(0))
 	}
+	commit, modified := model.Build()
 	if o.json {
-		return o.finish(exitOK, nil, nil)
+		var result any
+		if commit != "" {
+			result = struct {
+				Commit   string `json:"commit"`
+				Modified bool   `json:"modified,omitempty"`
+			}{commit, modified}
+		}
+		return o.finish(exitOK, nil, result)
 	}
 	showLogo(stdout, stderr)
 	fmt.Fprintf(stdout, "assess %s\n", model.ToolVersion)
+	if commit != "" { // on stderr, so that what a script reads from stdout stays one line
+		changes := ""
+		if modified {
+			changes = ", with changes that were not committed"
+		}
+		fmt.Fprintf(stderr, "built from commit %s%s\n", shortHash(commit), changes)
+	}
 	return exitOK
 }

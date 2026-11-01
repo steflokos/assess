@@ -78,6 +78,17 @@ text from the client checks it first, so that it can never be taken for a flag. 
 The colors are in `internal/theme`, once. The report and the page both take them from there. A test checks the contrast of every pair
 of text and background, so run `go test ./internal/theme` after you change one.
 
+## Making a release
+
+1. Set `ToolVersion` in `internal/model/version.go` to the new version, such as `v0.2.0`.
+2. Move what is under "Unreleased" in `CHANGELOG.md` under the new version.
+3. Commit, tag the commit with the version and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+
+The workflow in `.github/workflows/release.yml` then checks that the tag is `ToolVersion`, runs the checks and the tests,
+builds the program for Linux, macOS and Windows, and publishes a release with the archives and their SHA-256 sums. Each
+archive holds the license, the notice and the notices of the libraries, which their licenses ask for. A version that starts
+with 0 is published as a pre-release.
+
 ## Dependencies
 
 assess uses the Go standard library and two third-party modules, both vendored. They are `go.yaml.in/yaml/v3` and

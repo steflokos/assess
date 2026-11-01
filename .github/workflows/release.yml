@@ -1,0 +1,65 @@
+name: release
+
+# A release is made when a tag such as v0.2.0 is pushed. The tag has to be the version in internal/model/version.go, so
+# that the program says the version it was released as. The archives hold the program and the notices that its license
+# and the licenses of its libraries ask for.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep line endings as they are in the repository
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: The tag is the version in the source
+        run: |
+          want=$(sed -n 's/^var ToolVersion = "\(.*\)"$/\1/p' internal/model/version.go)
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "::error::the tag $GITHUB_REF_NAME is not ToolVersion $want in internal/model/version.go. Change one of them"
+            exit 1
+          fi
+
+      - run: test -z "$(gofmt -l cmd internal)"
+      - run: go vet ./...
+      - run: go test ./...
+
+      - name: Build the archives
+        run: |
+          mkdir dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+            os=${target%/*}
+            arch=${target#*/}
+            name="assess-$GITHUB_REF_NAME-$os-$arch"
+            exe=assess
+            if [ "$os" = windows ]; then exe=assess.exe; fi
+            mkdir "dist/$name"
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "dist/$name/$exe" ./cmd/assess
+            cp LICENSE NOTICE THIRD_PARTY_NOTICES.md README.md CHANGELOG.md "dist/$name/"
+            if [ "$os" = windows ]; then
+              (cd dist && zip -qr "$name.zip" "$name")
+            else
+              tar -C dist -czf "dist/$name.tar.gz" "$name"
+            fi
+            rm -r "dist/$name"
+          done
+          (cd dist && sha256sum * > SHA256SUMS)
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=
+          case "$GITHUB_REF_NAME" in v0.*) pre=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag $pre \
+            --title "assess $GITHUB_REF_NAME" --notes "What changed and what you have to do about it is in CHANGELOG.md."
