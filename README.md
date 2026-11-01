@@ -964,7 +964,8 @@ What you can do in the page:
   lines, Ctrl S does the same, and Undo puts the old values back. After a save, the page lists the open items that the change made,
   such as a step without a rating or a risk that is accepted above the affinity.
 - **Decide the risks in one table.** The decisions page lists every risk with its treatment, and the changes are checked and saved
-  together.
+  together. It sorts by the risk value or the treatment, and filters by a word, by goals or claims and by the risks still undecided.
+  The calculation page sorts and filters the same way, with the highest risk first.
 - **See what a record is connected to.** The side of a record page shows its calculation, its attack tree, what it uses and what uses it.
 - **Delete a record.** The page says what depends on it before anything is removed.
 - Let assess write assets, threat scenarios and risks, and close an iteration.
