@@ -11,8 +11,9 @@ make build          # bin/assess
 make check          # gofmt and go vet
 make test           # every test
 make race           # every test, with the race detector
+make fuzz           # the fuzz tests of the text editor, 30 seconds each (FUZZTIME=5m for longer)
 make vendor-check   # go.mod, go.sum and vendor are in step
-make vuln           # govulncheck
+make vuln           # govulncheck, at a fixed version
 ```
 
 Run `make check` and `make test` before you send a change.
