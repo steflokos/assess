@@ -5,6 +5,8 @@ package cli
 
 import (
 	"testing"
+
+	"github.com/steflokos/assess/internal/diag"
 )
 
 func env(vars map[string]string) func(string) string {
@@ -42,5 +44,30 @@ func TestLogoWanted(t *testing.T) {
 	}
 	if logoWanted(true, env(map[string]string{"ASSESS_NO_BANNER": "1"})) {
 		t.Error("ASSESS_NO_BANNER turns it off")
+	}
+}
+
+// The severity of a diagnostic is coloured for a person at a terminal that understands colours, and never with NO_COLOR.
+func TestSeverityColour(t *testing.T) {
+	cases := []struct {
+		name string
+		vars map[string]string
+		goos string
+		want bool
+	}{
+		{"a plain xterm", map[string]string{"TERM": "xterm"}, "linux", true},
+		{"NO_COLOR", map[string]string{"TERM": "xterm-256color", "NO_COLOR": "1"}, "linux", false},
+		{"a dumb terminal", map[string]string{"TERM": "dumb"}, "darwin", false},
+		{"no TERM at all", nil, "linux", false},
+		{"Windows Terminal", map[string]string{"WT_SESSION": "x"}, "windows", true},
+		{"the old Windows console", nil, "windows", false},
+	}
+	for _, c := range cases {
+		if got := severityColour(env(c.vars), c.goos); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+	if got := paintSeverity(diag.Error); got != "\x1b[1;31merror\x1b[0m" {
+		t.Errorf("%q", got)
 	}
 }

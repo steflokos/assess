@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
+	"runtime"
 
 	"github.com/steflokos/assess/internal/diag"
 	"github.com/steflokos/assess/internal/model"
@@ -82,9 +84,34 @@ func (o *output) show(diags diag.List) {
 	if o.json {
 		return
 	}
+	colour := isTerminal(o.stdout) && severityColour(os.Getenv, runtime.GOOS)
 	for _, d := range diags {
-		fmt.Fprintln(o.stdout, d)
+		if !colour {
+			fmt.Fprintln(o.stdout, d)
+			continue
+		}
+		fmt.Fprintf(o.stdout, "%s: %s: [%s] %s\n", d.Loc, paintSeverity(d.Severity), d.Code, d.Message)
 	}
+}
+
+// severityColour says whether the severity of a diagnostic is coloured, for a person at a terminal: not when NO_COLOR is set
+// (no-color.org), not on a terminal that says it is dumb, and on Windows only in a terminal that is known to understand colours.
+func severityColour(getenv func(string) string, goos string) bool {
+	if getenv("NO_COLOR") != "" || getenv("TERM") == "dumb" {
+		return false
+	}
+	if goos == "windows" {
+		return getenv("WT_SESSION") != "" || getenv("TERM") != ""
+	}
+	return getenv("TERM") != ""
+}
+
+// paintSeverity writes an error in bold red and a warning in yellow. The words stay, so the line reads the same without colour.
+func paintSeverity(s diag.Severity) string {
+	if s == diag.Error {
+		return "\x1b[1;31m" + s.String() + "\x1b[0m"
+	}
+	return "\x1b[33m" + s.String() + "\x1b[0m"
 }
 
 // finish ends a command with the given exit code. In JSON mode it writes the document first: the
