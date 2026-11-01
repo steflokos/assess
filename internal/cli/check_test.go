@@ -52,7 +52,8 @@ func TestCheckFindsAChangedIterationAndAnErrorTogether(t *testing.T) {
 	testproject.Replace(t, dir, "tara/attack-steps.yaml", "target:", "targett:")
 	r := run(t, "check", dir)
 	if r.code != 1 || !strings.Contains(r.out, "iterations.yaml: error:") || !strings.Contains(r.out, "[unknown-attribute]") ||
-		!strings.Contains(r.err, "not calculated because of the errors") {
+		!strings.Contains(r.out, "[not-calculated] update-package-tampering: not calculated: step modify-package-in-transit has an error") ||
+		strings.Contains(r.out, "risk-stale") {
 		t.Errorf("exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }

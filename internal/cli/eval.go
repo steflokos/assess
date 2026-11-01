@@ -38,14 +38,16 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	res, ok := loadChecked(o, dir)
+	res, errs, broken, ok := loadIsolated(o, dir)
 	if !ok {
 		return exitFindings
 	}
-	rep, err := engine.Run(res.Workspace, engine.Options{})
+	rep, err := engine.Run(res.Workspace, engine.Options{Broken: broken})
 	if err != nil {
 		return o.fail("%v", err)
 	}
+	o.show(errs)
+	isolatedNote(o, errs)
 	if !o.json {
 		report.Eval(stdout, rep)
 	}
@@ -63,10 +65,10 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, d)
 	}
 	code := exitOK
-	if *strict && (open > 0 || len(rep.Policy) > 0 || len(stale) > 0) {
+	if len(errs) > 0 || *strict && (open > 0 || len(rep.Policy) > 0 || len(stale) > 0) {
 		code = exitFindings
 	}
-	return o.finish(code, stale, rep)
+	return o.finish(code, append(errs, stale...), rep)
 }
 
 // riskFileFindings says what is out of date in the risks written in concept/, as warnings. A project
@@ -96,7 +98,14 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 		return nil, rep.Item.Base != nil || rep.Item.Residual != nil
 	}
 	plan := generate.Risks(ws, res.Index, riskValues(rep))
+	blocked := map[string]bool{}
+	for _, r := range rep.Threats {
+		blocked[r.Threat] = r.Blocked
+	}
 	for _, c := range plan.Changed {
+		if blocked[c.ID] {
+			continue // not calculated because of an error, so its risk is not known, and not out of date
+		}
 		problems := make([]string, len(c.Values))
 		for i, v := range c.Values {
 			problems[i] = v.Problem()
@@ -104,6 +113,9 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 		drift = append(drift, report.Drift{ID: c.ID, Problems: problems, Loc: c.Loc})
 	}
 	for _, id := range plan.Added {
+		if blocked[id] {
+			continue
+		}
 		drift = append(drift, report.Drift{ID: id, Missing: true, Loc: res.Index.At(id, "")})
 	}
 	return drift, false
@@ -150,12 +162,14 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	} else {
 		dir = here(stderr)
 	}
-	res, ok := loadChecked(o, dir)
+	res, errs, broken, ok := loadIsolated(o, dir)
 	if !ok {
 		return exitFindings
 	}
+	o.show(errs)
+	isolatedNote(o, errs)
 	ws := res.Workspace
-	opt := engine.Options{}
+	opt := engine.Options{Broken: broken}
 	if *all {
 		opt.Others = engine.DefaultMaxPaths
 	}
@@ -169,7 +183,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 				report.Explain(stdout, ws, rep, r, *all)
 			}
 			code := exitOK
-			if r.Base == nil || r.Residual == nil {
+			if r.Base == nil || r.Residual == nil || len(errs) > 0 {
 				code = exitFindings
 			}
 			out := explainResult{Threat: r, Rules: rep.Rules, Risk: rep.Risk}
@@ -181,7 +195,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 			if r.Residual != nil {
 				out.Outline.Residual = x.PathOutline(r.Residual.Best, true)
 			}
-			return o.finish(code, nil, out)
+			return o.finish(code, errs, out)
 		}
 	}
 	return o.fail("no threat scenario with id %s%s", id, nearID(res.Index, "threat", id))

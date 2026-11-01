@@ -18,6 +18,10 @@ type Options struct {
 	// Others is how many paths after the easiest one an Outcome keeps, easiest
 	// first. The default is 3.
 	Others int
+	// Broken are the records that have an error, by the key the index gives them (the id, or asset:<id> for an asset), with
+	// the error. A threat scenario that uses one of them is not calculated: a record with an error may have lost a value, such
+	// as a list under a misspelled name, and a number made without it would look right and be wrong.
+	Broken map[string]string
 }
 
 // Report is the result of evaluating every threat scenario of a project.
@@ -59,6 +63,9 @@ type Result struct {
 	Base     *Outcome `json:"base,omitempty"`
 	Residual *Outcome `json:"residual,omitempty"`
 	Issues   []string `json:"issues,omitempty"`
+	// Blocked says that the threat scenario is not calculated because a record it uses has an error (Options.Broken). Its risk
+	// is then not out of date, only not known.
+	Blocked bool `json:"blocked,omitempty"`
 	// RiskIssues says why the risk of an otherwise calculated threat scenario is
 	// missing, for example a step on the deciding path without scalability.
 	RiskIssues []string `json:"riskIssues,omitempty"`
@@ -214,6 +221,11 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 	for i := range ws.Threats {
 		t := &ws.Threats[i]
 		res := Result{Threat: t.ID, Name: t.Name}
+		if why := brokenUse(g, t, opt.Broken); len(why) > 0 {
+			res.Issues, res.Blocked = why, true
+			rep.Threats = append(rep.Threats, res)
+			continue
+		}
 		if feasible {
 			var bIssues, rIssues []string
 			res.Base, bIssues = outcome(base, t.ID, pol, opt.Others)

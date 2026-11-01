@@ -116,6 +116,20 @@ func (ix *Index) Add(r *Record) (previous *Record) {
 
 func (ix *Index) Lookup(id string) *Record { return ix.records[id] }
 
+// RecordAt is the record that a line of a file belongs to: the one whose heading is the last at or before the line. It is nil
+// when no record starts before the line. The key is the one the index keeps the record under.
+func (ix *Index) RecordAt(file string, line int) (key string, r *Record) {
+	for k, rec := range ix.records {
+		if rec == nil || rec.Loc.File != file || rec.Loc.Line > line {
+			continue
+		}
+		if r == nil || rec.Loc.Line > r.Loc.Line || (rec.Loc.Line == r.Loc.Line && k < key) {
+			key, r = k, rec
+		}
+	}
+	return key, r
+}
+
 // At returns the position of an attribute of a record, or the zero Loc if unknown.
 func (ix *Index) At(id, path string) Loc { return ix.records[id].At(path) }
 

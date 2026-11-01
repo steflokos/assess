@@ -337,3 +337,75 @@ func sortedIssues(in []string) []string {
 	sort.Strings(out)
 	return out
 }
+
+// uses lists what the calculation of a threat scenario reads, by the key that the index gives each record: the threat
+// scenario, its asset, its damage scenarios, and every attack step, control and threat scenario that its paths can reach
+// through steps, preparedby, mitigatedby and threatenedby. Each is listed once, in the order it is reached.
+func uses(g *graph, t *model.Threat) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(key string) bool {
+		if key == "" || seen[key] {
+			return false
+		}
+		seen[key] = true
+		out = append(out, key)
+		return true
+	}
+	var node func(id string)
+	tree := func(tr model.Tree) { tr.Leaves("", func(_, leaf string) { node(leaf) }) }
+	node = func(id string) {
+		if !add(id) {
+			return
+		}
+		if th := g.threats[id]; th != nil {
+			add("asset:" + th.Asset)
+			for _, d := range th.Damages {
+				add(d)
+			}
+			tree(th.Steps)
+		}
+		if s := g.steps[id]; s != nil {
+			tree(s.PreparedBy)
+			for _, c := range s.MitigatedBy {
+				if add(c) {
+					if ctl := g.controls[c]; ctl != nil {
+						tree(ctl.ThreatenedBy)
+					}
+				}
+			}
+		}
+	}
+	node(t.ID)
+	return out
+}
+
+// kindOf names the kind of a record that uses lists, as a heading word.
+func (g *graph) kindOf(key string) string {
+	switch {
+	case strings.HasPrefix(key, "asset:"):
+		return "asset"
+	case g.steps[key] != nil:
+		return "step"
+	case g.controls[key] != nil:
+		return "control"
+	case g.threats[key] != nil:
+		return "threat"
+	}
+	return "damage"
+}
+
+// brokenUse says which records with an error a threat scenario uses, as the reasons it is not calculated. It says nothing
+// when it uses none.
+func brokenUse(g *graph, t *model.Threat, broken map[string]string) []string {
+	if len(broken) == 0 {
+		return nil
+	}
+	var out []string
+	for _, key := range uses(g, t) {
+		if why, ok := broken[key]; ok {
+			out = append(out, fmt.Sprintf("%s %s has an error: %s", g.kindOf(key), strings.TrimPrefix(key, "asset:"), why))
+		}
+	}
+	return out
+}

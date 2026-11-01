@@ -102,3 +102,11 @@ func (e envelope) errors() []diagnostic {
 	}
 	return out
 }
+
+// runIn runs a command with the given text as its standard input.
+func runIn(t testing.TB, stdin string, args ...string) result {
+	t.Helper()
+	var out, errb bytes.Buffer
+	code := cli.RunWith(strings.NewReader(stdin), args, &out, &errb)
+	return result{code, out.String(), errb.String()}
+}

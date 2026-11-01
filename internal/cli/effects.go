@@ -45,15 +45,15 @@ func sameInt(a, b *int) bool {
 // effectsOf calculates the project before and after a change and lists what moved: the threat scenarios in the order of the
 // project after the change, the ones that the change removed, and the item. It is nil when nothing moved, and when either
 // project cannot be calculated, since then there is nothing to compare.
-func effectsOf(before, after *model.Workspace) []effect {
+func effectsOf(before, after *model.Workspace, brokenBefore, brokenAfter map[string]string) []effect {
 	if before == nil || after == nil {
 		return nil
 	}
-	b, err := engine.Run(before, engine.Options{})
+	b, err := engine.Run(before, engine.Options{Broken: brokenBefore})
 	if err != nil {
 		return nil
 	}
-	a, err := engine.Run(after, engine.Options{})
+	a, err := engine.Run(after, engine.Options{Broken: brokenAfter})
 	if err != nil {
 		return nil
 	}

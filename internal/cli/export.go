@@ -93,10 +93,12 @@ func runExport(args []string, stdout, stderr io.Writer) int {
 	}
 
 	code := exitOK
-	if diags.Count(diag.Error) > 0 {
+	hasErrors := diags.Count(diag.Error) > 0
+	if hasErrors {
 		code = exitFindings
-	} else {
-		in, err := reportInput(dir, res)
+	}
+	if broken, blocked := isolation(res, diags); !blocked {
+		in, err := isolatedInput(dir, res, broken, hasErrors)
 		if err != nil {
 			return o.fail("%v", err)
 		}

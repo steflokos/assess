@@ -45,14 +45,16 @@ func runOpen(args []string, stdout, stderr io.Writer) int {
 		return o.fail("%v", err)
 	}
 	defer unlock()
-	res, ok := loadChecked(o, dir)
+	res, errs, broken, ok := loadIsolated(o, dir)
 	if !ok {
 		return exitFindings
 	}
-	in, err := reportInput(dir, res)
+	in, err := isolatedInput(dir, res, broken, len(errs) > 0)
 	if err != nil {
 		return o.fail("%v", err)
 	}
+	o.show(errs)
+	isolatedNote(o, errs)
 	items := report.OpenItems(in)
 	if items == nil {
 		items = []report.OpenItem{} // a list, never null, when nothing is open
@@ -63,10 +65,10 @@ func runOpen(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(o.stderr, "assess: %s\n", plural(len(items), "open item"))
 	code := exitOK
-	if *strict && len(items) > 0 {
+	if len(errs) > 0 || *strict && len(items) > 0 {
 		code = exitFindings
 	}
-	return o.finish(code, nil, openResult{Count: len(items), Open: items})
+	return o.finish(code, errs, openResult{Count: len(items), Open: items})
 }
 
 // openResult is what assess open says in JSON.

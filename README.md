@@ -370,6 +370,15 @@ neither a `reduction` nor a `threatenedby`, the output names the problem and doe
 It does not treat a missing value as the easiest possible. Without `feasibility.combine` nothing is
 calculated, because assess does not pick a rule for you.
 
+A record with an error may have lost a value, such as a list written under a misspelled name, and a number made without it
+would look right and be wrong. So a threat scenario that uses a record with an error is not calculated: not its asset, its
+damage scenarios, and no step, control or threat scenario that its paths can reach. The output says which record it is.
+Every other threat scenario is calculated as usual, so one typo does not take all the numbers away while you work.
+`eval`, `explain`, `open`, `check`, `export` and the web interface work this way, and they still exit with `1`, because the
+project has an error. Nothing is calculated when a file does not parse, because it may hold any record, or when the policy or
+`assess.yaml` has an error, because that changes every number. `report`, `lint`, `generate` and `finalize` wait for a project
+without errors.
+
 `assess explain` prints the working as a table that you can check by hand. It shows the rating key and the
 points of every element, the rule for each factor, every stage and the total. For each damage scenario it then
 shows the impact stage by stage, and the risk with the impact that scalability raised.
@@ -795,7 +804,9 @@ has findings (errors, or warnings under `-strict`) and `2` when the command line
 - `assess export` gives the whole project as one document: every record as it is written (with its file and line),
   the plain files, the closed iterations, the transfers of the function flows, what assess calculated, and what is open. With `-derived` it
   adds what is worked out about each record, the same views that rules read. It works on a project with errors too.
-  The diagnostics are in the document, the results are left out and the exit code is `1`.
+  The diagnostics are in the document and the exit code is `1`. The results leave out the threat scenarios that use a record
+  with an error (they have `blocked: true` and say why), and the rules are not run. When nothing can be calculated (see
+  "Calculation"), the results are left out.
 - `assess open -format json` lists everything that is still open. It is the same list as the open items of the
   report. Each item has a `code`, so a program can tell what to do: `no-item`, `policy-gap`, `not-calculated`,
   `risk-not-calculated`, `damage-uncaused`, `no-risks`, `risk-missing`, `risk-stale`, `no-treatment`,
@@ -853,8 +864,11 @@ writes the records for it. It takes a change set, in JSON or in YAML:
   item, with its risk values and feasibility levels before and after. A threat scenario that the change creates or removes has only
   one of the two. It is left out when nothing moves, and when the project cannot be calculated.
 
-Before assess writes anything, it checks the result as a project, in a copy. If the result has errors, nothing is
-written. The errors say which file, line and column they are at in the files as they would be. When an error is
+Before assess writes anything, it checks the result as a project, in a copy. If the change adds an error, nothing is
+written. The errors say which file, line and column they are at in the files as they would be. A project that already has
+errors takes a change that adds none, such as the one that repairs a record, so that the web interface can save a fix. The
+result then counts the errors that are left in `remainingErrors`. A record in a file that does not parse cannot be found,
+so no record is changed until the file parses. A plain file that `write` replaces has to be without errors afterwards. When an error is
 caused by a record that still refers to something you deleted, the result lists that record under `blocked`. The
 files are edited as text: only the lines that change are different, and the comments, the blank lines and the
 way the author wrote everything else stay as they are. When one value of a block changes, such as one cell of the impact of a damage

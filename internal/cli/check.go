@@ -78,8 +78,9 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if res.Index != nil {
 		sum.Records = len(res.Index.IDs())
 	}
-	if res.Workspace != nil && all.Count(diag.Error) == 0 {
-		in, err := reportInput(dir, res)
+	broken, blocked := isolation(res, all)
+	if res.Workspace != nil && !blocked {
+		in, err := isolatedInput(dir, res, broken, all.Count(diag.Error) > 0)
 		if err != nil {
 			return o.fail("%v", err)
 		}

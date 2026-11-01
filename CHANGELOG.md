@@ -32,6 +32,11 @@ Changes to how assess is used. The format of a project and the JSON of the comma
 - `apply` and the web interface lost a text that was only line breaks or white space, and the empty lines at the end of a text, and
   a text with a tab and a line break made a file that no longer read. Such a text is now written in double quotes, with escapes. A
   line separator in a JSON change set was read as a space, and is now refused, as it is in YAML. Fuzz tests found these.
+- One error no longer takes every number away. A threat scenario that uses a record with an error is not calculated, and says
+  which record (`blocked: true` in JSON). The others are calculated as usual, in `eval`, `explain`, `open`, `check`, `export` and the
+  web interface, which still exit with 1. A file that does not parse, or an error in the policy or in `assess.yaml`, still stops the
+  calculation. `apply`, `delete` and the web interface take a change to a project with errors when the change adds no error, so a fix
+  can be saved. `remainingErrors` counts what is left.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

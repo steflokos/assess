@@ -88,15 +88,15 @@ export function overview(ui) {
   }
 
   const left = h('div', { class: 'stack' });
-  if (next) {
+  if (errors.length) { // the errors come first: what they touch is not calculated, and a report waits for them
+    const href = errorHref(errors[0]);
+    left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step' }), h('h2', { text: 'Fix ' + plural(errors.length, 'error') }),
+      h('p', { class: 'muted', text: 'A threat scenario that uses a record with an error is not calculated, and the report waits for the project to have none. Each error above says where it is.' }),
+      href ? h('div', { class: 'row' }, h('a', { class: 'btn primary', href }, 'Open the first one')) : null));
+  } else if (next) {
     left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step, ' + next.n + ' of ' + path.length }),
       h('h2', { text: next.title }), h('p', { class: 'muted', text: next.text }),
       next.action ? h('div', { class: 'row' }, actionButton(Object.assign({}, next.action, { primary: true }), ui)) : h('p', { class: 'muted small', text: 'Finish the steps before it first.' })));
-  } else if (errors.length) { // the steps that are left wait for the calculation, and the calculation waits for the errors
-    const href = errorHref(errors[0]);
-    left.append(h('div', { class: 'card next' }, h('div', { class: 'label', text: 'Next step' }), h('h2', { text: 'Fix ' + plural(errors.length, 'error') }),
-      h('p', { class: 'muted', text: 'The calculation, the risks and the report wait for the project to have no errors. Each error above says where it is.' }),
-      href ? h('div', { class: 'row' }, h('a', { class: 'btn primary', href }, 'Open the first one')) : null));
   } else {
     left.append(h('div', { class: 'card next done' }, h('div', { class: 'label', text: 'All seven steps are done' }), h('h2', {}, icon('checkCircle', 22), ' The assessment is closed'),
       h('p', { class: 'muted', text: 'Nothing is open and the last iteration is up to date. Open the report to share it.' }), h('div', { class: 'row' }, h('a', { class: 'btn primary', href: '#/report' }, 'Open the report'))));
@@ -249,7 +249,7 @@ export function decisions(ui) {
   page.append(h('div', { class: 'phead' }, h('div', { class: 'grow' }, h('h1', { text: 'Decisions' }),
     h('p', { class: 'muted', text: 'What you do about each risk: avoid it, reduce it, share it or accept it. Changes are checked together and saved together.' }))));
   const errors = S.diag.filter((d) => d.severity === 'error');
-  if (errors.length) page.append(errorsCard(errors, 'A decision cannot be saved while the project has errors.'));
+  if (errors.length) page.append(errorsCard(errors, 'A decision is saved as long as it adds no error, and the risks of the threat scenarios that use a record with an error are not calculated.'));
   if (!risks.length) {
     page.append(h('div', { class: 'card' }, empty('scale', 'No risks yet', 'assess writes a risk for each threat scenario once it can be calculated.', S.exp.results && S.threats.size ? { label: 'Write the risks', run: () => act({ generate: 'risks' }, ui) } : null)));
     return page;
@@ -395,6 +395,8 @@ export function calc() {
     page.append(errors.length ? errorsCard(errors, 'Nothing is calculated while the project has errors.') : h('div', { class: 'alert warn', text: 'Nothing is calculated yet.' }));
     return page;
   }
+  const errs = S.diag.filter((d) => d.severity === 'error');
+  if (errs.length) page.append(errorsCard(errs, 'The threat scenarios that use a record with an error are not calculated. The others are.'));
   page.append(h('div', { class: 'card' }, h('div', { class: 'row' }, h('strong', { text: 'The item' }), chip(r.item.base, 'Before the controls'), h('span', { class: 'muted', text: 'before, decided by' }),
     r.item.baseBy ? h('a', { href: hrefOf('kind', 'threat', r.item.baseBy), class: 'cp link', text: nameOf('threat', r.item.baseBy) || r.item.baseBy }) : null,
     chip(r.item.residual, 'With the controls'), h('span', { class: 'muted', text: 'with the controls' }))));

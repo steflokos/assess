@@ -167,7 +167,14 @@ func makeView(dir string, res *load.Result, extra ...namedBytes) (*report.View, 
 
 // reportInput calculates the project and gathers everything a report is made of.
 func reportInput(dir string, res *load.Result, extra ...namedBytes) (report.Input, error) {
-	rep, err := engine.Run(res.Workspace, engine.Options{})
+	return isolatedInput(dir, res, nil, false, extra...)
+}
+
+// isolatedInput is reportInput for a project that may have errors in its records: the threat scenarios that use a broken record
+// are not calculated, and when the project has errors the rules are not run, because a record with an error may have lost a value
+// that a rule reads.
+func isolatedInput(dir string, res *load.Result, broken map[string]string, hasErrors bool, extra ...namedBytes) (report.Input, error) {
+	rep, err := engine.Run(res.Workspace, engine.Options{Broken: broken})
 	if err != nil {
 		return report.Input{}, err
 	}
@@ -183,10 +190,15 @@ func reportInput(dir string, res *load.Result, extra ...namedBytes) (report.Inpu
 		}
 	}
 	drift, none := riskFileDrift(res, rep)
-	set, _ := rules.Compile(res.Workspace, res.Index) // loadChecked has already refused rules that do not compile
+	var findings []diag.Finding
+	checked := 0
+	if !hasErrors {
+		set, _ := rules.Compile(res.Workspace, res.Index) // loadChecked has already refused rules that do not compile
+		findings, checked = rules.Run(set, res.Workspace, rep, res.Index), len(set.Rules)
+	}
 	return report.Input{
 		Workspace: res.Workspace, Report: rep, Drift: drift, NoRisks: none, Files: files,
-		Findings: rules.Run(set, res.Workspace, rep, res.Index), RulesChecked: len(set.Rules),
+		Findings: findings, RulesChecked: checked,
 		Meta: report.Meta{
 			Tool:        "assess " + model.ToolVersion,
 			Fingerprint: print,
