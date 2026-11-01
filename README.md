@@ -657,6 +657,14 @@ The chain has limits that you should know:
   git tag, in the ticket or in the mail to the reviewer, and compare it with `-head`.
 - Verify tells you that something changed after it was closed. It does not tell you whether the decisions were right.
 
+### Iterations and branches
+
+Close an iteration on one branch, such as `main`, after the decisions are merged. If two branches each run `assess finalize`
+from the same iteration, each adds the next iteration with the same number, and git sees a conflict at the end of
+`iterations.yaml`. Keep the iterations of one branch and delete the others, then run `assess finalize` again after the
+merge, which compares with the last iteration you kept. If both are kept, `assess verify` reports a `fork`: two iterations
+that follow the same one.
+
 ### Signatures
 
 A signature shows who stands behind a hash. Signing is optional. The private key stays with you. assess reads the key

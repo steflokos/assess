@@ -659,3 +659,20 @@ func TestAChainOfBothFormatsIsIntactAndTheFormatIsCovered(t *testing.T) {
 }
 
 func ptr(v int) *int { return &v }
+
+// Two branches each finalize the next iteration, and a merge keeps both. The chain then has two iterations that follow the same
+// one, and verify says so, instead of only that the numbers and the links are wrong.
+func TestTwoBranchesThatEachFinalizedAreAFork(t *testing.T) {
+	its := chainOf(2)
+	other := its[1]
+	other.Note = "the other branch"
+	other = seal(other)
+	merged := append(its, other)
+	got := codes(iteration.Chain(merged))
+	if strings.Join(got, " ") != "2:fork" {
+		t.Errorf("%v", got)
+	}
+	if ps := iteration.Chain(merged); !strings.Contains(ps[0].Message, "same iteration as iteration 2") {
+		t.Errorf("%s", ps[0].Message)
+	}
+}

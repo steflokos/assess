@@ -30,13 +30,26 @@ const (
 	CodeSignature = "signature" // a signature is wrong
 	CodeHead      = "head"      // the last hash is not the one you expected
 	CodeFormat    = "format"    // an iteration has a format that this version of assess does not know
+	CodeFork      = "fork"      // two iterations follow the same one: two branches each finalized, and both were kept
 )
 
 // Chain checks the numbers, the links and the hashes of the iterations. It does not look at signatures.
 func Chain(its []model.Iteration) []Problem {
 	var out []Problem
 	prev := ""
+	follows := map[string]int{} // the hash an iteration points at, to the number of the first iteration that points at it
 	for i, it := range its {
+		if first, seen := follows[it.Previous]; seen {
+			// Two branches each finalized from the same state, and a merge kept both. Saying so is more use than the numbers
+			// and the links, which are then wrong as well.
+			out = append(out, Problem{it.Number, CodeFork, fmt.Sprintf("it follows the same iteration as iteration %d, so two branches each finalized and both were kept. Keep the iterations of one branch, delete the others, and run assess finalize again after the merge", first)})
+			if got := it.ComputeHash(); model.KnownIterationFormat(it.Format) && got != it.Hash {
+				out = append(out, Problem{it.Number, CodeHash, "its content no longer matches its hash. It was changed after it was finalized"})
+			}
+			prev = it.Hash
+			continue
+		}
+		follows[it.Previous] = it.Number
 		if it.Number != i+1 {
 			out = append(out, Problem{it.Number, CodeNumber, fmt.Sprintf("its number is %d, but it is entry %d in the file. The numbers must run from 1 with no gap", it.Number, i+1)})
 		}
