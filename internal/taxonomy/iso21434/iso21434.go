@@ -147,11 +147,14 @@ var (
 	Step           = Kind{Word: "step", Singular: "attack step", Folder: FolderTara, TopLevel: true}
 	Control        = Kind{Word: "control", Singular: "control", Folder: FolderTara, TopLevel: true}
 	Risk           = Kind{Word: "risk", Singular: "risk", Folder: FolderConcept, TopLevel: true, Of: []string{"threat"}, OfLabel: "threat"}
+	Goal           = Kind{Word: "goal", Singular: "cybersecurity goal", Folder: FolderConcept, TopLevel: true}
+	Claim          = Kind{Word: "claim", Singular: "cybersecurity claim", Folder: FolderConcept, TopLevel: true}
+	Requirement    = Kind{Word: "requirement", Singular: "cybersecurity requirement", Folder: FolderConcept, TopLevel: true}
 	Rule           = Kind{Word: "rule", Singular: "rule", Folder: FolderRules, TopLevel: true}
 )
 
 // Kinds lists every kind in authoring order.
-var Kinds = []Kind{Item, Assumption, Function, Component, Interface, Channel, Data, Asset, DamageScenario, Threat, Step, Control, Risk, Rule}
+var Kinds = []Kind{Item, Assumption, Function, Component, Interface, Channel, Data, Asset, DamageScenario, Threat, Step, Control, Risk, Goal, Claim, Requirement, Rule}
 
 // KindByWord returns the kind written with the given heading word.
 func KindByWord(word string) (Kind, bool) {
@@ -308,7 +311,7 @@ func (v *Severity) UnmarshalYAML(n *yaml.Node) error {
 // RuleTarget is the kind of record a rule checks: the heading word of the kind.
 type RuleTarget string
 
-var ruleTargetValues = []string{Item.Word, Assumption.Word, Function.Word, Component.Word, Interface.Word, Channel.Word, Data.Word, Asset.Word, DamageScenario.Word, Threat.Word, Step.Word, Control.Word, Risk.Word}
+var ruleTargetValues = []string{Item.Word, Assumption.Word, Function.Word, Component.Word, Interface.Word, Channel.Word, Data.Word, Asset.Word, DamageScenario.Word, Threat.Word, Step.Word, Control.Word, Risk.Word, Goal.Word, Claim.Word, Requirement.Word}
 
 func RuleTargetValues() []string        { return slices.Clone(ruleTargetValues) }
 func (RuleTarget) EnumValues() []string { return slices.Clone(ruleTargetValues) }

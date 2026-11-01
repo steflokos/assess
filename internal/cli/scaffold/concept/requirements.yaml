@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Cybersecurity requirements (ISO/SAE 21434 clause 9.5): what a part of the item has to do so that goals are met. Write one
+# as  requirement <id>:  with the requirement as its name, the goals it serves, the elements it is allocated to under target,
+# and the controls that meet it. schema.yaml lists every attribute.

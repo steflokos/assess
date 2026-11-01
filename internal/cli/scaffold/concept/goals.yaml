@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=../.assess/schema.json
+# Cybersecurity goals (ISO/SAE 21434 clause 9.4): what the item has to achieve for a risk that is reduced or avoided.
+# Write one as  goal <id>:  with the goal as its name, the threat scenarios whose risk it treats under threats, and a
+# cybersecurity assurance level (CAL1 to CAL4) under cal if your method uses them. schema.yaml lists every attribute.

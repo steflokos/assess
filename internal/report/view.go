@@ -357,5 +357,8 @@ const (
 	aStep     = "step-"
 	aControl  = "ctl-"
 	aRisk     = "risk-"
+	aGoal     = "goal-"
+	aClaim    = "claim-"
+	aReq      = "req-"
 	aSheet    = "sheet-"
 )

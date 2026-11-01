@@ -188,7 +188,7 @@ of the record come below it, indented. Indentation also means "contains". A comp
 interfaces, data and other components written inside it.
 
 The kinds are `item`, `assumption`, `function`, `component`, `interface`, `channel`, `data`, `asset`, `damage`,
-`threat`, `step`, `control`, `risk` and `rule`. Every record has a `name`, which is required, and two optional
+`threat`, `step`, `control`, `risk`, `goal`, `claim`, `requirement` and `rule`. Every record has a `name`, which is required, and two optional
 attributes. `description` says what the thing is and what it does. `notes` is a map of text values for people,
 such as an owner, a ticket number or who reviewed it. No report or calculation reads `notes`. A rule can read them
 (see "Rules"), so a company can check its own review process.
@@ -227,6 +227,12 @@ Here is what else each kind has. `schema.yaml` lists every attribute with its al
   `rationale` says why. `threatenedby` says what can bypass it. `assumes` lists the assumptions it relies on.
 - **risk.** Its id is the id of its threat scenario. `type`, `base` and `residual` are calculated by assess.
   You write `treatment`, `rationale` and `reference`. `assumes` lists the assumptions it relies on.
+- **goal.** A cybersecurity goal. Its `name` is the goal itself. `threats` lists the threat scenarios whose risk it treats.
+  `cal` is its cybersecurity assurance level, CAL1 to CAL4, if your method uses them.
+- **claim.** A cybersecurity claim about a risk that is accepted or shared. Its `name` is the claim. `threats` lists the
+  threat scenarios it is about, and `assumes` the assumptions it relies on.
+- **requirement.** A cybersecurity requirement of the concept. Its `name` is the requirement. `goals` lists the goals it
+  serves, `target` the elements it is allocated to, and `controls` the controls that meet it.
 - **rule.** `on` says which kind it checks, `check` is the expression, `severity` is `Error` or `Warning`, and
   `message` is optional. The section on rules explains them.
 
@@ -731,13 +737,15 @@ rule goal-is-treated:
   message: a goal must be avoided or reduced
 ```
 
-`assess init` writes five basic rules to `rules/basic.yaml`. They follow from what the records mean:
+`assess init` writes seven basic rules to `rules/basic.yaml`. They follow from what the records mean:
 
 - an accepted risk is within the risk affinity
 - a risk treated by reducing is reduced
 - every property of an asset is in a damage scenario
 - a control mitigates a step
 - an assumption is relied on
+- a risk that is reduced or avoided has a goal (a warning)
+- a risk that is accepted or shared has a claim (a warning)
 
 The file explains each one. You can change it, extend it or shorten it.
 

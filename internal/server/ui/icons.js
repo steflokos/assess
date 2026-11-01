@@ -63,4 +63,5 @@ export function icon(name, size) {
 export const KIND_ICON = {
   item: 'box', assumption: 'flag', function: 'function', component: 'chip', interface: 'plug', channel: 'link', data: 'data',
   asset: 'shield', damage: 'alert', threat: 'target', step: 'layers', control: 'lock', risk: 'scale', rule: 'rules',
+  goal: 'checkCircle', claim: 'page', requirement: 'list',
 };

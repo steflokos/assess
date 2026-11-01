@@ -49,6 +49,10 @@ Changes to how assess is used. The format of a project and the JSON of the comma
 - A project can have stakeholders of its own: `impact.parties` in the policy names them, such as `fleet: Fleet operator`, a damage
   scenario rates them under `impact` next to `roaduser`, and `impact.stakeholders` can count them. The report, the worksheets, the rules,
   the editor schema and the web interface show them.
+- Cybersecurity goals, claims and requirements are records of their own: `goal` (with `threats` and a CAL), `claim` (with `threats`) and
+  `requirement` (with `goals`, `target` and `controls`), in `concept/`. Rules can read them, and a risk's `goals` and `claims`. A new project
+  gets header-only files for them and two basic rules that warn when a reduced risk has no goal or an accepted or shared risk no claim.
+  The report lists them in the part on goals and claims, and the web interface has them under Decide.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

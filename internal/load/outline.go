@@ -288,6 +288,12 @@ func (l *loader) add(v any, id string) {
 		ws.Assets = append(ws.Assets, *x)
 	case *model.Risk:
 		ws.Risks = append(ws.Risks, *x)
+	case *model.Goal:
+		ws.Goals = append(ws.Goals, *x)
+	case *model.Claim:
+		ws.Claims = append(ws.Claims, *x)
+	case *model.Requirement:
+		ws.Requirements = append(ws.Requirements, *x)
 	case *model.Rule:
 		ws.Rules = append(ws.Rules, *x)
 	}
@@ -319,6 +325,12 @@ func newRecordValue(word string) any {
 		return &model.Asset{}
 	case "risk":
 		return &model.Risk{}
+	case "goal":
+		return &model.Goal{}
+	case "claim":
+		return &model.Claim{}
+	case "requirement":
+		return &model.Requirement{}
 	case "rule":
 		return &model.Rule{}
 	default:
@@ -351,6 +363,12 @@ func recordOf(v any) *model.Record {
 	case *model.Asset:
 		return &x.Record
 	case *model.Risk:
+		return &x.Record
+	case *model.Goal:
+		return &x.Record
+	case *model.Claim:
+		return &x.Record
+	case *model.Requirement:
 		return &x.Record
 	case *model.Rule:
 		return &x.Record

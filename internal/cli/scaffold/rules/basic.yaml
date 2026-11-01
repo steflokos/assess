@@ -51,3 +51,19 @@ rule assumption-is-relied-on:
   on: assumption
   check: size(assumption.threats) + size(assumption.steps) + size(assumption.controls) + size(assumption.risks) > 0
   message: nothing relies on it. Cite it with assumes, or remove it
+
+rule reduced-risk-has-goal:
+  name: A risk that is reduced or avoided has a goal
+  description: ISO/SAE 21434 asks for a cybersecurity goal for a risk that is reduced or avoided. Write it in concept/goals.yaml.
+  on: risk
+  severity: Warning
+  check: "!(risk.treatment in ['Reduce', 'Avoid']) || size(risk.goals) > 0"
+  message: it is treated by {treatment}, but no goal names its threat scenario
+
+rule retained-risk-has-claim:
+  name: A risk that is accepted or shared has a claim
+  description: ISO/SAE 21434 asks for a cybersecurity claim for a risk that is accepted or shared. Write it in concept/claims.yaml.
+  on: risk
+  severity: Warning
+  check: "!(risk.treatment in ['Accept', 'Share']) || size(risk.claims) > 0"
+  message: it is treated by {treatment}, but no claim names its threat scenario

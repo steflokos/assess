@@ -621,6 +621,66 @@ risk <threat-id>:
   # list of ids.
   assumes: <id of an assumption>
 
+# goal: A cybersecurity goal (ISO/SAE 21434 clause 9.4): what the item has to achieve so that the
+# risk of threat scenarios that are reduced or avoided is treated. Its name is the statement of the
+# goal. It can have a cybersecurity assurance level.
+# Written in concept/, at the top level.
+goal <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The threat scenarios whose risk the goal treats. One id or a list of ids.
+  threats: <id of a threat scenario>
+  # optional. The cybersecurity assurance level of the goal (ISO/SAE 21434 Annex E): CAL1 to CAL4.
+  # It says how much rigour the work that meets the goal needs. Leave it out when your method does
+  # not use CALs.
+  cal: CAL1 | CAL2 | CAL3 | CAL4
+
+# claim: A cybersecurity claim (ISO/SAE 21434 clause 9.4): a statement about the risk of threat
+# scenarios that are accepted or shared, such as who carries a shared risk or why an accepted one
+# holds. Its name is the statement of the claim.
+# Written in concept/, at the top level.
+claim <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The threat scenarios whose risk the claim is about. One id or a list of
+  # ids.
+  threats: <id of a threat scenario>
+  # optional. The assumptions the claim relies on. One id or a list of ids.
+  assumes: <id of an assumption>
+
+# requirement: A cybersecurity requirement of the concept (ISO/SAE 21434 clause 9.5): what a part of
+# the item has to do so that goals are met. Its name is the statement. It names the goals it serves,
+# where it is allocated and the controls that meet it.
+# Written in concept/, at the top level.
+requirement <id>:
+  # required. A short name that a person can read.
+  name: <text>
+  # optional. What this is and its role in the item.
+  description: <text>
+  # optional. Notes for people, as key and value, such as owner, ticket, source or reviewed. No
+  # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
+  # not there, so ask with has(x.notes.key) first.
+  notes: {key: value}
+  # required, at least 1. The goals the requirement serves. One id or a list of ids.
+  goals: <id of a cybersecurity goal>
+  # optional. Where the requirement is allocated: elements of the architecture. One id or a list of
+  # ids.
+  target: <id of a component, interface, channel or data element>
+  # optional. The controls that meet the requirement. One id or a list of ids.
+  controls: <id of a control>
+
 ---
 # rules/: The rules assess lint checks the project against, written in CEL. assess init writes a
 # basic set, and you can add your own.
@@ -689,6 +749,7 @@ rule <id>:
   # steps (list(string)) The ids of the attack steps that assume it.
   # controls (list(string)) The ids of the controls that assume it.
   # risks (list(string)) The ids of the risks that assume it.
+  # claims (list(string)) The ids of the claims that assume it.
   # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
   # is not there, so ask with has(x.notes.key) before you read x.notes.key.
 #
@@ -835,6 +896,39 @@ rule <id>:
   # reference (list(string)) The ids of the risk in an external tool such as Jira.
   # assumes (list(string)) The ids of the assumptions it relies on.
   # threat (Threat, open) The threat scenario this is the risk of.
+  # goals (list(string)) The ids of the goals that treat it.
+  # claims (list(string)) The ids of the claims about it.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# goal (the variable on: goal. The list goals holds all of them): A cybersecurity goal, with the
+# requirements that serve it.
+  # id (string) The id of the goal.
+  # name (string) The statement of the goal.
+  # description (string) The description you wrote. Empty when there is none.
+  # threats (list(string)) The ids of the threat scenarios whose risk it treats.
+  # cal (string) Its cybersecurity assurance level, CAL1 to CAL4. Empty when it has none.
+  # requirements (list(string)) The ids of the requirements that serve it.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# claim (the variable on: claim. The list claims holds all of them): A cybersecurity claim.
+  # id (string) The id of the claim.
+  # name (string) The statement of the claim.
+  # description (string) The description you wrote. Empty when there is none.
+  # threats (list(string)) The ids of the threat scenarios whose risk it is about.
+  # assumes (list(string)) The ids of the assumptions it relies on.
+  # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
+  # is not there, so ask with has(x.notes.key) before you read x.notes.key.
+#
+# requirement (the variable on: requirement. The list requirements holds all of them): A
+# cybersecurity requirement.
+  # id (string) The id of the requirement.
+  # name (string) The statement of the requirement.
+  # description (string) The description you wrote. Empty when there is none.
+  # goals (list(string)) The ids of the goals it serves.
+  # target (list(string)) The ids of the elements it is allocated to.
+  # controls (list(string)) The ids of the controls that meet it.
   # notes (map(string, string)) The notes on the record, as a map of text. A note you did not write
   # is not there, so ask with has(x.notes.key) before you read x.notes.key.
 #
@@ -883,6 +977,9 @@ RuleTarget:
   - step
   - control
   - risk
+  - goal
+  - claim
+  - requirement
 
 Severity:
   - Error  # A failed rule makes assess lint fail.

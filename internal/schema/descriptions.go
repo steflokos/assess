@@ -27,6 +27,9 @@ var typeDocs = map[string]string{
 	"AttackStep":        "One action an attacker takes. You write it once and any number of threat scenarios can use it. It has the effort it takes, what must happen before it and the controls that mitigate it.",
 	"Control":           "A cybersecurity control. You write it once and any number of threat scenarios can use it. It has the effort it asks from the attacker and what can bypass it.",
 	"Risk":              "The risk of one threat scenario (ISO/SAE 21434 clause 15.8). It has the id of that threat scenario. assess calculates its type (goal or claim) and its two values, one with every control ignored and one with the controls applied. The treatment is your decision.",
+	"Goal":              "A cybersecurity goal (ISO/SAE 21434 clause 9.4): what the item has to achieve so that the risk of threat scenarios that are reduced or avoided is treated. Its name is the statement of the goal. It can have a cybersecurity assurance level.",
+	"Claim":             "A cybersecurity claim (ISO/SAE 21434 clause 9.4): a statement about the risk of threat scenarios that are accepted or shared, such as who carries a shared risk or why an accepted one holds. Its name is the statement of the claim.",
+	"Requirement":       "A cybersecurity requirement of the concept (ISO/SAE 21434 clause 9.5): what a part of the item has to do so that goals are met. Its name is the statement. It names the goals it serves, where it is allocated and the controls that meet it.",
 	"Rule":              "A check that the records of one kind must pass. You write it in CEL and assess lint runs it. The check sees one record at a time and the calculated results. A record that fails it is a finding at its own position.",
 	"Source":            "A document or other source the assessment is based on, with where to find it and the version used.",
 	"Block":             "A piece of information for the report: a title and either a text or a table.",
@@ -183,6 +186,21 @@ func snippetFor(word string) map[string]any {
 		label, desc = "risk", "The risk of a threat scenario, written with its id"
 		name, d := free(), free()
 		inner = object(kv{"name", name}, kv{"description", d}, kv{"treatment", choice(iso21434.TreatmentValues())})
+	case "goal":
+		id = free()
+		label, desc = "cybersecurity goal", "A goal that treats the risk of threat scenarios"
+		name, threats := free(), free()
+		inner = object(kv{"name", name}, kv{"threats", list(threats)}, kv{"cal", choice(iso21434.CALValues())})
+	case "claim":
+		id = free()
+		label, desc = "cybersecurity claim", "A claim about the risk of threat scenarios that are accepted or shared"
+		name, threats := free(), free()
+		inner = object(kv{"name", name}, kv{"threats", list(threats)})
+	case "requirement":
+		id = free()
+		label, desc = "cybersecurity requirement", "A requirement that serves goals"
+		name, goals, target := free(), free(), free()
+		inner = object(kv{"name", name}, kv{"goals", list(goals)}, kv{"target", list(target)})
 	case "rule":
 		id = free()
 		label, desc = "rule", "A check on the records of one kind, written in CEL"

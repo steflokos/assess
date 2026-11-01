@@ -170,10 +170,42 @@
     },
     {
       "body": {
+        "goal ${1}": {
+          "name": "${2}",
+          "threats": "[${3}]",
+          "cal": "${4|CAL1,CAL2,CAL3,CAL4|}"
+        }
+      },
+      "description": "A goal that treats the risk of threat scenarios",
+      "label": "cybersecurity goal"
+    },
+    {
+      "body": {
+        "claim ${1}": {
+          "name": "${2}",
+          "threats": "[${3}]"
+        }
+      },
+      "description": "A claim about the risk of threat scenarios that are accepted or shared",
+      "label": "cybersecurity claim"
+    },
+    {
+      "body": {
+        "requirement ${1}": {
+          "name": "${2}",
+          "goals": "[${3}]",
+          "target": "[${4}]"
+        }
+      },
+      "description": "A requirement that serves goals",
+      "label": "cybersecurity requirement"
+    },
+    {
+      "body": {
         "rule ${1}": {
           "name": "${2}",
           "description": "${3}",
-          "on": "${4|item,assumption,function,component,interface,channel,data,asset,damage,threat,step,control,risk|}",
+          "on": "${4|item,assumption,function,component,interface,channel,data,asset,damage,threat,step,control,risk,goal,claim,requirement|}",
           "severity": "${5|Error,Warning|}",
           "check": "${6}"
         }
@@ -711,6 +743,133 @@
       "required": [
         "name",
         "between"
+      ],
+      "type": "object"
+    },
+    "claim": {
+      "additionalProperties": false,
+      "description": "A cybersecurity claim (ISO/SAE 21434 clause 9.4): a statement about the risk of threat scenarios that are accepted or shared, such as who carries a shared risk or why an accepted one holds. Its name is the statement of the claim.",
+      "properties": {
+        "assumes": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/assumption"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/assumption"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The assumptions the claim relies on. One id or a list of ids."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "threats": {
+          "description": "The threat scenarios whose risk the claim is about. One id or a list of ids.",
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "ids.json#/definitions/threat"
+                },
+                {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              ]
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "ids.json#/definitions/threat"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "threats"
       ],
       "type": "object"
     },
@@ -1449,6 +1608,109 @@
       ],
       "type": "object"
     },
+    "goal": {
+      "additionalProperties": false,
+      "description": "A cybersecurity goal (ISO/SAE 21434 clause 9.4): what the item has to achieve so that the risk of threat scenarios that are reduced or avoided is treated. Its name is the statement of the goal. It can have a cybersecurity assurance level.",
+      "properties": {
+        "cal": {
+          "anyOf": [
+            {
+              "enum": [
+                "CAL1",
+                "CAL2",
+                "CAL3",
+                "CAL4"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The cybersecurity assurance level of the goal (ISO/SAE 21434 Annex E): CAL1 to CAL4. It says how much rigour the work that meets the goal needs. Leave it out when your method does not use CALs."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "threats": {
+          "description": "The threat scenarios whose risk the goal treats. One id or a list of ids.",
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "ids.json#/definitions/threat"
+                },
+                {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              ]
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "ids.json#/definitions/threat"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "threats"
+      ],
+      "type": "object"
+    },
     "impactSet": {
       "additionalProperties": {
         "$ref": "#/definitions/stakeholderImpact"
@@ -1679,6 +1941,192 @@
       },
       "required": [
         "level"
+      ],
+      "type": "object"
+    },
+    "requirement": {
+      "additionalProperties": false,
+      "description": "A cybersecurity requirement of the concept (ISO/SAE 21434 clause 9.5): what a part of the item has to do so that goals are met. Its name is the statement. It names the goals it serves, where it is allocated and the controls that meet it.",
+      "properties": {
+        "controls": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/control"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/control"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The controls that meet the requirement. One id or a list of ids."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What this is and its role in the item."
+        },
+        "goals": {
+          "description": "The goals the requirement serves. One id or a list of ids.",
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "ids.json#/definitions/goal"
+                },
+                {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                }
+              ]
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "ids.json#/definitions/goal"
+                  },
+                  {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ]
+        },
+        "name": {
+          "description": "A short name that a person can read.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Notes for people, as key and value, such as owner, ticket, source or reviewed. No report or calculation reads them. A rule can read them as x.notes. A note you did not write is not there, so ask with has(x.notes.key) first."
+        },
+        "target": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "anyOf": [
+                    {
+                      "$ref": "ids.json#/definitions/component"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/interface"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/channel"
+                    },
+                    {
+                      "$ref": "ids.json#/definitions/data"
+                    },
+                    {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "ids.json#/definitions/component"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/interface"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/channel"
+                      },
+                      {
+                        "$ref": "ids.json#/definitions/data"
+                      },
+                      {
+                        "type": [
+                          "string",
+                          "number"
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the requirement is allocated: elements of the architecture. One id or a list of ids."
+        }
+      },
+      "required": [
+        "name",
+        "goals"
       ],
       "type": "object"
     },
@@ -1955,7 +2403,10 @@
             "threat",
             "step",
             "control",
-            "risk"
+            "risk",
+            "goal",
+            "claim",
+            "requirement"
           ],
           "type": "string"
         },
@@ -2230,6 +2681,9 @@
     "^channel\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
       "$ref": "#/definitions/channel"
     },
+    "^claim\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/claim"
+    },
     "^component\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
       "$ref": "#/definitions/component"
     },
@@ -2245,8 +2699,14 @@
     "^function\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
       "$ref": "#/definitions/function"
     },
+    "^goal\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/goal"
+    },
     "^item\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
       "$ref": "#/definitions/item"
+    },
+    "^requirement\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
+      "$ref": "#/definitions/requirement"
     },
     "^risk\\s+[A-Za-z0-9][A-Za-z0-9._-]*$": {
       "$ref": "#/definitions/risk"

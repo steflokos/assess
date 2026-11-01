@@ -195,7 +195,7 @@ func TestInitWritesAStarterThatIsValid(t *testing.T) {
 	if r, env := runJSON(t, "validate", dir); r.code != 0 || len(env.Diagnostics) != 0 {
 		t.Errorf("validate: %+v", env.Diagnostics)
 	}
-	if r := run(t, "lint", "-strict", dir); r.code != 0 || !strings.Contains(r.out+r.err, "5 rules checked") {
+	if r := run(t, "lint", "-strict", dir); r.code != 0 || !strings.Contains(r.out+r.err, "7 rules checked") {
 		t.Errorf("lint: exit %d\n%s%s", r.code, r.out, r.err)
 	}
 }
@@ -831,7 +831,7 @@ func TestDescribe(t *testing.T) {
 			}
 		}
 	}
-	want := "item assumption function component interface channel data asset damage threat step control risk rule"
+	want := "item assumption function component interface channel data asset damage threat step control risk goal claim requirement rule"
 	if strings.Join(kinds, " ") != want {
 		t.Errorf("kinds %v", kinds)
 	}

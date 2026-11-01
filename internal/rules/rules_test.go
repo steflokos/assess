@@ -119,10 +119,26 @@ func TestWithoutAMessageTheNameIsUsed(t *testing.T) {
 }
 
 // A rule can be written for every kind a rule can be written for, and finds every record of it.
+// concept is a goal, a claim and a requirement for the test project, which has none of its own.
+const concept = `goal authentic-software:
+  name: Only software that the OEM has released runs on the gateway
+  threats: [update-package-tampering, firmware-image-tampering]
+  cal: CAL3
+claim backend-operator-carries-spoofing:
+  name: The operator of the backend carries the risk of a spoofed API interface
+  threats: api-interface-spoofing
+requirement verify-package-signature:
+  name: The gateway installs a package only when its signature checks out
+  goals: authentic-software
+  target: gateway
+  controls: signed-packages
+`
+
 func TestEveryTargetIsChecked(t *testing.T) {
 	for _, on := range iso21434.RuleTargetValues() {
 		t.Run(on, func(t *testing.T) {
 			p := open(t, fmt.Sprintf("rule always-fails:\n  name: x\n  on: %s\n  check: false\n", on))
+			p = withConcept(t, p, on)
 			if len(p.cdi) != 0 {
 				t.Fatalf("%v", p.cdi)
 			}
@@ -261,5 +277,41 @@ func TestNoRulesNoFindings(t *testing.T) {
 	}
 	if len(p.set.Rules) != 0 {
 		t.Error("no rules")
+	}
+}
+
+// withConcept opens the project again with a goal, a claim and a requirement, for a rule on one of those kinds.
+func withConcept(t *testing.T, p *project, on string) *project {
+	if on != iso21434.Goal.Word && on != iso21434.Claim.Word && on != iso21434.Requirement.Word {
+		return p
+	}
+	dir := p.res.Workspace.Root
+	testproject.Write(t, dir, "concept/concept.yaml", concept)
+	res := load.Load(dir)
+	set, cdiags := rules.Compile(res.Workspace, res.Index)
+	rep, err := engine.Run(res.Workspace, engine.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &project{res, set, cdiags, rep, t}
+}
+
+// A rule can ask whether a reduced risk has a goal and an accepted or shared one a claim, as the basic rules of a new project do.
+func TestARuleReadsTheGoalsAndClaimsOfARisk(t *testing.T) {
+	p := open(t, `rule reduced-has-goal:
+  name: A reduced risk has a goal
+  on: risk
+  check: "!(risk.treatment in ['Reduce', 'Avoid']) || size(risk.goals) > 0"
+rule goal-has-requirement:
+  name: A goal has a requirement
+  on: goal
+  check: size(goal.requirements) > 0 && goal.cal == 'CAL3'
+`)
+	p = withConcept(t, p, iso21434.Goal.Word)
+	if len(p.cdi) != 0 {
+		t.Fatalf("%v", p.cdi)
+	}
+	if got := ids(p.run()); got != "" {
+		t.Errorf("findings: %s", got)
 	}
 }

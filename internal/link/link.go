@@ -175,6 +175,24 @@ func (c *checker) run() {
 			c.risk(r)
 		}
 	}
+	for i := range c.ws.Goals {
+		if g := &c.ws.Goals[i]; !g.Incomplete {
+			c.record(iso21434.Goal, g, &g.Record)
+			c.references(g.ID, g)
+		}
+	}
+	for i := range c.ws.Claims {
+		if cl := &c.ws.Claims[i]; !cl.Incomplete {
+			c.record(iso21434.Claim, cl, &cl.Record)
+			c.references(cl.ID, cl)
+		}
+	}
+	for i := range c.ws.Requirements {
+		if rq := &c.ws.Requirements[i]; !rq.Incomplete {
+			c.record(iso21434.Requirement, rq, &rq.Record)
+			c.references(rq.ID, rq)
+		}
+	}
 	for i := range c.ws.Rules {
 		if r := &c.ws.Rules[i]; !r.Incomplete {
 			c.record(iso21434.Rule, r, &r.Record)

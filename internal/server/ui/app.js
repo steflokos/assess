@@ -56,7 +56,7 @@ window.addEventListener('beforeunload', (e) => { if (state.dirty) { e.preventDef
 const GROUPS = [
   { key: 'describe', title: 'Describe', steps: [1], kinds: ['item', 'assumption', 'function', 'component', 'interface', 'channel', 'data'] },
   { key: 'analyse', title: 'Analyse', steps: [2, 3, 4, 5], kinds: ['asset', 'damage', 'threat', 'step', 'control'] },
-  { key: 'decide', title: 'Decide', steps: [6], kinds: ['risk'], extra: [{ label: 'Decisions', icon: 'checkCircle', parts: ['decisions'] }] },
+  { key: 'decide', title: 'Decide', steps: [6], kinds: ['risk', 'goal', 'claim', 'requirement'], extra: [{ label: 'Decisions', icon: 'checkCircle', parts: ['decisions'] }] },
   { key: 'share', title: 'Share', steps: [7], extra: [
     { label: 'Open items', icon: 'list', parts: ['open'], count: () => S.open.length }, { label: 'Calculation', icon: 'chart', parts: ['calc'] },
     { label: 'Report', icon: 'page', parts: ['report'] }, { label: 'Diagram', icon: 'image', parts: ['diagram'] }, { label: 'Iterations', icon: 'clock', parts: ['iterations'] }] },

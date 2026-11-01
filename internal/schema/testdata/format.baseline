@@ -32,6 +32,11 @@ attribute Channel.description string req= min=0 ref=
 attribute Channel.entrypoint bool req= min=0 ref=
 attribute Channel.name string req=always min=0 ref=
 attribute Channel.notes map[string]string req= min=0 ref=
+attribute Claim.assumes model.Refs req= min=0 ref=assumption
+attribute Claim.description string req= min=0 ref=
+attribute Claim.name string req=always min=0 ref=
+attribute Claim.notes map[string]string req= min=0 ref=
+attribute Claim.threats model.Refs req=always min=1 ref=threat
 attribute Combination.controls model.FactorRules req=always min=0 ref=
 attribute Combination.steps model.FactorRules req=always min=0 ref=
 attribute Component.description string req= min=0 ref=
@@ -78,6 +83,11 @@ attribute Function.description string req= min=0 ref=
 attribute Function.flow []model.FlowStep req= min=0 ref=
 attribute Function.name string req=always min=0 ref=
 attribute Function.notes map[string]string req= min=0 ref=
+attribute Goal.cal iso21434.CAL req= min=0 ref=
+attribute Goal.description string req= min=0 ref=
+attribute Goal.name string req=always min=0 ref=
+attribute Goal.notes map[string]string req= min=0 ref=
+attribute Goal.threats model.Refs req=always min=1 ref=threat
 attribute ImpactBand.level iso21434.ImpactLevel req=always min=0 ref=
 attribute ImpactBand.upto *int req= min=0 ref=
 attribute ImpactPolicy.across iso21434.Aggregate req= min=0 ref=
@@ -119,6 +129,12 @@ attribute Project.sources []model.Source req= min=0 ref=
 attribute Project.standards []string req= min=0 ref=
 attribute Rating.level iso21434.ImpactLevel req=always min=0 ref=
 attribute Rating.rationale string req= min=0 ref=
+attribute Requirement.controls model.Refs req= min=0 ref=control
+attribute Requirement.description string req= min=0 ref=
+attribute Requirement.goals model.Refs req=always min=1 ref=goal
+attribute Requirement.name string req=always min=0 ref=
+attribute Requirement.notes map[string]string req= min=0 ref=
+attribute Requirement.target model.Refs req= min=0 ref=component,interface,channel,data
 attribute Risk.assumes model.Refs req= min=0 ref=assumption
 attribute Risk.base *int req= min=0 ref=
 attribute Risk.description string req= min=0 ref=
@@ -154,6 +170,10 @@ attribute Threat.notes map[string]string req= min=0 ref=
 attribute Threat.steps model.Tree req= min=0 ref=step,threat
 enum Aggregate max
 enum Aggregate sum
+enum CAL CAL1
+enum CAL CAL2
+enum CAL CAL3
+enum CAL CAL4
 enum Combine max
 enum Combine sum
 enum ElapsedTime ET0
@@ -191,13 +211,16 @@ enum RiskType Goal
 enum RuleTarget asset
 enum RuleTarget assumption
 enum RuleTarget channel
+enum RuleTarget claim
 enum RuleTarget component
 enum RuleTarget control
 enum RuleTarget damage
 enum RuleTarget data
 enum RuleTarget function
+enum RuleTarget goal
 enum RuleTarget interface
 enum RuleTarget item
+enum RuleTarget requirement
 enum RuleTarget risk
 enum RuleTarget step
 enum RuleTarget threat
@@ -229,13 +252,16 @@ enum WindowOfOpportunity WoO3
 kind asset folder=tara top=true element=false children= suffixes= of=component,interface,channel,data
 kind assumption folder=item top=true element=false children= suffixes= of=
 kind channel folder=item top=true element=true children= suffixes= of=
+kind claim folder=concept top=true element=false children= suffixes= of=
 kind component folder=item top=true element=true children=component,interface,data suffixes= of=
 kind control folder=tara top=true element=false children= suffixes= of=
 kind damage folder=tara top=true element=false children= suffixes= of=
 kind data folder=item top=true element=true children=data suffixes= of=
 kind function folder=item top=true element=false children=function suffixes= of=
+kind goal folder=concept top=true element=false children= suffixes= of=
 kind interface folder=item top=false element=true children= suffixes= of=
 kind item folder=item top=true element=false children= suffixes= of=
+kind requirement folder=concept top=true element=false children= suffixes= of=
 kind risk folder=concept top=true element=false children= suffixes= of=threat
 kind rule folder=rules top=true element=false children= suffixes= of=
 kind step folder=tara top=true element=false children= suffixes= of=
@@ -243,13 +269,16 @@ kind threat folder=tara top=true element=false children= suffixes=spoofing,tampe
 rule-target asset var=asset list=assets
 rule-target assumption var=assumption list=assumptions
 rule-target channel var=channel list=channels
+rule-target claim var=claim list=claims
 rule-target component var=component list=components
 rule-target control var=control list=controls
 rule-target damage var=damage list=damages
 rule-target data var=data list=dataelements
 rule-target function var=function list=functions
+rule-target goal var=goal list=goals
 rule-target interface var=interface list=interfaces
 rule-target item var=item list=
+rule-target requirement var=requirement list=requirements
 rule-target risk var=risk list=risks
 rule-target step var=step list=steps
 rule-target threat var=threat list=threats
@@ -262,6 +291,7 @@ rules Asset.notes map(string, string) open=false
 rules Asset.properties list(string) open=false
 rules Asset.threats list(string) open=false
 rules Asset.unjustified list(string) open=false
+rules Assumption.claims list(string) open=false
 rules Assumption.controls list(string) open=false
 rules Assumption.description string open=false
 rules Assumption.id string open=false
@@ -277,6 +307,12 @@ rules Channel.entrypoint bool open=false
 rules Channel.id string open=false
 rules Channel.name string open=false
 rules Channel.notes map(string, string) open=false
+rules Claim.assumes list(string) open=false
+rules Claim.description string open=false
+rules Claim.id string open=false
+rules Claim.name string open=false
+rules Claim.notes map(string, string) open=false
+rules Claim.threats list(string) open=false
 rules Component.asset bool open=false
 rules Component.description string open=false
 rules Component.id string open=false
@@ -313,6 +349,13 @@ rules Function.id string open=false
 rules Function.name string open=false
 rules Function.notes map(string, string) open=false
 rules Function.parent string open=false
+rules Goal.cal string open=false
+rules Goal.description string open=false
+rules Goal.id string open=false
+rules Goal.name string open=false
+rules Goal.notes map(string, string) open=false
+rules Goal.requirements list(string) open=false
+rules Goal.threats list(string) open=false
 rules Interface.asset bool open=false
 rules Interface.description string open=false
 rules Interface.entrypoint bool open=false
@@ -332,9 +375,18 @@ rules Rating.category string open=false
 rules Rating.level string open=false
 rules Rating.rationale string open=false
 rules Rating.who string open=false
+rules Requirement.controls list(string) open=false
+rules Requirement.description string open=false
+rules Requirement.goals list(string) open=false
+rules Requirement.id string open=false
+rules Requirement.name string open=false
+rules Requirement.notes map(string, string) open=false
+rules Requirement.target list(string) open=false
 rules Risk.assumes list(string) open=false
 rules Risk.base int open=true
+rules Risk.claims list(string) open=false
 rules Risk.description string open=false
+rules Risk.goals list(string) open=false
 rules Risk.id string open=false
 rules Risk.name string open=false
 rules Risk.notes map(string, string) open=false

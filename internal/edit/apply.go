@@ -78,6 +78,12 @@ func DefaultFile(kind string) string {
 		return "tara/controls.yaml"
 	case iso21434.Risk.Word:
 		return generate.RisksFile
+	case iso21434.Goal.Word:
+		return "concept/goals.yaml"
+	case iso21434.Claim.Word:
+		return "concept/claims.yaml"
+	case iso21434.Requirement.Word:
+		return "concept/requirements.yaml"
 	case iso21434.Rule.Word:
 		return "rules/rules.yaml"
 	}

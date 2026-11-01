@@ -751,7 +751,60 @@ func (b *builder) goalsAndClaims() Section {
 		}
 		s.Blocks = append(s.Blocks, Block{Table: t})
 	}
+	s.Blocks = append(s.Blocks, b.conceptRecords()...)
 	return s
+}
+
+// conceptRecords are the goals, the claims and the requirements as you wrote them, with what links them. A project that has
+// written none of them gets nothing here.
+func (b *builder) conceptRecords() []Block {
+	ws := b.ws
+	if len(ws.Goals) == 0 && len(ws.Claims) == 0 && len(ws.Requirements) == 0 {
+		return nil
+	}
+	none := func(c Cell) Cell {
+		if len(c.Items) == 0 {
+			return txt("-")
+		}
+		return c
+	}
+	risks := func(ids []string) Cell {
+		var c Cell
+		for _, id := range ids {
+			ref := aRisk + id
+			if b.risk[id] == nil {
+				ref = aThreat + id
+			}
+			c.Items = append(c.Items, Line{Text: id, Ref: ref})
+		}
+		return none(c)
+	}
+	served := map[string][]string{}
+	for _, r := range ws.Requirements {
+		for _, g := range r.Goals {
+			served[g] = append(served[g], r.ID)
+		}
+	}
+	goals := &Table{Caption: "Cybersecurity goals as written", Key: true, Head: []string{"Goal", "Statement", "CAL", "Treats the risk of", "Requirements", "Description"},
+		Names: []string{"id", "statement", "cal", "risks", "requirements", "description"}, Empty: "No goal is written."}
+	for _, g := range ws.Goals {
+		cal := txt("-")
+		if g.CAL != "" {
+			cal = txt(string(g.CAL))
+		}
+		goals.Rows = append(goals.Rows, Row{ID: aGoal + g.ID, Cells: []Cell{txt(g.ID), txt(g.Name), cal, risks(g.Threats), none(links(aReq, served[g.ID])), prose(g.Description)}})
+	}
+	claims := &Table{Caption: "Cybersecurity claims as written", Key: true, Head: []string{"Claim", "Statement", "About the risk of", "Assumes", "Description"},
+		Names: []string{"id", "statement", "risks", "assumes", "description"}, Empty: "No claim is written."}
+	for _, c := range ws.Claims {
+		claims.Rows = append(claims.Rows, Row{ID: aClaim + c.ID, Cells: []Cell{txt(c.ID), txt(c.Name), risks(c.Threats), none(links(aAssume, c.Assumes)), prose(c.Description)}})
+	}
+	reqs := &Table{Caption: "Cybersecurity requirements", Key: true, Head: []string{"Requirement", "Statement", "Serves", "Allocated to", "Met by", "Description"},
+		Names: []string{"id", "statement", "goals", "target", "controls", "description"}, Empty: "No requirement is written."}
+	for _, r := range ws.Requirements {
+		reqs.Rows = append(reqs.Rows, Row{ID: aReq + r.ID, Cells: []Cell{txt(r.ID), txt(r.Name), none(links(aGoal, r.Goals)), none(links(aElement, r.Target)), none(links(aControl, r.Controls)), prose(r.Description)}})
+	}
+	return []Block{{Table: goals}, {Table: claims}, {Table: reqs}}
 }
 
 // ---- 4 concept ------------------------------------------------------------------------------
