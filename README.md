@@ -73,6 +73,7 @@ assess serve my-tara             # a web interface for the project, on this comp
 assess template -o layout.html   # the standard report layout, to start your own from
 assess lint my-tara              # check the project against the rules in rules/
 assess open my-tara              # what is still open: not calculated, no decision yet, found by a rule
+assess check my-tara             # every check at once, for a pipeline (see "In a pipeline")
 assess delete <kind> <id> my-tara  # delete a record, and with -cascade what depends on it
 assess apply changes.json my-tara  # change records from a change set, for programs (see below)
 assess finalize my-tara          # close the treatment decisions as an iteration (see "Iterations")
@@ -748,7 +749,7 @@ running commands and reading JSON. They need nothing but the `assess` program.
 
 ### JSON from the commands
 
-Add `-format json` to `validate`, `lint`, `eval`, `explain`, `generate`, `open`, `describe`, `apply`, `delete`, `finalize`,
+Add `-format json` to `validate`, `lint`, `check`, `eval`, `explain`, `generate`, `open`, `describe`, `apply`, `delete`, `finalize`,
 `sign`, `verify`, `template -list` or `version`. `export` always gives JSON. Standard output then holds exactly one JSON document, always with the same
 shape:
 
@@ -858,7 +859,7 @@ style of the project files.
 5. `apply` the attack steps and controls, with their ratings and a rationale.
 6. `assess open -format json` until nothing is left. Fix what it lists, with `apply` and `generate risks`.
 7. A person decides the treatment of each risk. It can be written with `apply` too.
-8. `assess lint -strict` and `assess report -strict`.
+8. `assess check -strict` and `assess report -strict`.
 9. `assess finalize` to close the round. It refuses while anything is open, and `-format json` lists what.
 
 Every command that writes does it in one piece, so an editor never sees half a file. A change that reaches several files, such as
@@ -872,6 +873,47 @@ half done. A command waits up to 30 seconds for the lock and then stops with an 
 command ends, even if the command was killed. That holds on a disk of this computer on Linux and macOS. On Windows, and on a disk that
 cannot lock, readers do not wait, and a command that was killed leaves a lock file behind for five minutes. The same files always give the same output, so a run can be repeated
 and compared.
+
+### In a pipeline
+
+`assess check` runs every check in one command: what `validate` finds, what the rules find, what is still open and whether the
+closed iterations are intact. A project with errors cannot be calculated, so then it checks only the files and the iterations.
+Errors make it exit with `1`. With `-strict`, warnings do too: a rule that warns, an open item, a stale schema and a signature
+that could not be checked. `-keys` and `-head` work as they do for `verify`.
+
+`-format github` writes each finding as an annotation that GitHub Actions shows at its line in the pull request. `-format sarif`
+writes one SARIF 2.1.0 document, which GitHub code scanning and other tools read. Both name each file by its path from the
+current folder, so run assess from the root of the repository and give the folder of the project. A workflow for GitHub Actions:
+
+```yaml
+name: tara
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.1'
+      - run: go install github.com/steflokos/assess/cmd/assess@latest
+      - run: assess check -strict -format github my-tara
+```
+
+To see the findings in the code scanning tab as well, write them with `assess check -format sarif my-tara > assess.sarif` and upload
+the file with GitHub's `upload-sarif` action.
+
+For [pre-commit](https://pre-commit.com), this repository has a hook. Add it to `.pre-commit-config.yaml`, with the folder of the
+project in `args` when it is not the root of the repository:
+
+```yaml
+repos:
+  - repo: https://github.com/steflokos/assess
+    rev: main
+    hooks:
+      - id: assess-check
+        args: [my-tara]
+```
 
 ## Editor support
 

@@ -1,0 +1,10 @@
+# A hook for pre-commit (https://pre-commit.com). It checks an assess project before each commit:
+# validate, the rules, what is still open and the closed iterations. pre-commit builds assess with Go.
+# If the project is not at the root of the repository, name its folder in args, for example args: [my-tara].
+- id: assess-check
+  name: assess check
+  description: Check an assess project before a commit
+  entry: assess check
+  language: golang
+  pass_filenames: false
+  files: \.ya?ml$

@@ -14,6 +14,8 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   differs from an allowed one only in case, spaces, hyphens or underscores, such as `major` for `Major`, is named in the error.
 - Each line of `assess open` starts with the `file:line:col` of its record, as a diagnostic does.
 - In text, `apply` and `delete` end with what the change moves in the calculation, also in a dry run. JSON had this as `effects` already.
+- `assess check` runs validate, the rules, the open items and the iterations in one command, for a pipeline. `-format github` writes
+  annotations for GitHub Actions and `-format sarif` a SARIF 2.1.0 document. The repository has a hook for pre-commit.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

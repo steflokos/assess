@@ -33,6 +33,7 @@ type command struct {
 func commands() []command {
 	return []command{
 		{"apply", "change records from a change set (JSON or YAML), after checking the result", runApply},
+		{"check", "run every check for a pipeline: validate, the rules, what is open and the iterations", runCheck},
 		{"delete", "delete a record, and with -cascade what depends on it", runDelete},
 		{"describe", "describe how to write the files: kinds, attributes and values (JSON for programs)", runDescribe},
 		{"diagram", "draw the architecture as one SVG image", runDiagram},
