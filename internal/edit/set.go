@@ -113,6 +113,7 @@ func ParseSet(data []byte) (*Set, []Problem) {
 	var doc yaml.Node
 	if t := bytes.TrimSpace(data); bytes.HasPrefix(t, []byte("{")) || bytes.HasPrefix(t, []byte("[")) {
 		data = joinSurrogates(data) // YAML cannot read the way that JSON writes a character outside the first plane
+		data = escapeSeparators(data)
 	}
 	err := yaml.Unmarshal(data, &doc)
 	if err != nil && bytes.HasPrefix(bytes.TrimSpace(data), []byte("{")) {
@@ -160,6 +161,17 @@ func ParseSet(data []byte) (*Set, []Problem) {
 		return nil, probs
 	}
 	return set, nil
+}
+
+// escapeSeparators writes the characters U+0085, U+2028 and U+2029 of a JSON document as escapes. JSON lets a string hold them as
+// they are, and Go writes U+0085 so, but YAML, which reads the change set, takes them for line breaks and folds them into a space.
+// As an escape they stay the characters they are. Outside a string they are not allowed in JSON, and as an escape they are not
+// either, so a document that was wrong stays wrong.
+func escapeSeparators(data []byte) []byte {
+	if !bytes.ContainsAny(data, "\u0085\u2028\u2029") {
+		return data
+	}
+	return []byte(strings.NewReplacer("\u0085", `\u0085`, "\u2028", `\u2028`, "\u2029", `\u2029`).Replace(string(data)))
 }
 
 // joinSurrogates turns the pairs of escapes that JSON uses for a character outside the first plane, such as \ud83d\ude00,

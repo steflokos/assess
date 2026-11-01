@@ -29,6 +29,9 @@ Changes to how assess is used. The format of a project and the JSON of the comma
 - A tag such as `v0.2.0` makes a release: a workflow checks that the tag is the version in the source, runs the tests, and publishes
   the program for Linux, macOS and Windows with SHA-256 sums and the license notices. `assess version` names the commit of a program
   that was built from a git checkout.
+- `apply` and the web interface lost a text that was only line breaks or white space, and the empty lines at the end of a text, and
+  a text with a tab and a line break made a file that no longer read. Such a text is now written in double quotes, with escapes. A
+  line separator in a JSON change set was read as a space, and is now refused, as it is in YAML. Fuzz tests found these.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

@@ -25,6 +25,8 @@ func styled(n *yaml.Node) *yaml.Node {
 		c.Style = 0
 		if n.Tag == "!!str" {
 			switch {
+			case needsEscapes(n.Value):
+				c.Style = yaml.DoubleQuotedStyle // only double quotes can write these characters so that they read back the same
 			case strings.Contains(n.Value, "\n"):
 				c.Style = yaml.LiteralStyle
 			case isWord(n.Value):
@@ -211,4 +213,23 @@ func mapping(ps []pair) *yaml.Node {
 		m.Content = append(m.Content, text(p.name), p.val)
 	}
 	return m
+}
+
+// needsEscapes says whether a text cannot be written as it is, in a block or as plain text, and read back the same. A block keeps
+// no text that is only white space, YAML cannot read a block line that starts with a tab where it expects the indentation, and the
+// editor does not keep the empty lines at the end of a block. YAML reads the line
+// separators U+0085, U+2028 and U+2029 as line breaks, and a control character or a byte order mark has no plain form. Double quotes
+// write each of them as an escape.
+func needsEscapes(s string) bool {
+	if strings.Contains(s, "\n") && (strings.TrimSpace(s) == "" || strings.HasSuffix(s, "\n\n") || strings.HasPrefix(s, "\t") || strings.Contains(s, "\n\t")) {
+		return true // a block that is only white space, or with a line that starts with a tab, does not read back the same
+	}
+	for _, r := range s {
+		switch {
+		case r == '\t' || r == '\n':
+		case r < 0x20 || r == 0x7f || r == 0x85 || r == 0x2028 || r == 0x2029 || r == 0xfeff:
+			return true
+		}
+	}
+	return false
 }
