@@ -679,6 +679,14 @@ func (b *builder) treatment() Section {
 		Empty: "No risks are written yet.",
 	}
 	checked := b.rep.Item != nil && len(b.rep.Policy) == 0
+	uids := false // the column of the links is there when a risk has a uid
+	for _, r := range b.ws.Risks {
+		uids = uids || r.UID != ""
+	}
+	if uids {
+		t.Head = append([]string{t.Head[0], "uid"}, t.Head[1:]...)
+		t.Names = append([]string{t.Names[0], "uid"}, t.Names[1:]...)
+	}
 	for _, r := range b.ws.Risks {
 		treat := open("no decision yet")
 		if r.Treatment != "" {
@@ -696,13 +704,23 @@ func (b *builder) treatment() Section {
 		if r.Type != "" {
 			typ = txt(string(r.Type))
 		}
-		t.Rows = append(t.Rows, Row{ID: aRisk + r.ID, Cells: []Cell{
-			link(r.ID, aThreat+r.ID), txt(r.Name), typ, intCell(r.Base), intCell(r.Residual), treat, prose(r.Rationale), externalRef(r.Reference), prose(r.Description), status,
-		}})
+		cells := []Cell{link(r.ID, aThreat+r.ID), txt(r.Name), typ, intCell(r.Base), intCell(r.Residual), treat, prose(r.Rationale), externalRef(r.Reference), prose(r.Description), status}
+		if uids {
+			uid := txt("-")
+			if r.UID != "" {
+				uid = Cell{Items: []Line{{Text: r.UID, Href: model.RiskLink(b.ws.Config.Port, r.UID)}}}
+			}
+			cells = append([]Cell{cells[0], uid}, cells[1:]...)
+		}
+		t.Rows = append(t.Rows, Row{ID: aRisk + r.ID, Cells: cells})
 	}
 	for _, d := range b.in.Drift {
 		if d.Missing {
-			t.Rows = append(t.Rows, Row{Cells: []Cell{link(d.ID, aThreat+d.ID), open("no risk written yet"), txt("-"), txt("-"), txt("-"), open(""), txt("-"), txt("-"), txt("-"), open("missing")}})
+			cells := []Cell{link(d.ID, aThreat+d.ID), open("no risk written yet"), txt("-"), txt("-"), txt("-"), open(""), txt("-"), txt("-"), txt("-"), open("missing")}
+			if uids {
+				cells = append([]Cell{cells[0], txt("-")}, cells[1:]...)
+			}
+			t.Rows = append(t.Rows, Row{Cells: cells})
 		}
 	}
 	s.Blocks = append(s.Blocks, Block{Table: t})

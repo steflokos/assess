@@ -24,6 +24,7 @@ const (
 	CodeBadRef              = "bad-ref"
 	CodeWrongKind           = "wrong-kind"
 	CodeDanglingRef         = "dangling-ref"
+	CodeBadUID              = "bad-uid"
 	CodeCycle               = "cycle"
 	CodePropertyNotDeclared = "property-not-declared"
 	CodeInvalidValue        = "invalid-value"
@@ -37,7 +38,7 @@ const (
 // to a broken record is not misreported as dangling. Records the loader marked
 // incomplete are skipped: their problems were already reported.
 func Check(ws *model.Workspace, ix *source.Index) diag.List {
-	c := &checker{ws: ws, ix: ix, elements: map[string]model.Element{}, assets: map[string]*model.Asset{}, channels: map[string]*model.Channel{}, flowAt: map[pair]flowRef{}, flowOver: map[pair]flowRef{}}
+	c := &checker{ws: ws, ix: ix, elements: map[string]model.Element{}, assets: map[string]*model.Asset{}, channels: map[string]*model.Channel{}, flowAt: map[pair]flowRef{}, flowOver: map[pair]flowRef{}, uids: map[string]string{}}
 	for _, e := range ws.Elements() {
 		c.elements[e.Base().ID] = e
 	}
@@ -66,7 +67,9 @@ type checker struct {
 	// (data, channel) from the `data` and `over` of a step.
 	flowAt   map[pair]flowRef
 	flowOver map[pair]flowRef
-	diags    diag.List
+	// uids are the uids of the risks checked so far, to the id of the risk that has it.
+	uids  map[string]string
+	diags diag.List
 }
 
 // pair is two ids: (component, function) in flowAt, (data, channel) in flowOver.
@@ -378,6 +381,17 @@ func (c *checker) control(co *model.Control) {
 func (c *checker) risk(r *model.Risk) {
 	c.record(iso21434.Risk, r, &r.Record)
 	c.references(iso21434.Risk.Key(r.ID), r)
+	if r.UID != "" {
+		at := c.ix.At(iso21434.Risk.Key(r.ID), "uid")
+		switch other, taken := c.uids[r.UID]; {
+		case !iso21434.ValidID(r.UID):
+			c.diags.Errorf(CodeBadUID, at, "uid %q is not an id. Use letters, digits, '.', '_' and '-', such as R-0007", r.UID)
+		case taken:
+			c.diags.Errorf(CodeBadUID, at, "uid %s is the uid of risk %s as well. Each risk has its own, because a link opens one risk", r.UID, other)
+		default:
+			c.uids[r.UID] = r.ID
+		}
+	}
 	if rec := c.ix.Lookup(iso21434.Risk.Key(r.ID)); rec != nil {
 		c.refAt(rec.Loc, "the id of a risk", r.ID, iso21434.Threat)
 	}

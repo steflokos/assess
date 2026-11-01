@@ -39,6 +39,11 @@ type builder struct {
 func OpenItems(in Input) []OpenItem {
 	b := newBuilder(in)
 	b.collectOpen()
+	for i, it := range b.open {
+		if r := b.risk[it.ID]; r != nil && r.UID != "" && (it.Kind == "risk" || it.Kind == "threat") {
+			b.open[i].Link = model.RiskLink(b.ws.Config.Port, r.UID)
+		}
+	}
 	return b.open
 }
 

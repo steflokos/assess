@@ -108,6 +108,8 @@ type RiskPlan struct {
 	Skipped []string
 	// Unrated is the number of threat scenarios that have no value yet and so no risk.
 	Unrated int
+	// Numbered are the ids of the risks that get a uid, because they had none. A risk keeps its uid once it has one.
+	Numbered []string
 
 	files map[string]string // the new text of each file to write, by project-relative path
 }
@@ -132,17 +134,13 @@ func Risks(ws *model.Workspace, ix *source.Index, values map[string]Values) Risk
 	p.files = map[string]string{}
 	covered := map[string]bool{}
 	edits := map[string]map[int]lineEdit{} // file -> line -> edit
+	newUID := uids(ws)
 
 	for i := range ws.Risks {
 		r := &ws.Risks[i]
-		want, known := values[r.ID]
-		if !known || r.Incomplete {
-			continue
-		}
-		covered[r.ID] = true
 		key := iso21434.Risk.Key(r.ID)
 		rec := ix.Lookup(key)
-		if rec == nil {
+		if r.Incomplete || rec == nil {
 			continue
 		}
 		file := rec.Loc.File
@@ -156,6 +154,16 @@ func Risks(ws *model.Workspace, ix *source.Index, values map[string]Values) Risk
 			f(&e)
 			edits[file][l] = e
 		}
+		if r.UID == "" { // a uid does not depend on the calculation, so every risk gets one, under its name
+			uid := newUID()
+			put(line("name"), func(e *lineEdit) { e.after = append(e.after, "uid: "+uid) })
+			p.Numbered = append(p.Numbered, r.ID)
+		}
+		want, known := values[r.ID]
+		if !known {
+			continue
+		}
+		covered[r.ID] = true
 
 		// What each kept attribute needs: nothing, a new value on its line, its line removed, or a
 		// new line. A new line goes after the nearest attribute before it that stays, or after name.
@@ -206,7 +214,7 @@ func Risks(ws *model.Workspace, ix *source.Index, values map[string]Values) Risk
 			continue
 		}
 		p.Added = append(p.Added, t.ID)
-		fmt.Fprintf(&added, "\nrisk %s:\n  name: %s\n", t.ID, scalar("Risk of "+lowerFirst(t.Name)))
+		fmt.Fprintf(&added, "\nrisk %s:\n  name: %s\n  uid: %s\n", t.ID, scalar("Risk of "+lowerFirst(t.Name)), newUID())
 		for _, name := range kept {
 			if now := v.text(name); now != "" {
 				fmt.Fprintf(&added, "  %s: %s\n", name, now)
@@ -352,3 +360,18 @@ func editLines(text string, edits map[int]lineEdit) (string, string) {
 var nameLine = regexp.MustCompile(`^(\s*)name:[ \t]+("[^"]*"|'[^']*'|[^\s#"'\[{|>&*!%@\x60][^#]*?)[ \t]*(#.*)?$`)
 
 func leadingSpace(s string) string { return s[:len(s)-len(strings.TrimLeft(s, " \t"))] }
+
+// uids returns a function that gives the next uid each time it is called: R- and the number after the highest one that a risk
+// of the project has, with four digits at least, such as R-0001. A uid that is written in another way is left alone.
+func uids(ws *model.Workspace) func() string {
+	highest := 0
+	for _, r := range ws.Risks {
+		if n, err := strconv.Atoi(strings.TrimPrefix(r.UID, model.UIDPrefix)); err == nil && strings.HasPrefix(r.UID, model.UIDPrefix) && n > highest {
+			highest = n
+		}
+	}
+	return func() string {
+		highest++
+		return fmt.Sprintf("%s%04d", model.UIDPrefix, highest)
+	}
+}

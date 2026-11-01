@@ -46,6 +46,7 @@ attribute Component.notes map[string]string req= min=0 ref=
 attribute Config.apiVersion string req=always min=0 ref=
 attribute Config.keys string req= min=0 ref=
 attribute Config.policy string req= min=0 ref=
+attribute Config.port int req= min=0 ref=
 attribute Config.template string req= min=0 ref=
 attribute Config.version string req= min=0 ref=
 attribute Control.assumes model.Refs req= min=0 ref=assumption
@@ -145,6 +146,7 @@ attribute Risk.reference model.Texts req= min=0 ref=
 attribute Risk.residual *int req= min=0 ref=
 attribute Risk.treatment iso21434.Treatment req= min=0 ref=
 attribute Risk.type iso21434.RiskType req= min=0 ref=
+attribute Risk.uid string req= min=0 ref=
 attribute RiskPolicy.affinity *int req= min=0 ref=
 attribute RiskPolicy.matrix map[iso21434.ImpactLevel]map[iso21434.FeasibilityLevel]*int req= min=0 ref=
 attribute Rule.check string req=always min=0 ref=

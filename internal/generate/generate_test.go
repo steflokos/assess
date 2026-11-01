@@ -294,7 +294,7 @@ func TestMissingValuesAreWrittenAfterTheNearestOneThatStays(t *testing.T) {
 	p := plan(t, dir, res, rightValues)
 	generate.WriteRisks(dir, p)
 	text := testproject.Read(t, dir, "concept/risks.yaml")
-	if !strings.HasPrefix(text, "risk update-package-tampering:\n  name: Risk\n  type: Goal\n  base: 5\n  residual: 2\n  treatment: Reduce\n") {
+	if !strings.HasPrefix(text, "risk update-package-tampering:\n  name: Risk\n  uid: R-0001\n  type: Goal\n  base: 5\n  residual: 2\n  treatment: Reduce\n") {
 		t.Errorf("type and base are written in their place:\n%s", text)
 	}
 	if got := p.Changed[0].Values[0].Problem(); got != "type is missing, Goal is calculated" {
@@ -312,7 +312,7 @@ func TestNewRisksAreWrittenForThreatsThatHaveValuesAndNoRisk(t *testing.T) {
 		t.Fatalf("%+v", p)
 	}
 	generate.WriteRisks(dir, p)
-	want := "# my header\n\nrisk update-package-tampering:\n  name: Risk of tampering with Update package\n  type: Goal\n  base: 5\n  residual: 4\n  description:\n  treatment:\n  rationale:\n  reference:\n"
+	want := "# my header\n\nrisk update-package-tampering:\n  name: Risk of tampering with Update package\n  uid: R-0001\n  type: Goal\n  base: 5\n  residual: 4\n  description:\n  treatment:\n  rationale:\n  reference:\n"
 	if got := testproject.Read(t, dir, "concept/risks.yaml"); got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
@@ -341,7 +341,7 @@ func TestCommentsAndOddSpacingOfAValueLineStay(t *testing.T) {
 	p := plan(t, dir, res, rightValues)
 	generate.WriteRisks(dir, p)
 	got := testproject.Read(t, dir, "concept/risks.yaml")
-	want := "risk update-package-tampering:\n  name: Risk # the name\n  type: Goal   # calculated\n  # a note between\n  base: 5 # was 3\n  residual: 2\n  treatment: Reduce\n"
+	want := "risk update-package-tampering:\n  name: Risk # the name\n  uid: R-0001\n  type: Goal   # calculated\n  # a note between\n  base: 5 # was 3\n  residual: 2\n  treatment: Reduce\n"
 	if !strings.HasPrefix(got, want) {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
@@ -352,5 +352,26 @@ func TestPlanOfAThreatScenarioThatIsNotInTheValuesIsLeftAlone(t *testing.T) {
 	p := plan(t, dir, res, map[string]generate.Values{})
 	if p.Current != 0 || len(p.Added) != 0 || len(p.Changed) != 0 {
 		t.Errorf("%+v", p)
+	}
+}
+
+// Every risk that has no uid gets one under its name: R- and the number after the highest one written. A uid that is there stays,
+// and so does one written in another way.
+func TestARiskGetsAUidThatGoesOnFromTheHighest(t *testing.T) {
+	dir, res := open(t, nil)
+	testproject.Write(t, dir, "concept/risks.yaml", "risk update-package-tampering:\n  name: Risk\n  uid: R-0007\n  type: Goal\n  base: 5\n  residual: 2\n\nrisk firmware-image-tampering:\n  name: Risk 2\n  uid: JIRA-12\n  type: Goal\n  base: 4\n  residual: 2\n\nrisk device-key-disclosure:\n  name: Risk 3\n  type: Claim\n  base: 1\n  residual: 1\n")
+	res = load.Load(dir)
+	vals := map[string]generate.Values{"update-package-tampering": values(5, 2, "Goal"), "firmware-image-tampering": values(4, 2, "Goal"),
+		"device-key-disclosure": values(1, 1, "Claim"), "api-interface-spoofing": values(1, 1, "Claim")}
+	p := plan(t, dir, res, vals)
+	if strings.Join(p.Numbered, " ") != "device-key-disclosure" || len(p.Changed) != 0 || p.Current != 3 {
+		t.Fatalf("%+v", p)
+	}
+	generate.WriteRisks(dir, p)
+	text := testproject.Read(t, dir, "concept/risks.yaml")
+	for _, want := range []string{"  uid: R-0007\n", "  uid: JIRA-12\n", "risk device-key-disclosure:\n  name: Risk 3\n  uid: R-0008\n", "risk api-interface-spoofing:\n  name: Risk of spoofing of API interface\n  uid: R-0009\n"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("lacks %q:\n%s", want, text)
+		}
 	}
 }

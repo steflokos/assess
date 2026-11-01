@@ -178,6 +178,7 @@ func isolatedInput(dir string, res *load.Result, broken map[string]string, hasEr
 	if err != nil {
 		return report.Input{}, err
 	}
+	engine.Link(res.Workspace, rep)
 	files := inputFiles(res)
 	inputs, err := fingerprint(dir, files)
 	if err != nil {

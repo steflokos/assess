@@ -46,6 +46,7 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return o.fail("%v", err)
 	}
+	engine.Link(res.Workspace, rep)
 	o.show(errs)
 	isolatedNote(o, errs)
 	if !o.json {
@@ -177,6 +178,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return o.fail("%v", err)
 	}
+	engine.Link(ws, rep)
 	for _, r := range rep.Threats {
 		if r.Threat == id {
 			if !o.json {

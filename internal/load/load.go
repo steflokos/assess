@@ -226,6 +226,9 @@ func (r *Result) loadConfig(ws *model.Workspace, data []byte) {
 		r.Diags.Errorf(CodeUnsupportedAPI, at("apiVersion"),
 			"apiVersion %q is not supported. This version reads %q", ws.Config.APIVersion, model.APIVersion)
 	}
+	if p := ws.Config.Port; p != 0 && (p < 1024 || p > 65535) {
+		r.Diags.Errorf(CodeInvalidValue, at("port"), "port %d is not a port that assess serve can use. Write a number from 1024 to 65535", p)
+	}
 	if v := ws.Config.Version; v != "" {
 		if _, ok := model.ParseVersion(v); !ok {
 			r.Diags.Errorf(CodeBadVersion, at("version"), "version %q is not a version of assess. Write it like v0.1.0", v)

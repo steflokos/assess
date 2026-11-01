@@ -46,6 +46,9 @@ policy: <text>
 # optional. Where assess verify finds the public keys to check signatures with. This is a file, or a
 # folder of .pub and .pem files, relative to the project. Keep private keys out of the project.
 keys: <text>
+# optional. The port of assess serve on this computer, from 1024 to 65535. The links to the risks
+# use it, so they stay the same from one run to the next. If you leave it out, it is 8484.
+port: <number>
 # optional. Path to the report template, relative to the project. The template is an HTML page with
 # placeholders that say where each part of the report goes. If you leave it out, assess uses the
 # standard template. Run assess template to get a copy to start from.
@@ -599,6 +602,11 @@ risk <threat-id>:
   # report or calculation reads them. A rule can read them as x.notes. A note you did not write is
   # not there, so ask with has(x.notes.key) first.
   notes: {key: value}
+  # optional. A short id of the risk that never changes, such as R-0007. A link to the risk in the
+  # web interface is made from it, so it keeps working when the threat scenario or its asset gets
+  # another id. assess generate risks gives one to every risk that has none. Each risk has its own.
+  # Do not change it once others use it.
+  uid: <text>
   # optional. Calculated by assess. It is Goal when the base risk, before any control, is above the
   # risk affinity of the policy. It is Claim when the base risk is at or below it. assess generate
   # risks writes it. Do not edit it.

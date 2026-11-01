@@ -201,6 +201,9 @@ func Explain(w io.Writer, ws *model.Workspace, rep *engine.Report, r engine.Resu
 // explain is Explain with the index of the attack records, which a caller that writes many worksheets builds once.
 func explain(w io.Writer, x *attack.Index, ws *model.Workspace, rep *engine.Report, r engine.Result, all bool) {
 	fmt.Fprintf(w, "%s  %s\n", r.Threat, r.Name)
+	if r.Link != "" {
+		fmt.Fprintf(w, "risk %s  %s\n", r.UID, r.Link)
+	}
 	for _, p := range rep.Policy {
 		fmt.Fprintln(w, "policy:", p)
 	}

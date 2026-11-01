@@ -75,9 +75,14 @@ func TestReportIsOneSelfContainedPage(t *testing.T) {
 		t.Error("-o - writes the same page that the default file holds")
 	}
 
-	// nothing is loaded from the network, and the one script is the one of the report
+	// nothing is loaded from the network, and the one script is the one of the report. A risk links to its page in assess serve
+	// on this computer, which is a link to follow and loads nothing.
+	if !strings.Contains(html, `<a class="out" href="http://127.0.0.1:8484/#/risk/R-0001"`) {
+		t.Error("a risk does not link to its page in the web interface")
+	}
+	local := strings.ReplaceAll(html, `<a class="out" href="http://127.0.0.1:8484/#/risk/`, `<a class="out" href="#risk/`)
 	for _, bad := range []string{`src="http`, `href="http`, "url(http", "@import", "<iframe", "<link "} {
-		if strings.Contains(html, bad) {
+		if strings.Contains(local, bad) {
 			t.Errorf("a report is one file. It must not contain %q", bad)
 		}
 	}

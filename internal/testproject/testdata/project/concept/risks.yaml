@@ -9,6 +9,7 @@
 
 risk update-package-tampering:
   name: Risk of tampering with Update package
+  uid: R-0001
   type: Goal
   base: 5
   residual: 2
@@ -19,6 +20,7 @@ risk update-package-tampering:
 
 risk firmware-image-tampering:
   name: Risk of tampering with Firmware image
+  uid: R-0002
   type: Goal
   base: 4
   residual: 2
@@ -29,6 +31,7 @@ risk firmware-image-tampering:
 
 risk device-key-disclosure:
   name: Risk of disclosure of Device key
+  uid: R-0003
   type: Claim
   base: 1
   residual: 1
@@ -38,6 +41,7 @@ risk device-key-disclosure:
 
 risk api-interface-spoofing:
   name: Risk of spoofing of API interface
+  uid: R-0004
   type: Claim
   base: 1
   residual: 1

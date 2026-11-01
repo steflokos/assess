@@ -137,6 +137,8 @@ type risksResult struct {
 	Skipped []string      `json:"skipped,omitempty"`
 	Current int           `json:"current"` // risks that were already right
 	Unrated int           `json:"unrated"` // threat scenarios not rated yet, so without a risk
+	// Numbered are the risks that got a uid, because they had none.
+	Numbered []string `json:"numbered,omitempty"`
 }
 
 // changedRisk is a risk whose calculated values were corrected.
@@ -184,7 +186,7 @@ func generateRisks(dir string, res *load.Result, o *output) int {
 	if len(plan.Skipped) > 0 {
 		code = exitFindings // something could not be written: do not let that pass silently
 	}
-	result := risksResult{What: "risks", Added: plan.Added, Skipped: plan.Skipped, Current: plan.Current, Unrated: plan.Unrated, Changed: []changedRisk{}}
+	result := risksResult{What: "risks", Added: plan.Added, Skipped: plan.Skipped, Current: plan.Current, Unrated: plan.Unrated, Changed: []changedRisk{}, Numbered: plan.Numbered}
 	if result.Added == nil {
 		result.Added = []string{}
 	}
@@ -209,6 +211,9 @@ func generateRisks(dir string, res *load.Result, o *output) int {
 	if len(plan.Added) > 0 {
 		fmt.Fprintf(w, "added %s to %s\n", plural(len(plan.Added), "risk"), generate.RisksFile)
 		fmt.Fprintln(w, "  "+strings.Join(plan.Added, ", "))
+	}
+	if len(plan.Numbered) > 0 {
+		fmt.Fprintf(w, "gave a uid to %s that had none, for the links to them\n", plural(len(plan.Numbered), "risk"))
 	}
 	if len(plan.Changed) > 0 {
 		fmt.Fprintf(w, "corrected the values of %s\n", plural(len(plan.Changed), "risk"))

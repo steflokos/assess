@@ -85,8 +85,8 @@ The parts that section:<id> can place in this project (a part brings its sub-par
       columns: baserisk, basedecidedby, residualrisk, residualdecidedby, type, damage, impact,
                basefeasibility, residualfeasibility
     treatment                    Risk treatment decisions
-      columns: name, type, baserisk, residualrisk, treatment, rationale, reference, description,
-               status
+      columns: uid, name, type, baserisk, residualrisk, treatment, rationale, reference,
+               description, status
   goals                          Cybersecurity goals and claims
     columns: name, baserisk, residualrisk, treatment, rationale, reference, description
   concept                        Cybersecurity concept: controls

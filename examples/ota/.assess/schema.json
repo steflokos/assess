@@ -2313,6 +2313,21 @@
             }
           ],
           "description": "Calculated by assess. It is Goal when the base risk, before any control, is above the risk affinity of the policy. It is Claim when the base risk is at or below it. assess generate risks writes it. Do not edit it."
+        },
+        "uid": {
+          "anyOf": [
+            {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A short id of the risk that never changes, such as R-0007. A link to the risk in the web interface is made from it, so it keeps working when the threat scenario or its asset gets another id. assess generate risks gives one to every risk that has none. Each risk has its own. Do not change it once others use it."
         }
       },
       "required": [

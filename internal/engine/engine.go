@@ -58,8 +58,12 @@ type RiskRules struct {
 // Result is one threat scenario. Base ignores the controls, and Residual applies every control that mitigates a step.
 // Either is missing when it cannot be calculated, and Issues says why.
 type Result struct {
-	Threat   string   `json:"threat"`
-	Name     string   `json:"name"`
+	Threat string `json:"threat"`
+	Name   string `json:"name"`
+	// UID is the uid of the risk of the threat scenario, and Link the address that opens that risk in the web interface. Both are
+	// left out while the risk has no uid. The engine leaves them to its caller, which knows the risks (see Link).
+	UID      string   `json:"uid,omitempty"`
+	Link     string   `json:"link,omitempty"`
 	Base     *Outcome `json:"base,omitempty"`
 	Residual *Outcome `json:"residual,omitempty"`
 	Issues   []string `json:"issues,omitempty"`
@@ -386,4 +390,18 @@ func (e *enumerator) cost(p path, f model.Feasibility) Path {
 // keysOf lists the rating keys of a potential or a reduction in factor order.
 func keysOf(p model.AttackPotential) []string {
 	return []string{string(p.Time), string(p.Expertise), string(p.Knowledge), string(p.Window), string(p.Equipment)}
+}
+
+// Link gives each threat scenario of a report the uid of its risk and the link that opens the risk in the web interface, when the
+// risk has a uid.
+func Link(ws *model.Workspace, rep *Report) {
+	uid := map[string]string{}
+	for _, r := range ws.Risks {
+		uid[r.ID] = r.UID
+	}
+	for i := range rep.Threats {
+		if u := uid[rep.Threats[i].Threat]; u != "" {
+			rep.Threats[i].UID, rep.Threats[i].Link = u, model.RiskLink(ws.Config.Port, u)
+		}
+	}
 }

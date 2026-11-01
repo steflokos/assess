@@ -10,6 +10,7 @@
 
 risk supplier-delivery-tampering:
   name: Risk of tampering with Supplier delivery
+  uid: R-0001
   type: Goal
   base: 3
   residual: 2
@@ -20,6 +21,7 @@ risk supplier-delivery-tampering:
 
 risk release-candidate-tampering:
   name: Risk of tampering with Release candidate
+  uid: R-0002
   type: Goal
   base: 4
   residual: 2
@@ -30,6 +32,7 @@ risk release-candidate-tampering:
 
 risk approval-record-tampering:
   name: Risk of tampering with Approval record
+  uid: R-0003
   type: Goal
   base: 5
   residual: 3
@@ -40,6 +43,7 @@ risk approval-record-tampering:
 
 risk backoffice-portal-spoofing:
   name: Risk of spoofing of Back-office portal
+  uid: R-0004
   type: Goal
   base: 5
   residual: 2
@@ -50,6 +54,7 @@ risk backoffice-portal-spoofing:
 
 risk signing-service-tampering:
   name: Risk of tampering with Software signing service
+  uid: R-0005
   type: Claim
   base: 2
   residual: 2
@@ -60,6 +65,7 @@ risk signing-service-tampering:
 
 risk software-signing-private-key-disclosure:
   name: Risk of information disclosure of Software signing private key
+  uid: R-0006
   type: Claim
   base: 2
   residual: 2
@@ -70,6 +76,7 @@ risk software-signing-private-key-disclosure:
 
 risk software-signing-private-key-denial:
   name: Risk of denial of service of Software signing private key
+  uid: R-0007
   type: Claim
   base: 2
   residual: 2
@@ -80,6 +87,7 @@ risk software-signing-private-key-denial:
 
 risk software-signing-certificate-spoofing:
   name: Risk of spoofing of Software signing certificate
+  uid: R-0008
   type: Goal
   base: 4
   residual: 2
@@ -90,6 +98,7 @@ risk software-signing-certificate-spoofing:
 
 risk secure-boot-private-key-disclosure:
   name: Risk of information disclosure of Secure boot private key
+  uid: R-0009
   type: Claim
   base: 2
   residual: 2
@@ -100,6 +109,7 @@ risk secure-boot-private-key-disclosure:
 
 risk campaign-definition-tampering:
   name: Risk of tampering with Campaign definition
+  uid: R-0010
   type: Goal
   base: 5
   residual: 2
@@ -110,6 +120,7 @@ risk campaign-definition-tampering:
 
 risk update-director-tampering:
   name: Risk of tampering with Update director
+  uid: R-0011
   type: Goal
   base: 3
   residual: 2
@@ -120,6 +131,7 @@ risk update-director-tampering:
 
 risk authorisation-signing-private-key-disclosure:
   name: Risk of information disclosure of Authorisation signing private key
+  uid: R-0012
   type: Goal
   base: 3
   residual: 2
@@ -130,6 +142,7 @@ risk authorisation-signing-private-key-disclosure:
 
 risk vehicle-configuration-tampering:
   name: Risk of tampering with Vehicle configuration
+  uid: R-0013
   type: Goal
   base: 4
   residual: 2
@@ -140,6 +153,7 @@ risk vehicle-configuration-tampering:
 
 risk vehicle-configuration-disclosure:
   name: Risk of information disclosure of Vehicle configuration
+  uid: R-0014
   type: Goal
   base: 5
   residual: 2
@@ -150,6 +164,7 @@ risk vehicle-configuration-disclosure:
 
 risk update-package-tampering:
   name: Risk of tampering with Update package
+  uid: R-0015
   type: Goal
   base: 4
   residual: 2
@@ -160,6 +175,7 @@ risk update-package-tampering:
 
 risk update-package-disclosure:
   name: Risk of information disclosure of Update package
+  uid: R-0016
   type: Goal
   base: 5
   residual: 3
@@ -170,6 +186,7 @@ risk update-package-disclosure:
 
 risk vehicle-api-gateway-denial:
   name: Risk of denial of service of Vehicle API gateway
+  uid: R-0017
   type: Goal
   base: 5
   residual: 2
@@ -180,6 +197,7 @@ risk vehicle-api-gateway-denial:
 
 risk vehicle-api-gateway-spoofing:
   name: Risk of spoofing of Vehicle API gateway
+  uid: R-0018
   type: Goal
   base: 3
   residual: 2
@@ -190,6 +208,7 @@ risk vehicle-api-gateway-spoofing:
 
 risk backend-tls-private-key-disclosure:
   name: Risk of information disclosure of Backend TLS private key
+  uid: R-0019
   type: Goal
   base: 3
   residual: 2
@@ -200,6 +219,7 @@ risk backend-tls-private-key-disclosure:
 
 risk workshop-interface-spoofing:
   name: Risk of spoofing of Workshop interface
+  uid: R-0020
   type: Goal
   base: 5
   residual: 4
@@ -210,6 +230,7 @@ risk workshop-interface-spoofing:
 
 risk audit-log-tampering:
   name: Risk of tampering with Audit log
+  uid: R-0021
   type: Goal
   base: 3
   residual: 2
@@ -220,6 +241,7 @@ risk audit-log-tampering:
 
 risk audit-log-repudiation:
   name: Risk of repudiation of Audit log
+  uid: R-0022
   type: Goal
   base: 5
   residual: 2
@@ -230,6 +252,7 @@ risk audit-log-repudiation:
 
 risk root-ca-private-key-disclosure:
   name: Risk of information disclosure of Root CA private key
+  uid: R-0023
   type: Claim
   base: 2
   residual: 2
@@ -240,6 +263,7 @@ risk root-ca-private-key-disclosure:
 
 risk root-ca-private-key-denial:
   name: Risk of denial of service of Root CA private key
+  uid: R-0024
   type: Claim
   base: 2
   residual: 2
@@ -250,6 +274,7 @@ risk root-ca-private-key-denial:
 
 risk registration-authority-tampering:
   name: Risk of tampering with Registration authority
+  uid: R-0025
   type: Claim
   base: 2
   residual: 2
@@ -260,6 +285,7 @@ risk registration-authority-tampering:
 
 risk vehicle-ca-tampering:
   name: Risk of tampering with Vehicle CA (intermediate)
+  uid: R-0026
   type: Claim
   base: 2
   residual: 2
@@ -270,6 +296,7 @@ risk vehicle-ca-tampering:
 
 risk certificate-revocation-list-denial:
   name: Risk of denial of service of Certificate revocation list
+  uid: R-0027
   type: Claim
   base: 1
   residual: 1
@@ -280,6 +307,7 @@ risk certificate-revocation-list-denial:
 
 risk provisioning-server-tampering:
   name: Risk of tampering with Plant provisioning server
+  uid: R-0028
   type: Claim
   base: 2
   residual: 2
@@ -290,6 +318,7 @@ risk provisioning-server-tampering:
 
 risk provisioning-server-denial:
   name: Risk of denial of service of Plant provisioning server
+  uid: R-0029
   type: Claim
   base: 2
   residual: 2
@@ -300,6 +329,7 @@ risk provisioning-server-denial:
 
 risk trust-anchor-bundle-tampering:
   name: Risk of tampering with Trust anchor bundle
+  uid: R-0030
   type: Goal
   base: 3
   residual: 2
@@ -310,6 +340,7 @@ risk trust-anchor-bundle-tampering:
 
 risk secure-boot-public-key-tampering:
   name: Risk of tampering with Secure boot public key
+  uid: R-0031
   type: Claim
   base: 2
   residual: 2
@@ -320,6 +351,7 @@ risk secure-boot-public-key-tampering:
 
 risk lifecycle-state-tampering:
   name: Risk of tampering with Lifecycle state
+  uid: R-0032
   type: Claim
   base: 2
   residual: 2
@@ -329,6 +361,7 @@ risk lifecycle-state-tampering:
 
 risk cellular-interface-spoofing:
   name: Risk of spoofing of Cellular interface
+  uid: R-0033
   type: Claim
   base: 2
   residual: 2
@@ -339,6 +372,7 @@ risk cellular-interface-spoofing:
 
 risk ota-client-tampering:
   name: Risk of tampering with OTA client
+  uid: R-0034
   type: Claim
   base: 2
   residual: 2
@@ -349,6 +383,7 @@ risk ota-client-tampering:
 
 risk package-verifier-tampering:
   name: Risk of tampering with Package verifier
+  uid: R-0035
   type: Claim
   base: 2
   residual: 2
@@ -359,6 +394,7 @@ risk package-verifier-tampering:
 
 risk secure-time-tampering:
   name: Risk of tampering with Secure time
+  uid: R-0036
   type: Goal
   base: 3
   residual: 2
@@ -369,6 +405,7 @@ risk secure-time-tampering:
 
 risk consent-ui-tampering:
   name: Risk of tampering with Update consent screen
+  uid: R-0037
   type: Claim
   base: 2
   residual: 1
@@ -379,6 +416,7 @@ risk consent-ui-tampering:
 
 risk download-link-denial:
   name: Risk of denial of service of Download link
+  uid: R-0038
   type: Goal
   base: 3
   residual: 3
@@ -389,6 +427,7 @@ risk download-link-denial:
 
 risk update-orchestrator-tampering:
   name: Risk of tampering with Update orchestrator
+  uid: R-0039
   type: Claim
   base: 2
   residual: 2
@@ -399,6 +438,7 @@ risk update-orchestrator-tampering:
 
 risk central-gateway-tampering:
   name: Risk of tampering with Central gateway
+  uid: R-0040
   type: Goal
   base: 4
   residual: 3
@@ -409,6 +449,7 @@ risk central-gateway-tampering:
 
 risk powertrain-can-tampering:
   name: Risk of tampering with Powertrain CAN
+  uid: R-0041
   type: Goal
   base: 4
   residual: 4
@@ -419,6 +460,7 @@ risk powertrain-can-tampering:
 
 risk vcu-bootloader-tampering:
   name: Risk of tampering with VCU bootloader
+  uid: R-0042
   type: Goal
   base: 3
   residual: 2
@@ -429,6 +471,7 @@ risk vcu-bootloader-tampering:
 
 risk bms-bootloader-tampering:
   name: Risk of tampering with BMS bootloader
+  uid: R-0043
   type: Claim
   base: 2
   residual: 2
@@ -438,6 +481,7 @@ risk bms-bootloader-tampering:
 
 risk telematics-unit-tampering:
   name: Risk of tampering with Telematics unit (TCU)
+  uid: R-0044
   type: Goal
   base: 3
   residual: 2
@@ -448,6 +492,7 @@ risk telematics-unit-tampering:
 
 risk tcu-debug-port-spoofing:
   name: Risk of spoofing of TCU debug port
+  uid: R-0045
   type: Goal
   base: 4
   residual: 2
@@ -458,6 +503,7 @@ risk tcu-debug-port-spoofing:
 
 risk tcu-hsm-tampering:
   name: Risk of tampering with TCU secure element
+  uid: R-0046
   type: Goal
   base: 3
   residual: 2
@@ -468,6 +514,7 @@ risk tcu-hsm-tampering:
 
 risk vehicle-private-key-disclosure:
   name: Risk of information disclosure of Vehicle private key
+  uid: R-0047
   type: Claim
   base: 1
   residual: 1
@@ -477,6 +524,7 @@ risk vehicle-private-key-disclosure:
 
 risk installed-root-certificate-tampering:
   name: Risk of tampering with Installed root certificate
+  uid: R-0048
   type: Claim
   base: 2
   residual: 2
@@ -486,6 +534,7 @@ risk installed-root-certificate-tampering:
 
 risk vcu-rollback-counter-tampering:
   name: Risk of tampering with VCU rollback counter
+  uid: R-0049
   type: Claim
   base: 1
   residual: 1

@@ -603,7 +603,7 @@ func TestOpenListsWhatWaits(t *testing.T) {
 		{"a risk without a treatment", edit{"concept/risks.yaml", "  treatment: Accept\n", "  treatment:\n"}, "no-treatment", "risk", "device-key-disclosure"},
 		{"a step without a rating", edit{"tara/attack-steps.yaml", "  potential: {time: ET1, expertise: SE2, knowledge: KoIC1, window: WoO1, equipment: Eq1}\n  rationale: The port is on the board", "  rationale: The port is on the board"}, "not-calculated", "", ""},
 		{"a risk that is out of date", edit{"concept/risks.yaml", "  base: 5\n", "  base: 3\n"}, "risk-stale", "risk", "update-package-tampering"},
-		{"a risk that is not written", edit{"concept/risks.yaml", "risk api-interface-spoofing:\n  name: Risk of spoofing of API interface\n  type: Claim\n  base: 1\n  residual: 1\n  description: Somebody with a stolen key acts as a gateway.\n  treatment: Share\n  rationale: The operator of the interface takes the risk in the contract.\n  reference: TEST-104\n", ""}, "risk-missing", "threat", "api-interface-spoofing"},
+		{"a risk that is not written", edit{"concept/risks.yaml", "risk api-interface-spoofing:\n  name: Risk of spoofing of API interface\n  uid: R-0004\n  type: Claim\n  base: 1\n  residual: 1\n  description: Somebody with a stolen key acts as a gateway.\n  treatment: Share\n  rationale: The operator of the interface takes the risk in the contract.\n  reference: TEST-104\n", ""}, "risk-missing", "threat", "api-interface-spoofing"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
