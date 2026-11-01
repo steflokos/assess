@@ -22,7 +22,7 @@ func runOpen(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("open", stderr)
 	format := fl.String("format", "text", "output format: text or json")
 	strict := fl.Bool("strict", false, "exit 1 while anything is open")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

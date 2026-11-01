@@ -27,7 +27,7 @@ import (
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("serve", stderr)
 	addr := fl.String("addr", "127.0.0.1:8484", "address to listen on. Only this computer is allowed: 127.0.0.1, localhost or [::1]. Use port 0 for a free port")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

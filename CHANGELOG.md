@@ -28,7 +28,7 @@ What is in it:
   document or a line separator that an editor does not show is not edited, a file or a folder of the project that is a link out of it is not
   read or written, and the report and the diagrams have a token of their own. When one value of a block changes, the rest of the block is
   written as it was.
-- `assess help <command>` says how a command is written. A flag that comes after the folder is said to be in the wrong place, and a typo
+- `assess help <command>` says how a command is written. A typo
   in the name of a command is met with the one that was meant. `verify` shows the start of each key and flags a key that signs twice.
 - Scalability raises the impact of a damage scenario, per path, and not the risk value. `scalability.shift` in the policy gives the levels for a
   limited batch and for the whole fleet. A hard attack stays small however far it reaches, and a control still lowers the risk. A policy that

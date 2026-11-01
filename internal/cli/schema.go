@@ -85,7 +85,7 @@ func runSchema(args []string, stdout, stderr io.Writer) int {
 	toStdout := fl.Bool("stdout", false, "print the schema instead of writing the files into a project")
 	watch := fl.Bool("watch", false, "keep running and rewrite the ids the editor offers whenever a file of the project changes")
 	format := fl.String("format", "yaml", "with -stdout: yaml (schema.yaml, for people) or json (the editor schema)")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

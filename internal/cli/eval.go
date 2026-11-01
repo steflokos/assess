@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/steflokos/assess/internal/attack"
 	"github.com/steflokos/assess/internal/diag"
@@ -25,7 +24,7 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("eval", stderr)
 	format := fl.String("format", "text", "output format: text or json")
 	strict := fl.Bool("strict", false, "exit 1 when a threat scenario cannot be calculated or the policy lacks values")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -112,9 +111,6 @@ func riskFileDrift(res *load.Result, rep *engine.Report) (drift []report.Drift, 
 
 // oneDir returns the directory argument, "." when there is none.
 func oneDir(fl *flag.FlagSet, o *output) (string, bool) {
-	if flagAfter(o, fl) {
-		return "", false
-	}
 	switch fl.NArg() {
 	case 0:
 		return ".", true
@@ -125,18 +121,6 @@ func oneDir(fl *flag.FlagSet, o *output) (string, bool) {
 	return "", false
 }
 
-// flagAfter says so, and returns true, when what comes after the folder or the other arguments looks like a flag. The flag package stops
-// at the first word that is not a flag, so a flag written after it is taken for an argument, and the message that follows says something else.
-func flagAfter(o *output, fl *flag.FlagSet) bool {
-	for _, a := range fl.Args() {
-		if strings.HasPrefix(a, "-") && a != "-" {
-			o.fail("%s is in the wrong place: it comes after an argument, where it is not a flag. Put the flags first", a)
-			return true
-		}
-	}
-	return false
-}
-
 // runExplain shows how one threat scenario got its numbers, as a worksheet that
 // can be checked by hand:
 //
@@ -145,7 +129,7 @@ func runExplain(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("explain", stderr)
 	all := fl.Bool("all", false, "show every path as a full table, not only the easiest")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

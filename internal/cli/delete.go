@@ -26,7 +26,7 @@ func runDelete(args []string, stdout, stderr io.Writer) int {
 	cascade := fl.Bool("cascade", false, "also delete what belongs to the record, and take its id out of the records that only mention it")
 	dry := fl.Bool("dry-run", false, "show what would change and write nothing")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -34,9 +34,6 @@ func runDelete(args []string, stdout, stderr io.Writer) int {
 	}
 	o, ok := newOutput("delete", *format, stdout, stderr)
 	if !ok {
-		return exitUsage
-	}
-	if flagAfter(o, fl) {
 		return exitUsage
 	}
 	if fl.NArg() < 2 || fl.NArg() > 3 {

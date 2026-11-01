@@ -34,7 +34,7 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("generate", stderr)
 	force := fl.Bool("force", false, "replace the file of assets if it exists. Without this flag it is written only once")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -44,13 +44,10 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return exitUsage
 	}
-	if fl.NArg() >= 1 && !slices.Contains([]string{"assets", "threats", "risks"}, fl.Arg(0)) && !strings.HasPrefix(fl.Arg(0), "-") {
+	if fl.NArg() >= 1 && !slices.Contains([]string{"assets", "threats", "risks"}, fl.Arg(0)) {
 		if near, ok := load.Closest(fl.Arg(0), []string{"assets", "threats", "risks"}); ok {
 			return o.fail("there is nothing to generate called %q. Did you mean %s?", fl.Arg(0), near)
 		}
-	}
-	if flagAfter(o, fl) {
-		return exitUsage
 	}
 	if fl.NArg() < 1 || !slices.Contains([]string{"assets", "threats", "risks"}, fl.Arg(0)) {
 		return o.fail("say what to generate: assess generate [flags] assets|threats|risks [dir]")

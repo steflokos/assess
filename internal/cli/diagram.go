@@ -29,7 +29,7 @@ func runDiagram(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("diagram", stderr)
 	outFile := fl.String("o", "", "file to write, or - for standard output (default "+defaultDiagram+" in the project, or out/attack-<id>.svg with -threat)")
 	threat := fl.String("threat", "", "draw the attack tree of this threat scenario instead of the architecture")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

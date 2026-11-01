@@ -25,7 +25,7 @@ func runLint(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("lint", stderr)
 	format := fl.String("format", "text", "output format: text or json")
 	strict := fl.Bool("strict", false, "treat warnings and rules that could not be checked, as errors")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

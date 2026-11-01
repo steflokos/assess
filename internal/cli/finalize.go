@@ -50,7 +50,7 @@ func runFinalize(args []string, stdout, stderr io.Writer) int {
 	date := fl.String("date", "", "the date and time of the iteration as RFC 3339, such as 2026-10-20T09:30:00Z (default: now)")
 	dry := fl.Bool("dry-run", false, "show the iteration and what changed, and write nothing")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}

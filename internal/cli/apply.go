@@ -46,7 +46,7 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	dry := fl.Bool("dry-run", false, "show what would change and write nothing")
 	src := fl.String("source", "", "write this name as notes.source on every record that is created or changed")
 	format := fl.String("format", "text", "output format: text or json")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
@@ -54,9 +54,6 @@ func runApplyFrom(in io.Reader, args []string, stdout, stderr io.Writer) int {
 	}
 	o, ok := newOutput("apply", *format, stdout, stderr)
 	if !ok {
-		return exitUsage
-	}
-	if flagAfter(o, fl) {
 		return exitUsage
 	}
 	setName, dir := "-", "."

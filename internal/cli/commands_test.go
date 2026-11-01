@@ -66,7 +66,6 @@ func TestApplyAndGenerateSayWhatIsWrongWithWhatWasGiven(t *testing.T) {
 	}{
 		"a folder for the change set":    {[]string{"apply", dir}, "is a folder. Give the change set first"},
 		"a change set that is not there": {[]string{"apply", filepath.Join(dir, "no-such.json")}, "does not exist"},
-		"a flag after the folder":        {[]string{"generate", "assets", dir, "-force"}, "Put the flags first"},
 		"a word that is almost one":      {[]string{"generate", "asets", dir}, "Did you mean assets?"},
 		"nothing to generate":            {[]string{"generate", dir}, "say what to generate"},
 		"a folder without a project":     {[]string{"lint", t.TempDir()}, "has no assess.yaml"},

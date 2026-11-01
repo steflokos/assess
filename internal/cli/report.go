@@ -45,7 +45,7 @@ func runReport(args []string, stdout, stderr io.Writer) int {
 	outFile := fl.String("o", "", "file to write, or - for standard output (default "+defaultReport+" in the project)")
 	tmplFile := fl.String("template", "", "report template to use instead of the one in assess.yaml. assess template writes the standard one")
 	strict := fl.Bool("strict", false, "exit 1 when the report has open items")
-	if err := fl.Parse(args); err != nil {
+	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
 		}
