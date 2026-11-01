@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/steflokos/assess/internal/diag"
 	"github.com/steflokos/assess/internal/model"
@@ -85,14 +86,36 @@ func (o *output) show(diags diag.List) {
 		return
 	}
 	colour := isTerminal(o.stdout) && severityColour(os.Getenv, runtime.GOOS)
+	shown, hidden := map[string]int{}, map[string]int{}
+	var codes []string // the codes that had more than the limit, in the order they were met
 	for _, d := range diags {
+		key := d.Severity.String() + " " + d.Code
+		if shown[key] == perCode {
+			if hidden[key] == 0 {
+				codes = append(codes, key)
+			}
+			hidden[key]++
+			continue
+		}
+		shown[key]++
 		if !colour {
 			fmt.Fprintln(o.stdout, d)
 			continue
 		}
 		fmt.Fprintf(o.stdout, "%s: %s: [%s] %s\n", d.Loc, paintSeverity(d.Severity), d.Code, d.Message)
 	}
+	for _, key := range codes {
+		severity, code, _ := strings.Cut(key, " ")
+		if hidden[key] > 1 {
+			severity += "s"
+		}
+		fmt.Fprintf(o.stdout, "... and %d more %s of [%s]. -format json lists every one\n", hidden[key], severity, code)
+	}
 }
+
+// perCode is how many diagnostics of one code and severity show writes for a person. A mistake that repeats, such as a loop that
+// many records take part in, would otherwise fill the screen and hide the other findings. JSON, GitHub and SARIF get every one.
+const perCode = 20
 
 // severityColour says whether the severity of a diagnostic is coloured, for a person at a terminal: not when NO_COLOR is set
 // (no-color.org), not on a terminal that says it is dumb, and on Windows only in a terminal that is known to understand colours.

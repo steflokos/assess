@@ -4,11 +4,14 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/steflokos/assess/internal/diag"
+	"github.com/steflokos/assess/internal/source"
 )
 
 func env(vars map[string]string) func(string) string {
@@ -97,5 +100,22 @@ func TestPortTaken(t *testing.T) {
 	}
 	if portTaken(errors.New("the address is not host:port")) {
 		t.Error("another error is not a taken port")
+	}
+}
+
+// A person is shown at most perCode diagnostics of one code, and a line that says how many more there are. JSON gets them all.
+func TestShowLimitsADiagnosticThatRepeats(t *testing.T) {
+	var ds diag.List
+	for i := 1; i <= perCode+5; i++ {
+		ds.Errorf("cycle", source.Loc{File: "tara/attack-steps.yaml", Line: i}, "loop %d", i)
+	}
+	ds.Warnf("other", source.Loc{File: "tara/controls.yaml", Line: 1}, "something else")
+	var out bytes.Buffer
+	o := &output{cmd: "validate", stdout: &out, stderr: &out}
+	o.show(ds)
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) != perCode+2 || lines[len(lines)-1] != "... and 5 more errors of [cycle]. -format json lists every one" ||
+		!strings.Contains(out.String(), "[other] something else") {
+		t.Errorf("%d lines:\n%s", len(lines), out.String())
 	}
 }

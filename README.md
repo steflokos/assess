@@ -89,6 +89,8 @@ After `--`, every word is an argument, even one that starts with `-`. A command 
 current folder, or else of the nearest folder above it that has an `assess.yaml`, the way git finds its repository. So you can run
 it from inside `tara/` too, and it says which folder it took. `init` and `serve` only look at the folder they are given.
 
+A command shows at most 20 diagnostics of one kind and says how many more there are. `-format json` lists every one.
+
 Exit code `0` means everything is fine. `1` means the project has errors, or warnings when you use `-strict`.
 `2` means you used the command wrongly. `-format json` gives the answer as JSON, for programs (see "Using assess
 from other programs").
