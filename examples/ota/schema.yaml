@@ -148,6 +148,12 @@ feasibility:
   # attacker beyond the top of the scale, such as more expertise than multiple experts. Leave it out
   # to let the points add up without a limit.
   cap: true | false
+  # optional. true adds up elapsed time as days instead of points, where combine says sum for time.
+  # Each key counts as the longest time it covers: ET0 1 day, ET1 7, ET2 30, ET3 180 and ET4 365.
+  # The total turns back into the first key that covers it, and the path gets the points of that
+  # key. Three steps of a week each are then ET2, about three weeks, and not 1 + 1 + 1 points. Leave
+  # it out to add up the points.
+  days: true | false
 # optional. Which impact counts for the risk and how the impact of a damage scenario is worked out.
 impact:
   # optional. How the four impact categories of one stakeholder become one level. max takes the

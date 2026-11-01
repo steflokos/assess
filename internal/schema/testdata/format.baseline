@@ -74,6 +74,7 @@ attribute FactorRules.time iso21434.Combine req=always min=0 ref=
 attribute FactorRules.window iso21434.Combine req=always min=0 ref=
 attribute Feasibility.cap bool req= min=0 ref=
 attribute Feasibility.combine model.Combination req= min=0 ref=
+attribute Feasibility.days bool req= min=0 ref=
 attribute Feasibility.levels []model.Band req= min=0 ref=
 attribute Feasibility.points model.Points req= min=0 ref=
 attribute FlowStep.at model.Refs req= min=0 ref=component,interface

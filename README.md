@@ -344,6 +344,12 @@ factor in two stages:
    you switch it on, so the numbers of an existing project do not change. `assess explain` shows the effort before the cap and
    after it.
 
+Elapsed time in days. The points of elapsed time do not grow in line with time: three steps of a week each add up to 1 + 1 + 1 =
+3 points, though three weeks are ET2, which is worth 4. With `feasibility.days: true`, wherever `combine` says `sum` for time, each
+key counts as the longest time it covers (ET0 1 day, ET1 7, ET2 30, ET3 180, ET4 365). The days add up, the total turns back into
+the first key that covers it, and the path gets the points of that key. Where `combine` says `max` for time, nothing changes. It is
+off unless you switch it on.
+
 The five results add up to a total, and the total falls into a feasibility level. The easiest path decides the
 feasibility of the threat scenario. This is the **base** result.
 

@@ -644,3 +644,24 @@ func TestTheCapStopsEachFactorAtTheTopOfItsScale(t *testing.T) {
 		t.Errorf("without the cap, ET4 + ET4: %+v", r.Base)
 	}
 }
+
+// With feasibility.days, elapsed time adds up as days where the policy sums it, and the total turns back into a key. Three steps
+// of a week each are about three weeks, ET2, and two of a month each are about two months, ET3. Without it the points add up.
+func TestElapsedTimeAddsUpAsDaysWithTheFlag(t *testing.T) {
+	daysOn := [2]string{"  combine:", "  days: true\n  combine:"}
+	weeks := step("a", timeOnly(1), "Single Vehicle", "") + step("b", timeOnly(1), "Single Vehicle", "") + step("c", timeOnly(1), "Single Vehicle", "")
+	tree := "and:\n  - a\n  - b\n  - c"
+	if r := one(t, weeks, "", tree); r.Base == nil || r.Base.Total != 3 {
+		t.Fatalf("without the flag the points add up to 3: %+v", r.Base)
+	}
+	if r := one(t, weeks, "", tree, daysOn); r.Base == nil || r.Base.Total != 4 || r.Base.Vector[0] != 4 {
+		t.Errorf("three weeks are ET2 = 4: %+v", r.Base)
+	}
+	months := step("a", timeOnly(2), "Single Vehicle", "") + step("b", timeOnly(2), "Single Vehicle", "")
+	if r := one(t, months, "", "and:\n  - a\n  - b", daysOn); r.Base == nil || r.Base.Total != 17 {
+		t.Errorf("two months are ET3 = 17: %+v", r.Base)
+	}
+	if r := one(t, step("a", timeOnly(1), "Single Vehicle", ""), "", "or:\n  - a", daysOn); r.Base == nil || r.Base.Total != 1 {
+		t.Errorf("one step keeps its own key: %+v", r.Base)
+	}
+}

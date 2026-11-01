@@ -39,6 +39,9 @@ func Eval(w io.Writer, rep *engine.Report) {
 		if rep.Rules.Cap {
 			fmt.Fprintln(w, "cap:              each factor stops at the points of the highest key of its table")
 		}
+		if rep.Rules.Days {
+			fmt.Fprintln(w, "days:             elapsed time adds up as days, and the total turns back into a key")
+		}
 	}
 	if rep.Risk != nil {
 		fmt.Fprintf(w, "impact:           categories %s, stakeholders %s\nscalability:      %s\n", rep.Risk.ImpactAcross, rep.Risk.ImpactBetween, scalabilityText(rep.Risk))
@@ -216,6 +219,9 @@ func explain(w io.Writer, x *attack.Index, ws *model.Workspace, rep *engine.Repo
 		tw.Flush()
 		if rep.Rules.Cap {
 			fmt.Fprintln(w, "cap: each factor stops at the points of the highest key of its table (feasibility.cap)")
+		}
+		if rep.Rules.Days {
+			fmt.Fprintln(w, "days: elapsed time adds up as days (ET0 1, ET1 7, ET2 30, ET3 180, ET4 365), and the total turns back into a key (feasibility.days)")
 		}
 		fmt.Fprintln(w, "levels: "+bandLine(ws.Policy.Feasibility.Levels))
 	}

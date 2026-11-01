@@ -29,6 +29,9 @@ func (b *builder) method() Section {
 	if pol.Feasibility.Cap {
 		facts = append(facts, Fact{"Cap of the attack potential", txt("each factor of a path stops at the points of the highest key of its table")})
 	}
+	if pol.Feasibility.Days {
+		facts = append(facts, Fact{"Elapsed time in days", txt("elapsed time adds up as days (ET0 1, ET1 7, ET2 30, ET3 180, ET4 365), and the total turns back into the first key that covers it")})
+	}
 	if r := b.rep.Risk; r != nil {
 		facts = append(facts,
 			Fact{"Impact of a damage scenario", txt(fmt.Sprintf("the categories of one stakeholder combine by %s, the stakeholders by %s", r.ImpactAcross, r.ImpactBetween))},

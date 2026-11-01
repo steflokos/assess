@@ -34,6 +34,7 @@ type Feasibility struct {
 	Levels  []Band      `yaml:"levels,omitempty" doc:"Turns attack potential into a feasibility level. The first band that matches from the top wins. Each band except the last gives the highest attack potential it covers. The last band has none."`
 	Combine Combination `yaml:"combine,omitempty" doc:"How the effort of the parts of a path adds up, factor by factor. sum adds the numbers and max takes the largest. Write one table for the attack steps and one for the controls the attacker has to defeat, each with all five factors. At an or, assess always takes the easiest path."`
 	Cap     bool        `yaml:"cap,omitempty" doc:"true stops each factor of a path at the points of the highest key of its table, after the steps and the controls are combined. Steps and controls that add up then cannot rate an attacker beyond the top of the scale, such as more expertise than multiple experts. Leave it out to let the points add up without a limit."`
+	Days    bool        `yaml:"days,omitempty" doc:"true adds up elapsed time as days instead of points, where combine says sum for time. Each key counts as the longest time it covers: ET0 1 day, ET1 7, ET2 30, ET3 180 and ET4 365. The total turns back into the first key that covers it, and the path gets the points of that key. Three steps of a week each are then ET2, about three weeks, and not 1 + 1 + 1 points. Leave it out to add up the points."`
 }
 
 // Combination holds the two tables of combination rules. The steps of a path are

@@ -178,7 +178,7 @@ func Run(ws *model.Workspace, opt Options) (*Report, error) {
 		feasible = false
 		rep.Policy = append(rep.Policy, "feasibility.combine is not set in the policy")
 	} else {
-		rep.Rules = &Rules{Steps: ruleSet(steps), Controls: ruleSet(controls), Cap: pol.Feasibility.Cap}
+		rep.Rules = &Rules{Steps: ruleSet(steps), Controls: ruleSet(controls), Cap: pol.Feasibility.Cap, Days: pol.Feasibility.Days}
 	}
 	riskable := true
 	if len(pol.Impact.Stakeholders) == 0 || pol.Impact.Across == "" {
@@ -375,7 +375,24 @@ func (e *enumerator) cost(p path, f model.Feasibility) Path {
 		}
 	}
 	stage1 := rules(f.Combine.Steps.List()).fold(stepVecs...)
+	var days int // the elapsed time of the steps in days, under feasibility.days
+	if f.Days && f.Combine.Steps.Time == "sum" && len(steps) > 0 {
+		for _, s := range steps {
+			days += daysOf(s.Keys[0])
+		}
+		stage1[0] = e.sc.points[0][keyForDays(days)]
+	} else if f.Days {
+		for _, s := range steps {
+			days = max(days, daysOf(s.Keys[0]))
+		}
+	}
 	final := rules(f.Combine.Controls.List()).fold(append([]Vector{stage1}, defeatVecs...)...)
+	if f.Days && f.Combine.Controls.Time == "sum" && len(defeats) > 0 {
+		for _, d := range defeats {
+			days += daysOf(d.Keys[0])
+		}
+		final[0] = e.sc.points[0][keyForDays(days)]
+	}
 	var uncapped *Vector
 	if f.Cap { // capping is the last stage. A path with more elements stays at least as costly, so the pruning of paths still holds
 		if capped := final.capAt(e.sc.top()); capped != final {

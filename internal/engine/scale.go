@@ -136,6 +136,33 @@ func (s scale) top() Vector {
 	return out
 }
 
+// The days that each elapsed time key stands for, under feasibility.days: the longest time the key covers. ET4, more than six
+// months, counts as a year.
+var etDays = [...]struct {
+	key  string
+	days int
+}{{"ET0", 1}, {"ET1", 7}, {"ET2", 30}, {"ET3", 180}, {"ET4", 365}}
+
+// daysOf is the days of an elapsed time key, and 0 for no key.
+func daysOf(key string) int {
+	for _, e := range etDays {
+		if e.key == key {
+			return e.days
+		}
+	}
+	return 0
+}
+
+// keyForDays is the first elapsed time key that covers a number of days. Beyond six months it is ET4.
+func keyForDays(days int) string {
+	for _, e := range etDays {
+		if days <= e.days {
+			return e.key
+		}
+	}
+	return "ET4"
+}
+
 // capAt lowers every factor of v that is above the same factor of top to it.
 func (v Vector) capAt(top Vector) Vector {
 	for f := range v {
@@ -204,6 +231,8 @@ type Rules struct {
 	Controls RuleSet `json:"controls"`
 	// Cap says that each factor stops at the points of the highest key of its table (feasibility.cap in the policy).
 	Cap bool `json:"cap,omitempty"`
+	// Days says that elapsed time adds up as days, where the policy sums it (feasibility.days in the policy).
+	Days bool `json:"days,omitempty"`
 }
 
 func ruleSet(r rules) RuleSet {

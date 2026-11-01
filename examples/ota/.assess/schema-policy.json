@@ -188,6 +188,17 @@
           ],
           "description": "How the effort of the parts of a path adds up, factor by factor. sum adds the numbers and max takes the largest. Write one table for the attack steps and one for the controls the attacker has to defeat, each with all five factors. At an or, assess always takes the easiest path."
         },
+        "days": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "true adds up elapsed time as days instead of points, where combine says sum for time. Each key counts as the longest time it covers: ET0 1 day, ET1 7, ET2 30, ET3 180 and ET4 365. The total turns back into the first key that covers it, and the path gets the points of that key. Three steps of a week each are then ET2, about three weeks, and not 1 + 1 + 1 points. Leave it out to add up the points."
+        },
         "levels": {
           "anyOf": [
             {

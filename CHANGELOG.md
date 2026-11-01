@@ -20,6 +20,9 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   that add up can rate an attacker beyond the scale, which makes the residual risk look lower than it is. It is off unless you switch it
   on, so no number of an existing project changes. `explain` shows the effort before the cap and after it, and the JSON of a path has
   `uncapped` when the cap lowered it and `rules.cap`. A new project has the line as a comment in its policy.
+- `feasibility.days: true` in the policy adds up elapsed time as days where `combine` sums it, and turns the total back into a key:
+  three steps of a week each are ET2, not 1 + 1 + 1 points. It is off unless you switch it on, so no number of an existing project
+  changes. `explain`, the report and the JSON (`rules.days`) say when it is on.
 - A new iteration is written in the format `assess-iteration-v2` and says so in `format`. It keeps the whole SHA-256 digest of the
   rationale and the reference of each decision, where v1 kept 8 hex characters, which can be matched in minutes. An iteration of v1
   still verifies with the text it was made with, a chain can hold both, and a comparison with an iteration of v1 is made in its format.
