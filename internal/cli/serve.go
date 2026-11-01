@@ -10,8 +10,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/steflokos/assess/internal/load"
@@ -27,6 +30,7 @@ import (
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fl := newFlagSet("serve", stderr)
 	addr := fl.String("addr", "127.0.0.1:8484", "address to listen on. Only this computer is allowed: 127.0.0.1, localhost or [::1]. Use port 0 for a free port")
+	open := fl.Bool("open", false, "open the page in the web browser. The address with its token is then on the command line of the browser, where other users of a shared computer can see it")
 	if err := parseArgs(fl, args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
@@ -58,6 +62,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	ln, err := server.Listen(*addr)
 	if err != nil {
 		fmt.Fprintf(stderr, "assess serve: %v\n", err)
+		if portTaken(err) {
+			fmt.Fprintf(stderr, "Another program uses that port, perhaps another assess serve. Use -addr 127.0.0.1:0 for a free port\n")
+		}
 		return exitUsage
 	}
 	srv, err := server.New(server.Options{Dir: abs, Run: RunWith, Listener: ln, Log: stderr})
@@ -69,6 +76,11 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	if noProject != nil {
 		fmt.Fprintf(stderr, "There is no project in it yet. The page offers to create one.\n")
 	}
+	if *open {
+		if err := openBrowser(srv.URL()); err != nil {
+			fmt.Fprintf(stderr, "assess serve: the browser could not be opened (%v). Open the address yourself\n", err)
+		}
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -77,4 +89,36 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return exitUsage
 	}
 	return exitOK
+}
+
+// portTaken says whether listening failed because another program has the port.
+func portTaken(err error) bool {
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "address already in use") || strings.Contains(msg, "Only one usage of each socket address") // the second is Windows
+}
+
+// openBrowser opens an address in the web browser of the person, with the program that the system has for it. It does not wait
+// for the browser. A test replaces it.
+var openBrowser = func(url string) error {
+	name, args := browserCommand(runtime.GOOS, url)
+	cmd := exec.Command(name, args...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait() // the opener ends at once. Waiting for it leaves no process behind
+	return nil
+}
+
+// browserCommand is the program, and its arguments, that opens an address on a system.
+func browserCommand(goos, url string) (string, []string) {
+	switch goos {
+	case "darwin":
+		return "open", []string{url}
+	case "windows":
+		return "rundll32", []string{"url.dll,FileProtocolHandler", url}
+	}
+	return "xdg-open", []string{url}
 }

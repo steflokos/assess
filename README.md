@@ -943,8 +943,10 @@ within a few seconds.
 assess serve my-tara
 ```
 
-assess prints an address that ends in `#t=` and a token. Open the whole address. The token is new on every run. Without it, the
-page cannot read or write anything. `-addr 127.0.0.1:9000` picks another port. The address is 127.0.0.1, localhost or [::1]. At [::1] the
+assess prints an address that ends in `#t=` and a token. Open the whole address, or add `-open` to have assess open it in your
+browser. With `-open` the address is on the command line of the browser, where other users of a shared computer can see it in the
+list of processes. The token is new on every run. Without it, the page cannot read or write anything. `-addr 127.0.0.1:9000` picks
+another port, and `-addr 127.0.0.1:0` a free one, which helps when another program already has the port. The address is 127.0.0.1, localhost or [::1]. At [::1] the
 report opens in a tab of its own, because a browser cannot be told to allow that address in a frame.
 
 What you can do in the page:

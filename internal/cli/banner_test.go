@@ -4,6 +4,8 @@
 package cli
 
 import (
+	"errors"
+	"net"
 	"testing"
 
 	"github.com/steflokos/assess/internal/diag"
@@ -69,5 +71,31 @@ func TestSeverityColour(t *testing.T) {
 	}
 	if got := paintSeverity(diag.Error); got != "\x1b[1;31merror\x1b[0m" {
 		t.Errorf("%q", got)
+	}
+}
+
+// serve -open uses the program that each system has for opening an address.
+func TestBrowserCommand(t *testing.T) {
+	for goos, want := range map[string]string{"darwin": "open", "windows": "rundll32", "linux": "xdg-open", "freebsd": "xdg-open"} {
+		name, args := browserCommand(goos, "http://127.0.0.1:1/#t=x")
+		if name != want || args[len(args)-1] != "http://127.0.0.1:1/#t=x" {
+			t.Errorf("%s: %s %v", goos, name, args)
+		}
+	}
+}
+
+// A port that another program has is said so, with the way out.
+func TestPortTaken(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip(err)
+	}
+	defer ln.Close()
+	_, err = net.Listen("tcp", ln.Addr().String())
+	if err == nil || !portTaken(err) {
+		t.Errorf("%v", err)
+	}
+	if portTaken(errors.New("the address is not host:port")) {
+		t.Error("another error is not a taken port")
 	}
 }
