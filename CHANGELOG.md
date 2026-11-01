@@ -53,6 +53,10 @@ Changes to how assess is used. The format of a project and the JSON of the comma
   `requirement` (with `goals`, `target` and `controls`), in `concept/`. Rules can read them, and a risk's `goals` and `claims`. A new project
   gets header-only files for them and two basic rules that warn when a reduced risk has no goal or an accepted or shared risk no claim.
   The report lists them in the part on goals and claims, and the web interface has them under Decide.
+- A risk has a `uid`, such as `R-0007`, that `generate risks` gives it and never changes, and a link that opens it in the web interface:
+  `http://127.0.0.1:<port>/#/risk/<uid>`, with `port:` of `assess.yaml` (8484 by default). The page of a risk and the decisions table copy the
+  link, the report links each uid, and the JSON of `eval`, `explain`, `export` and `open` carries `uid` and `link`. `serve` listens at that port and
+  keeps its token in the user's configuration folder, so the links keep working after a restart. `serve -new-token` replaces the token.
 - On a terminal, an error is written in bold red and a warning in yellow. `NO_COLOR`, pipes and files get the plain text as before.
 - `serve -open` opens the page in the browser. When the port is taken, `serve` says so and how to get a free one.
 - In the web interface: a project with errors points at them, and not at a step that waits for the calculation. The calculation, open

@@ -100,7 +100,9 @@ if (given) {
   token = given[1];
   try { sessionStorage.setItem('assess-token', token); } catch (e) { /* no storage */ }
   try { if (sharedToken) localStorage.setItem('assess-token', token); } catch (e) { /* no storage */ }
-  history.replaceState(null, '', location.pathname + '#/');
+  let after = '';
+  try { after = sessionStorage.getItem('assess-after') || ''; sessionStorage.removeItem('assess-after'); } catch (e) { /* no storage */ }
+  history.replaceState(null, '', location.pathname + (after.startsWith('#/') ? after : '#/'));
 }
 export const tokenValue = () => token;
 
@@ -167,4 +169,9 @@ export function ask(opt) {
     document.body.append(dlg);
     dlg.showModal();
   });
+}
+
+// copyText puts a text on the clipboard and says so.
+export async function copyText(text, done) {
+  try { await navigator.clipboard.writeText(text); toast(done); } catch (e) { toast('The browser did not allow copying.', 'warn'); }
 }

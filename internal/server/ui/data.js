@@ -263,3 +263,14 @@ export function subjectOf(id, suffixes) {
   }
   return best > 0 ? id.slice(0, best) : '';
 }
+
+// riskLink is the address that opens a risk in the web interface, as RiskLink in Go makes it: from the uid of the risk and the port of
+// assess.yaml, or 8484, so that it stays the same from one run of assess serve to the next. It is empty for a risk without a uid.
+export function riskLink(uid, config) {
+  if (!uid) return '';
+  const port = (config || {}).port || 8484;
+  return 'http://127.0.0.1:' + port + '/#/risk/' + uid;
+}
+
+// riskByUid is the risk that has a uid, or undefined.
+export const riskByUid = (uid) => (S.of.risk || []).find((r) => (r.attributes || {}).uid === uid);

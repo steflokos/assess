@@ -2,7 +2,7 @@
 import './setup.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen, subjectOf } from '../data.js';
+import { S, load, resolveAttr, workflow, recordAt, candidates, kindOfId, nameOf, drafts, freeId, newOpen, subjectOf, riskLink } from '../data.js';
 import { pagesFor } from '../palette.js';
 
 await load();
@@ -130,4 +130,10 @@ test('the asset of a threat scenario is read from its id, also when it has a nam
   assert.equal(subjectOf('ecu.fw-denial.bus', words), 'ecu.fw');
   assert.equal(subjectOf('update-package', words), '');
   assert.equal(subjectOf('x-tampering.', words), '');
+});
+
+test('the link of a risk is made from its uid and the port of the project, as RiskLink in Go makes it', () => {
+  assert.equal(riskLink('R-0007', {}), 'http://127.0.0.1:8484/#/risk/R-0007');
+  assert.equal(riskLink('R-0007', { port: 9200 }), 'http://127.0.0.1:9200/#/risk/R-0007');
+  assert.equal(riskLink('', {}), '');
 });

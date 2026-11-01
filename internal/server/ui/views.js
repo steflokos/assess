@@ -8,6 +8,7 @@ import { S, rec, nameOf, kindName, kindsName, kindTitle, kindOfId, workflow, rec
 import { choice } from './form.js';
 import { hrefOf, diagnostics, diagnostic, said, diff, effects, conflicts, crumbs, empty, notFound, opened, OPEN_TITLES, noAdvice } from './parts.js';
 import { signIteration } from './sign.js';
+import { linkButton } from './editor.js';
 
 // ---- doing what a step of the path asks ---------------------------------------------------------------------------------------------
 export async function act(action, ui) {
@@ -320,7 +321,7 @@ export function decisions(ui) {
       why.value = (pending.get(r.id) || {}).rationale !== undefined ? (pending.get(r.id) || {}).rationale || '' : a.rationale || '';
       const wrap = h('div', { hidden: true }, why);
       body.append(h('tr', {},
-        h('td', {}, h('a', { class: 'nm', href: hrefOf('kind', 'risk', r.id), text: a.name || r.id }), h('div', { class: 'faint small mono', text: r.id })),
+        h('td', {}, h('a', { class: 'nm', href: hrefOf('kind', 'risk', r.id), text: a.name || r.id }), h('div', { class: 'faint small mono', text: r.id }), linkButton('risk', r)),
         h('td', {}, h('span', { class: 'row tight' }, chip(a.base, 'Before the controls'), h('span', { class: 'faint', text: '→' }), chip(a.residual, 'With the controls'), a.type ? h('span', { class: 'tag', text: a.type }) : null)),
         h('td', {}, treat.node, h('button', { type: 'button', class: 'linkish', title: why.value, onclick: () => { wrap.hidden = !wrap.hidden; if (!wrap.hidden) why.focus(); } }, why.value ? 'Show the reason' : 'Add a reason'), wrap)));
     }

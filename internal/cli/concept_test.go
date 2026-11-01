@@ -47,3 +47,27 @@ func TestGoalsClaimsAndRequirementsAreRecords(t *testing.T) {
 		t.Errorf("a cascade misses the claim:\n%s%s", r.out, r.err)
 	}
 }
+
+// A risk has a uid and a link that opens it in the web interface, with the port of the project. The JSON of eval and explain and an
+// open item about the risk carry them, and the report links the uid.
+func TestARiskHasALinkMadeFromItsUid(t *testing.T) {
+	dir := testproject.Copy(t)
+	_, env := runJSON(t, "eval", dir)
+	if !strings.Contains(string(env.Result), `"uid": "R-0001"`) || !strings.Contains(string(env.Result), `"link": "http://127.0.0.1:8484/#/risk/R-0001"`) {
+		t.Errorf("eval: %s", env.Result)
+	}
+	testproject.Replace(t, dir, "assess.yaml", "apiVersion: assess/v1beta1", "apiVersion: assess/v1beta1\nport: 9200")
+	testproject.Replace(t, dir, "concept/risks.yaml", "treatment: Reduce", "treatment:")
+	r := run(t, "open", "-format", "json", dir)
+	if !strings.Contains(r.out, `"link": "http://127.0.0.1:9200/#/risk/R-0001"`) {
+		t.Errorf("open: %s", r.out)
+	}
+	if r := run(t, "explain", "update-package-tampering", dir); !strings.Contains(r.out, "risk R-0001  http://127.0.0.1:9200/#/risk/R-0001") {
+		t.Errorf("explain:\n%s", r.out)
+	}
+	// each risk has its own uid
+	testproject.Replace(t, dir, "concept/risks.yaml", "uid: R-0002", "uid: R-0001")
+	if r := run(t, "validate", dir); r.code != 1 || !strings.Contains(r.out, "uid R-0001 is the uid of risk update-package-tampering as well") {
+		t.Errorf("a uid twice: exit %d\n%s%s", r.code, r.out, r.err)
+	}
+}

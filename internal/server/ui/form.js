@@ -19,7 +19,7 @@ const ROOT_TEXT = { steps: 'of these lead to the threat', preparedby: 'of these 
 
 const LABELS = {
   preparedby: 'Prepared by', threatenedby: 'Threatened by', mitigatedby: 'Mitigated by', entrypoint: 'Entry point',
-  roaduser: 'Road user', oem: 'OEM', knowledge: 'Knowledge of the item', window: 'Window of opportunity', time: 'Elapsed time',
+  roaduser: 'Road user', oem: 'OEM', uid: 'UID', knowledge: 'Knowledge of the item', window: 'Window of opportunity', time: 'Elapsed time',
   expertise: 'Specialist expertise', compromises: 'Properties lost', damages: 'Damage scenarios', steps: 'Attack path',
   assumes: 'Assumptions', potential: 'Attack potential', reduction: 'Effect on the attack potential', target: 'Where it acts',
   between: 'Between', over: 'Carried over', on: 'Applies to', check: 'Check', reference: 'References', actors: 'Threat actors',

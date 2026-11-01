@@ -55,7 +55,7 @@ tells you. You can also run assess without building it, for example `go run ./cm
 release also has the program built for Linux, macOS and Windows on the releases page of the repository, with a file of SHA-256 sums,
 so you do not need Go for it. `assess version` prints the version, and for a program that was built from a git checkout, the commit.
 
-The folder `examples/ota` is a finished project, with every risk treated and two iterations closed. Read it, or run
+The folder `examples/ota` is a finished project, with every risk treated and three iterations closed. Read it, or run
 the commands below on it. An AI generated it and the data is made up, so it does not describe a real system and is not for production use.
 
 ```sh
@@ -225,7 +225,7 @@ Here is what else each kind has. `schema.yaml` lists every attribute with its al
   `assumes` lists the assumptions it relies on.
 - **control.** `target` lists where it is deployed. `reduction` rates the effort it demands from the attacker.
   `rationale` says why. `threatenedby` says what can bypass it. `assumes` lists the assumptions it relies on.
-- **risk.** Its id is the id of its threat scenario. `type`, `base` and `residual` are calculated by assess.
+- **risk.** Its id is the id of its threat scenario. `uid` is a short id that never changes, such as `R-0007`, for links. `type`, `base` and `residual` are calculated by assess.
   You write `treatment`, `rationale` and `reference`. `assumes` lists the assumptions it relies on.
 - **goal.** A cybersecurity goal. Its `name` is the goal itself. `threats` lists the threat scenarios whose risk it treats.
   `cal` is its cybersecurity assurance level, CAL1 to CAL4, if your method uses them.
@@ -424,6 +424,19 @@ external reference next to the treatment.
 
 The type is a **Goal** when the risk before any control is above `risk.affinity`. That is the highest value the
 project accepts without a goal. The type is a **Claim** when the risk is at or below it.
+
+### Links to risks
+
+Every risk has a `uid`, such as `R-0007`. `assess generate risks` gives one to every risk that has none: the next number
+after the highest one. It never changes a uid after that, so the uid stays when the threat scenario or its asset gets another
+id. Each risk has its own, and `assess validate` says when two share one.
+
+The uid makes a link that opens the risk in the web interface: `http://127.0.0.1:8484/#/risk/R-0007`. Put it in a ticket, a
+mail or a review comment. The port is 8484, or the one you set with `port: 9200` in `assess.yaml`, so a link stays the same
+from one run of `assess serve` to the next. A link opens where `assess serve` runs for the project, on the computer of the
+person who clicks it. The page of a risk and the decisions table have a button that copies the link. The table of risk
+treatment decisions in the report links each uid. The JSON of `eval`, `explain` and `export` gives each threat scenario the
+`uid` and the `link` of its risk, `explain` names them, and an open item about a risk has its `link`.
 
 `assess generate risks` adds the records that are missing. It corrects the type and the two values in place and
 touches nothing else. `assess eval` warns when the file is out of date, and `-strict` turns that warning into a
@@ -1048,7 +1061,11 @@ assess serve my-tara
 
 assess prints an address that ends in `#t=` and a token. Open the whole address, or add `-open` to have assess open it in your
 browser. With `-open` the address is on the command line of the browser, where other users of a shared computer can see it in the
-list of processes. The token is new on every run. Without it, the page cannot read or write anything. `-addr 127.0.0.1:9000` picks
+list of processes. Without the token, the page cannot read or write anything. `assess serve` keeps the token in a file of your own
+configuration folder (such as `~/.config/assess/serve-token` on Linux), readable by you only. The page keeps it as well, so the
+page and the links to risks keep working after `assess serve` starts again. `-new-token` makes a new one and keeps that
+instead, and every address with the old one stops working. `assess serve` listens at the port of `assess.yaml` (`port:`), or
+8484. `-addr 127.0.0.1:9000` picks
 another port, and `-addr 127.0.0.1:0` a free one, which helps when another program already has the port. The address is 127.0.0.1, localhost or [::1]. At [::1] the
 report opens in a tab of its own, because a browser cannot be told to allow that address in a frame.
 

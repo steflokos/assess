@@ -7,6 +7,9 @@ import (
 	"bytes"
 	"errors"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -117,5 +120,48 @@ func TestShowLimitsADiagnosticThatRepeats(t *testing.T) {
 	if len(lines) != perCode+2 || lines[len(lines)-1] != "... and 5 more errors of [cycle]. -format json lists every one" ||
 		!strings.Contains(out.String(), "[other] something else") {
 		t.Errorf("%d lines:\n%s", len(lines), out.String())
+	}
+}
+
+// serve keeps its token in the user's configuration folder, readable by the user only, so the page and the links to the risks
+// still work after a restart. -new-token replaces it.
+func TestServeKeepsItsTokenBetweenRuns(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("ASSESS_CONFIG_DIR", dir)
+	first, kept, err := serveToken(false)
+	if err != nil || kept != filepath.Join(dir, "serve-token") || len(first) != 32 {
+		t.Fatalf("%q %q %v", first, kept, err)
+	}
+	if info, err := os.Stat(kept); err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o600) {
+		t.Errorf("the file is readable by others: %v %v", info.Mode(), err)
+	}
+	if again, _, _ := serveToken(false); again != first {
+		t.Error("the next run has another token")
+	}
+	if fresh, _, _ := serveToken(true); fresh == first {
+		t.Error("-new-token keeps the old token")
+	} else if again, _, _ := serveToken(false); again != fresh {
+		t.Error("the new token is not kept")
+	}
+	// a file that does not hold a token is replaced
+	os.WriteFile(kept, []byte("not a token"), 0o600)
+	if again, _, _ := serveToken(false); len(again) != 32 {
+		t.Errorf("%q", again)
+	}
+}
+
+// The port of serve, and of the links to the risks, is the one of assess.yaml, or 8484.
+func TestServeUsesThePortOfTheProject(t *testing.T) {
+	dir := t.TempDir()
+	if p := configPort(dir); p != 8484 {
+		t.Errorf("no project: %d", p)
+	}
+	os.WriteFile(filepath.Join(dir, "assess.yaml"), []byte("apiVersion: assess/v1beta1\nport: 9200\n"), 0o644)
+	if p := configPort(dir); p != 9200 {
+		t.Errorf("port 9200: %d", p)
+	}
+	os.WriteFile(filepath.Join(dir, "assess.yaml"), []byte("apiVersion: assess/v1beta1\nport: 80\n"), 0o644)
+	if p := configPort(dir); p != 8484 {
+		t.Errorf("a port that serve cannot use falls back: %d", p)
 	}
 }

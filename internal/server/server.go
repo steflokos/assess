@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -119,6 +120,12 @@ func New(opt Options) (*Server, error) {
 	}
 	return s, nil
 }
+
+// NewToken makes a token that cannot be guessed, for a caller that keeps it between runs.
+func NewToken() (string, error) { return randomToken() }
+
+// TokenRe is how a token is written: 128 bits as 32 hex digits.
+var TokenRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
 // randomToken makes a value that cannot be guessed: 128 bits.
 func randomToken() (string, error) {

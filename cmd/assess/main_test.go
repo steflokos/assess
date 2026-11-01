@@ -195,6 +195,7 @@ func TestTwoFinalizesOfTheSameFilesWriteOneIteration(t *testing.T) {
 func TestTheWebInterfaceStartsAndWantsItsToken(t *testing.T) {
 	dir := testproject.Copy(t)
 	cmd := exec.Command(binary, "serve", "-addr", "127.0.0.1:0", dir)
+	cmd.Env = append(os.Environ(), "ASSESS_CONFIG_DIR="+t.TempDir()) // the token is kept there, and not in the configuration of the person
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		t.Fatal(err)

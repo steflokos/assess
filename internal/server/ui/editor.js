@@ -3,9 +3,9 @@
 // run of assess apply first. The page shows the errors with their place in the files, the lines that would change and what the change
 // does to the calculation. Only apply writes.
 
-import { h, put, clear, plural, debounce, ask, toast, api, chip, upper, mod } from './lib.js';
+import { h, put, clear, plural, debounce, ask, toast, api, chip, upper, mod, copyText } from './lib.js';
 import { icon, KIND_ICON } from './icons.js';
-import { S, rec, nameOf, kindName, kindTitle, freeId } from './data.js';
+import { S, rec, nameOf, kindName, kindTitle, freeId, riskLink } from './data.js';
 import { recordForm, chipPicker, readOnly, inSchemaOrder, shell } from './form.js';
 import { hrefOf, diagnostics, diff, effects, conflicts, crumbs, notFound, opened } from './parts.js';
 
@@ -168,7 +168,7 @@ export function editor(kind, id, isNew, ui) {
     h('div', { class: 'grow' },
       h('div', { class: 'kindline' }, icon(KIND_ICON[kind] || 'circle', 16), h('span', { text: upper(info.name) })),
       h('h1', { text: title }),
-      !isNew ? h('div', { class: 'idline' }, h('code', { text: id }), copy, h('span', { class: 'faint small mono', text: existing.file + ':' + existing.line })) : h('p', { class: 'muted', text: info.doc })),
+      !isNew ? h('div', { class: 'idline' }, h('code', { text: id }), copy, h('span', { class: 'faint small mono', text: existing.file + ':' + existing.line }), linkButton(kind, existing)) : h('p', { class: 'muted', text: info.doc })),
     risk ? h('div', { class: 'row' }, chip(risk.base, 'Risk before the controls'), h('span', { class: 'faint', text: '→' }), chip(risk.residual, 'Risk with the controls')) : null,
     existing ? h('button', { class: 'btn danger', type: 'button', onclick: () => deleteRecord(kind, id, ui) }, icon('trash', 15), 'Delete') : null);
 
@@ -269,4 +269,14 @@ async function deleteRecord(kind, id, ui) {
   toast('Deleted ' + kindName(kind) + ' ' + id + '.');
   opened(news);
   ui.go('kind', kind);
+}
+
+// linkButton copies the link of a risk, which opens it here from a ticket, a mail or the report. A risk without a uid gets one from
+// assess generate risks, and the button says so.
+export function linkButton(kind, r) {
+  if (kind !== 'risk' || !r) return null;
+  const uid = (r.attributes || {}).uid;
+  if (!uid) return h('span', { class: 'faint small', title: 'Write the risks again (assess generate risks) to give it a uid and a link', text: 'no uid yet' });
+  const link = riskLink(uid, S.exp.config);
+  return h('button', { type: 'button', class: 'btn small', title: link, onclick: () => copyText(link, 'Link copied.') }, icon('external', 13), ' Copy link ', h('code', { text: uid }));
 }
